@@ -15,7 +15,7 @@ body {
   height: 100%;
 }
 
-/* 3D Canvas Background */
+/* 3D Canvas Background — game mode only */
 .webgl {
   position: fixed;
   top: 0;
@@ -24,6 +24,11 @@ body {
   height: 100%;
   z-index: 1;
   outline: none;
+  display: none;
+}
+
+.state-game .webgl {
+  display: block;
 }
 
 #ui-container {
@@ -65,4 +70,105 @@ body {
 .state-menu #menu-screen {
   opacity: 1;
   pointer-events: auto;
+}
+
+.menu-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.state-classic #classic-screen {
+  opacity: 1;
+  pointer-events: auto;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 3;
+}
+
+.modal.open {
+  display: flex;
+  pointer-events: auto;
+}
+
+.modal-content {
+  position: relative;
+  background: var(--pixel-bg);
+  padding: 1.5rem;
+  border-color: #555;
+}
+
+.close-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  color: #eee;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+#classic-project-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.project-card {
+  width: 260px;
+  padding: 1rem;
+  background: var(--pixel-bg);
+  color: var(--pixel-ink);
+  border-color: var(--rarity-common);
+}
+
+.project-card.rarity-common { border-color: var(--rarity-common); }
+.project-card.rarity-rare { border-color: var(--rarity-rare); }
+.project-card.rarity-epic { border-color: var(--rarity-epic); }
+.project-card.rarity-legendary { border-color: var(--rarity-legendary); }
+.project-card.rarity-common .project-card-badge { color: var(--rarity-common); }
+.project-card.rarity-rare .project-card-badge { color: var(--rarity-rare); }
+.project-card.rarity-epic .project-card-badge { color: var(--rarity-epic); }
+.project-card.rarity-legendary .project-card-badge { color: var(--rarity-legendary); }
+.project-card.glow { box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 10px currentColor; }
+
+.project-card-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  margin-bottom: 0.4rem;
+}
+
+.project-card-title {
+  margin-bottom: 0.4rem;
+}
+
+.project-card-description {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-bottom: 0.6rem;
+}
+
+.project-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.project-card-tag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #444;
+  border-radius: 2px;
+  opacity: 0.7;
 }

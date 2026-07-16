@@ -1,0 +1,31 @@
+/* Pixel-art UI groundwork — placeholder look until real pixel-art assets exist.
+   Real pixel font + border-image 9-slice frame PNGs slot in here later:
+   swap the font-family/box-shadow rules below, structure/classes stay the same. */
+
+:root {
+  --pixel-font: 'Courier New', Courier, monospace;
+  --rarity-common: #888888;
+  --rarity-rare: #3a8ee6;
+  --rarity-epic: #a24fe6;
+  --rarity-legendary: #e6b83a;
+  --pixel-bg: #14151f;
+  --pixel-ink: #eeeeee;
+}
+
+.pixel-ui, .pixel-ui * {
+  font-family: var(--pixel-font);
+  image-rendering: pixelated;
+}
+
+/* Hard-edged "stepped" panel look: no border-radius, no blur, offset solid shadow */
+.pixel-panel {
+  border-radius: 0;
+  border-width: 3px;
+  border-style: solid;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+}
+
+.pixel-text {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

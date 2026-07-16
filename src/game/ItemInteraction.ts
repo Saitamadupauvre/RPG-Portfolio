@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import type { Experience } from './Experience';
 import { stateMachine } from '../core/StateMachine';
-import type { DoorTarget } from './world/Menu';
+import { events } from '../core/events';
 
-export class MenuInteraction {
+export class ItemInteraction {
     private experience: Experience;
     private raycaster = new THREE.Raycaster();
     private pointer = new THREE.Vector2();
@@ -14,16 +14,17 @@ export class MenuInteraction {
     }
 
     private onClick(event: MouseEvent) {
-        if (stateMachine.getState() !== 'MENU') return;
+        if (stateMachine.getState() !== 'GAME') return;
 
         this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         this.raycaster.setFromCamera(this.pointer, this.experience.camera);
-        const hits = this.raycaster.intersectObjects(this.experience.world.menu.doors);
+        const meshes = this.experience.world.items.map(({ entity }) => entity.mesh);
+        const hits = this.raycaster.intersectObjects(meshes);
         if (hits.length === 0) return;
 
-        const target = hits[0].object.userData.doorTarget as DoorTarget;
-        stateMachine.changeState(target);
+        const hit = this.experience.world.items.find(({ entity }) => entity.mesh === hits[0].object);
+        if (hit) events.emit('itemCollected', hit.source);
     }
 }

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPG Protfolio</title>
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+
+<body>
+  <canvas class="webgl"></canvas>
+
+  <div id="ui-container" class="state-loading">
+
+    <div class="screen" id="loading-screen">
+      <h1>Loading Universe...</h1>
+      <div class="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="menu-screen">
+      <h1 class="title">SOLDIER'S PORTFOLIO</h1>
+    </div>
+
+    <div class="modal" id="project-modal">
+      <div class="modal-content">
+        <button id="btn-close-modal" class="close-btn">×</button>
+        <h2 id="project-title">Project Name</h2>
+        <p id="project-description">Project details go here...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+
+</html>

@@ -6,5 +6,6 @@ export function initUIStateView() {
 
     events.on('stateChange', (newState) => {
         uiContainer.className = `state-${newState.toLowerCase()}`;
+        document.body.className = `state-${newState.toLowerCase()}`;
     });
 }

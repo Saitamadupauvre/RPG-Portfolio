@@ -9,7 +9,8 @@ import type { Entity } from "../entities/Entity";
 import { createMapEntity } from "../entities/entityFactories";
 import { createPlayer } from "../entities/PlayerFactory";
 
-const CAMERA_OFFSET = new THREE.Vector3(10, 10, 10);
+const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
+const GROUND_SIZE = 50;
 
 export class World {
     private experience: Experience;
@@ -25,11 +26,10 @@ export class World {
         this.experience.scene.add(this.entityGroup);
         this.entityGroup.visible = stateMachine.getState() === 'GAME';
 
-        const groundGeometry = new THREE.PlaneGeometry(50, 50);
-        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x5cb85c });
+        const groundGeometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x5cb85c });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
         this.entityGroup.add(ground);
 
         this.player = createPlayer(CAMERA_OFFSET);
@@ -73,5 +73,6 @@ export class World {
         const camera = this.experience.camera;
         camera.position.copy(this.player.mesh.position).add(CAMERA_OFFSET);
         camera.lookAt(this.player.mesh.position);
+        camera.updateMatrixWorld();
     }
 }

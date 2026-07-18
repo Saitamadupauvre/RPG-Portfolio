@@ -14,7 +14,7 @@ export class Environment {
         this.experience = experience;
 
         this.experience.scene.background = new THREE.Color(SKY_COLOR);
-        this.experience.scene.fog = new THREE.Fog(SKY_COLOR, 25, 60);
+        this.experience.scene.fog = new THREE.Fog(SKY_COLOR, 30, 70);
 
         this.hemisphere = new THREE.HemisphereLight(SKY_COLOR, GROUND_COLOR, 0.9);
 

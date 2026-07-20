@@ -10,6 +10,11 @@
   --rarity-legendary: #e6b83a;
   --pixel-bg: #14151f;
   --pixel-ink: #eeeeee;
+
+  /* Menu accents — swap for pixel-art palette later, class names stay same */
+  --accent-gold: #e6b83a;
+  --accent-crimson: #c9425a;
+  --accent-teal: #3ae6c9;
 }
 
 .pixel-ui, .pixel-ui * {

@@ -29,6 +29,8 @@ export interface PropEntity {
     propType: string;
     position: Vec3;
     rotationY?: number;
+    size?: [number, number];
+    collidable?: boolean;
 }
 
 export type MapEntity = EnemyEntity | ChestEntity | ItemEntity | PropEntity;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World } from './world/World';
-import { ItemInteraction } from './ItemInteraction';
+import { PlayerAttackInteraction } from './PlayerAttackInteraction';
 
 export class Experience {
     private static instance: Experience;
@@ -33,7 +33,7 @@ export class Experience {
         this.timer = new THREE.Timer();
 
         this.world = new World(this);
-        new ItemInteraction(this);
+        new PlayerAttackInteraction(this);
 
         window.addEventListener('resize', () => this.resize());
 

@@ -4,12 +4,8 @@ import type { HealthComponent } from '../../../domain/components/HealthComponent
 
 const WIDTH = 0.8;
 const HEIGHT = 0.1;
-const DRAIN_SPEED = 0.6; // hp-ratio units per second the white trail takes to catch up
+const DRAIN_SPEED = 0.6;
 
-// Billboarded bg+fill+drain bar parented to the owner mesh (so pooling's mesh.visible toggle
-// hides it for free). Counter-rotates against the owner's world rotation each frame so it
-// always faces the camera. Hidden while at full hp; on damage a white trail bar holds the
-// pre-hit width and drains down to the new fill level instead of snapping instantly.
 export class HealthBarComponent implements Component {
     public readonly name = 'healthBar';
 
@@ -50,8 +46,6 @@ export class HealthBarComponent implements Component {
         ownerMesh.add(this.group);
     }
 
-    // Called by the pool when an entity is (re)spawned so a fresh full-hp bar doesn't
-    // inherit a drain trail from whatever this pooled entity looked like before.
     public reset() {
         this.drainRatio = -1;
     }

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 
-// Decaying random offset added to the camera position on top of its normal follow-cam placement.
 export class ScreenShake {
     private duration = 0;
     private elapsed = 0;

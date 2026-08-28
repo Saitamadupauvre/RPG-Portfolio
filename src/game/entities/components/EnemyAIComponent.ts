@@ -6,11 +6,6 @@ import { ComboComponent } from './ComboComponent';
 
 const RETURN_ARRIVAL_RADIUS = 0.2;
 
-// Orchestrates an enemy's chase/attack behavior: idles at its spawn origin, chases the
-// player once DetectionComponent aggros, attacks via ComboComponent once in range, and
-// walks back to origin once DetectionComponent deaggros. Owns its sub-components directly
-// (rather than registering them on Entity too) so update order is explicit and predictable
-// instead of depending on Map insertion order.
 export class EnemyAIComponent implements Component {
     public readonly name = 'enemyAI';
 

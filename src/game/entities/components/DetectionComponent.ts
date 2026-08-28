@@ -6,9 +6,6 @@ export interface DetectionHooks {
     onDeaggro?: () => void;
 }
 
-// Aggros when the player enters aggroRadius, deaggros when the player strays deaggroRadius
-// away from this entity's spawn origin (not from the entity's current position) — so a chase
-// can't drag on forever but also isn't cancelled just by the enemy wandering off origin mid-chase.
 export class DetectionComponent implements Component {
     public readonly name = 'detection';
 

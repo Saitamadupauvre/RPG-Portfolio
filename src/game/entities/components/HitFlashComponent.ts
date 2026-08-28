@@ -3,8 +3,6 @@ import type { Component } from '../../../domain/components/Component';
 
 const FLASH_COLOR = new THREE.Color(0xffffff);
 
-// Flashes an entity's own material white on hit, fading back to its base color.
-// Requires a non-shared material instance — flashing one enemy must not flash others of the same type.
 export class HitFlashComponent implements Component {
     public readonly name = 'hitFlash';
 

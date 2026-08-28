@@ -6,8 +6,6 @@ import { getNavGrid } from '../../world/navigation';
 const REPATH_INTERVAL = 0.4;
 const WAYPOINT_RADIUS = 0.15;
 
-// Steers a mesh toward a target position via A* over the shared static nav grid.
-// Re-plans periodically rather than every frame since the target (usually the player) keeps moving.
 export class PathfindingComponent implements Component {
     public readonly name = 'pathfinding';
 
@@ -26,9 +24,6 @@ export class PathfindingComponent implements Component {
         this.turnSpeed = turnSpeed;
     }
 
-    // Safe to call every frame with a moving target (e.g. the player): only forces an
-    // immediate repath the first time a chase starts, otherwise just updates where the
-    // existing path is heading and lets the periodic REPATH_INTERVAL handle replanning.
     public setTarget(target: THREE.Vector3) {
         if (!this.target) {
             this.target = target.clone();

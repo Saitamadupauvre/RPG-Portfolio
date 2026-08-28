@@ -3,8 +3,6 @@ import type { PropEntity } from '../../data/MapEntity';
 import { Entity } from './Entity';
 import { applyTransform } from './applyTransform';
 
-// Base box is 1 x height x 1; `scale` in map data does all the sizing, so the scale gizmo
-// and the nav grid read the same numbers.
 export const PROP_BASE_HEIGHT = { collidable: 2, decor: 0.7 };
 
 export function createProp(entity: PropEntity): Entity {

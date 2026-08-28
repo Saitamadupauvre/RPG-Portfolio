@@ -13,8 +13,6 @@ const PARTICLE_LIFE = 0.4;
 const PARTICLE_SPEED = 2.5;
 const GRAVITY = 6;
 
-// Fixed-size particle pool: bursts reuse inactive particles instead of allocating
-// new meshes per hit, so repeated combat doesn't churn the GC/GPU-alloc path.
 export class HitParticles {
     private particles: Particle[] = [];
 

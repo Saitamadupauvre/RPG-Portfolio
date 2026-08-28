@@ -3,11 +3,10 @@ import type { Component } from '../../../domain/components/Component';
 import type { AttackComponent, AttackHitboxOptions } from './AttackComponent';
 
 export interface ComboMove {
-    // Hitbox/damage for this step. Falls back to the AttackComponent's own defaults for any field omitted.
     options?: AttackHitboxOptions;
-    // Seconds after this move ends before the combo can advance to the next one.
+
     recovery?: number;
-    // Telegraph time before the hitbox actually spawns — gives the target a window to dodge.
+
     windup?: number;
 }
 
@@ -19,10 +18,6 @@ interface PendingMove {
     timer: number;
 }
 
-// Drives an AttackComponent through an ordered move list, advancing one step per trigger()
-// call and resetting to the start after resetWindow seconds of inactivity. Extending a
-// pattern is just appending to `moves` — no branching logic to touch. Each trigger() first
-// faces + telegraphs (windup), then actually fires the hitbox once the windup elapses.
 export class ComboComponent implements Component {
     public readonly name = 'combo';
 

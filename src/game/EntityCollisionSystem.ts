@@ -1,9 +1,6 @@
 import type { Entity } from './entities/Entity';
 import { resolveCircleOverlap } from '../domain/collision/CircleCollision';
 
-// Pairwise circle-separation for physical bodies (player + enemies) so they push apart
-// instead of overlapping. Runs after movement/pathfinding each frame. Static obstacles
-// (walls) are handled separately by the nav grid — this is dynamic body-vs-body only.
 export class EntityCollisionSystem {
     public resolve(bodies: Entity[]) {
         const colliders = bodies.filter((entity) => entity.collisionRadius !== undefined);

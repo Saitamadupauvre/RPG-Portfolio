@@ -26,3 +26,7 @@ export const projects: Project[] = [
         rarity: 'common',
     },
 ];
+
+export function findProject(projectId: string): Project | undefined {
+    return projects.find((project) => project.id === projectId);
+}

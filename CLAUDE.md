@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-3D portfolio site, two entry modes reached via a 3D menu:
-- **Game mode**: free-roam 3D world (open world, not linear). Enemies, chests, items, and props are placed independently as level design — not auto-generated from the project list. A collectible **item** can optionally carry a `projectId` link; collecting a linked item opens the project modal. Unlinked items are just game loot with no project tie-in. Full action combat is the biggest planned scope item (movement, attack timing/hitboxes, health bars) — not yet built.
+3D portfolio site, two entry modes reached from a menu:
+- **Game mode**: free-roam 3D world (open world, not linear), meant to be a *real* game — moderate difficulty, enjoyable, a bit of challenge. No win/end condition (it exists to show projects). A final boss is planned but not scoped yet. Enemies, statues, items, and props are placed by hand as level design — never auto-generated from the project list.
 - **Fast portfolio / classic mode**: flat list of every entry in `src/data/projects.ts`, independent of what's placed in the game world, for recruiters who don't want to play a game.
 
 Visual split: **3D low-poly** for the game world (Three.js meshes), **2D pixel-art** for all UI/menus/overlays (hand-rolled DOM+CSS, no canvas renderer). Pixel look is currently CSS-only placeholders (`src/style/pixel-ui.css`: blocky monospace, hard-edged panels, stepped shadows) — swappable for real pixel-art PNGs/font later without touching component structure.
@@ -26,64 +26,97 @@ Layered, event-driven — each layer only knows about the layer below it via typ
 
 - `src/core/` — framework-agnostic infra, no Three.js/DOM knowledge.
   - `EventEmitter.ts` — generic typed pub/sub (`EventEmitter<Events>`), has `on`/`off`/`emit`.
-  - `events.ts` — `AppEvents` type map (`stateChange`, `itemCollected`) + one shared `events` singleton instance. Add new cross-layer events here.
-  - `StateMachine.ts` — tracks `AppState` (`LOADING | MENU | GAME | CLASSIC`) and emits `stateChange` on `events`. Does **not** touch the DOM.
+  - `events.ts` — `AppEvents` type map + one shared `events` singleton. Add new cross-layer events here.
+  - `StateMachine.ts` — tracks `AppState` (`LOADING | MENU | GAME | CLASSIC`) and emits `stateChange`. Does **not** touch the DOM.
 - `src/data/` — pure content, no game-mechanics or rendering knowledge, never imports from `domain`/`game`/`ui`.
-  - `Project.ts` — `Project` type (`id`, `title`, `description`, `tags`, `links`, `rarity`). `projects.ts` — hardcoded `Project[]`, the single source of truth for classic mode and for resolving item→project links. Independent of map layout.
-  - `MapEntity.ts` — tagged union (`kind: 'enemy' | 'chest' | 'item' | 'prop'`) describing level content. Only `item` has an optional `projectId`; that's the *sole* coupling point between the game world and project data. `mapLayout.ts` — hardcoded `MapEntity[]`, authored independently of `projects.ts` (adding level content ≠ adding a project, and vice versa).
+  - `Project.ts` / `projects.ts` — `Project` type + hardcoded `Project[]`. Pure content: no placement, no region, no discovery info. Single source of truth for classic mode, the in-game book, and statue→project resolution.
+  - `MapEntity.ts` — tagged union (`kind: 'enemy' | 'chest' | 'item' | 'prop'`) describing level content, authored by hand in `mapLayout.ts`. Placement lives here, never in `projects.ts`; the optional `projectId` on a map entity is the *sole* coupling point between world and project data.
 - `src/domain/` — pure derivation, no Three.js/DOM imports.
-  - `CardStyle.ts` — `projectToUICardStyle(project)`, a `rarity`-keyed lookup table producing presentation info (`frameVariant`, `badgeLabel`, `glow`) for UI cards only — never used for map spawning.
-  - `collectItem.ts` — `resolveItemProject(item)`, looks up `item.projectId` in `projects.ts`, returns `Project | undefined`.
-  - `components/` — pure component logic attachable to game entities (see below). `Component.ts` base interface (`readonly name`, optional `update?(dt)`); `HealthComponent.ts` (`hp`/`maxHp`/`takeDamage`/`heal`/`isDead`).
+  - `CardStyle.ts` — `projectToUICardStyle(project)`, `rarity`-keyed presentation lookup for UI cards only.
+  - `collectItem.ts` — `resolveItemProject(item)` → `Project | undefined`.
+  - `components/` — engine-agnostic component logic: `Component.ts` base interface, `HealthComponent.ts`.
+  - `collision/CircleCollision.ts` — pure circle-vs-circle push-apart resolution.
+  - `pathfinding/` — `NavGrid.ts` (grid build, `worldToCol`/`worldToRow`/`isBlocked`) + `AStar.ts`.
 - `src/game/` — Three.js scene graph and interaction.
-  - `Experience.ts` — owns scene/camera/renderer/render loop, instantiates `World`, `MenuInteraction`, `ItemInteraction`. Singleton via `Experience.init(canvas)` (call once, in `main.ts`) + `Experience.getInstance()` (everywhere else); constructor is private, throws if `getInstance()` called before `init()`.
-  - `entities/Entity.ts` — Three-aware entity wrapper: `id`, `mesh: THREE.Object3D`, a `Map<string, Component>`, `addComponent`/`getComponent<T>`/`update(dt)` (fans out to attached components). Domain components stay engine-agnostic; `Entity` is the seam where they meet a mesh.
-  - `entities/{Enemy,Chest,Item,Prop}Factory.ts` — each `(mapEntity) => Entity`, builds the mesh and attaches components (only `EnemyFactory` attaches `HealthComponent` today: grunt 20 / elite 50 / boss 200 hp). `entities/entityFactories.ts` — typed dispatch table (`Record<MapEntity['kind'], factory>`) + `createMapEntity()`; adding a new `MapEntity` kind means one new factory file + one registry entry, no switch/branch to touch elsewhere.
-  - `world/World.ts` — builds all entities via `mapLayout.map(createMapEntity)`, groups their meshes in `entityGroup` (visible only in `GAME` state — mirrors `Menu.group`'s own visibility toggle), tracks `items: {entity, source}[]` separately for interaction/removal, runs `entity.update(dt)` each frame. Owns `Environment` (lights) and `Menu` (3D door meshes).
-  - `world/Menu.ts` — builds the two clickable 3D "door" meshes (`GAME`/`CLASSIC`), tagged via `mesh.userData.doorTarget`.
-  - `MenuInteraction.ts` / `ItemInteraction.ts` — both raycast on canvas click against a specific mesh set, gated by current `AppState` (`MENU` / `GAME` respectively); `MenuInteraction` calls `stateMachine.changeState(...)`, `ItemInteraction` emits `itemCollected` with the item's source `MapEntity`.
+  - `Experience.ts` — owns scene/camera/renderer/render loop; instantiates `World` and `PlayerAttackInteraction`. `Experience.init(canvas)` once (lazily, from `main.ts`, on first `GAME` entry) + `getInstance()` elsewhere.
+  - `entities/Entity.ts` — Three-aware wrapper: `id`, `mesh`, collision radius, component map, `update(dt)` fan-out.
+  - `entities/{Enemy,Chest,Item,Prop}Factory.ts` + `entityFactories.ts` — typed `Record`-based dispatch table; new kind = one factory + one registry entry.
+  - `entities/EnemyPool.ts` — per-`enemyType` stat/look table (hp, speed, aggro/deaggro radius, attack range, combo pattern) and Entity pooling so kill+respawn reuses meshes/components. `EnemyFactory` just delegates to `enemyPool.acquire`.
+  - `entities/PlayerFactory.ts` — capsule + forward-marker cube, `movement`/`attack`/`health`/`hitFlash` components.
+  - `entities/components/` — Three-aware components: `MovementComponent` (WASD, camera-relative, wall slide against the nav grid, smooth turn, lock during attack), `AttackComponent` (windup/active/recovery hitbox, per-target hit registration), `ComboComponent` (per-type move chains), `DetectionComponent`, `EnemyAIComponent` (aggro/deaggro/return-to-origin), `PathfindingComponent`, `HealthBarComponent` (billboard bar), `HitFlashComponent`.
+  - `CombatSystem.ts` — resolves player→enemy and enemy→player hitboxes, applies damage, hit flash, particles, screen shake, kills + pool release. Keeps `World` a registry, not a combat engine.
+  - `EntityCollisionSystem.ts` — per-frame circle push-apart over all entities.
+  - `PlayerAttackInteraction.ts` — left-click raycasts onto the ground plane at player height, aims + triggers the attack.
+  - `effects/` — `HitParticles.ts`, `ScreenShake.ts`.
+  - `world/World.ts` — ground plane, player, entity build from `mapLayout`, entity group visibility per state, per-frame entity/player/collision/camera/combat update. Camera is a fixed isometric offset following the player.
+  - `world/Environment.ts` — sky color, fog, hemisphere + shadow-casting directional light.
+  - `world/navigation.ts` — shared nav grid accessor.
 - `src/ui/` — DOM/HTML layer, reacts to `core/events.ts`, no Three.js imports.
-  - `UIStateView.ts` — listens for `stateChange`, sets `#ui-container` className to `state-<name>` (CSS in `style.css` drives `.screen` visibility per state).
-  - `components/renderProjectCard.ts` — pure function `(project, cardStyle) => HTMLElement`, framework-free `document.createElement`/`.append` DOM building. Reused by every surface that shows a project.
-  - `views/ClassicView.ts` — on first `CLASSIC` state entry, renders every `projects.ts` entry into `#classic-project-list` via `renderProjectCard`.
-  - `views/ProjectModalView.ts` — listens for `itemCollected`, calls `resolveItemProject`; only opens/populates `#project-modal` (via the same `renderProjectCard`) when a project comes back, no-ops for unlinked items.
-- `src/main.ts` — wiring only: `Experience.init(canvas)`, `initUIStateView()`, `initClassicView()`, `initProjectModalView()`, initial `LOADING` → `MENU` transition on a timer.
+  - `UIStateView.ts` — `stateChange` → `#ui-container` className `state-<name>`.
+  - `views/MenuView.ts` — wires the two DOM menu buttons to `stateMachine.changeState`.
+  - `components/renderProjectCard.ts` — pure `(project, cardStyle) => HTMLElement`. Reused by every surface showing a project.
+  - `views/ClassicView.ts`, `views/ProjectModalView.ts`.
+- `src/main.ts` — wiring only: init UI views, lazy-import `Experience` on first `GAME` state, timed `LOADING` → `MENU`.
 
-Not yet built: player entity/movement, combat (attack hitboxes tied into `HealthComponent`), enemy AI/behavior components, real pixel-art assets (font file + border-image 9-slice frame PNGs to replace `pixel-ui.css` placeholders).
+### Known dead / stale code (fix or delete before building on it)
+
+- `src/game/world/Grass.ts` + `GroundMaterial.ts` — never imported. Grass is to be redone as a material applicable to any mesh (the current version was too awkward to reuse).
+- `src/game/ItemInteraction.ts` — never instantiated; superseded by the planned proximity + `E` interaction system.
+- `mapLayout.ts` currently holds only test enemies and walls — no statues/items, so game mode cannot surface a project yet.
+
+## Locked-in vision (decided with Alban, not yet all built)
+
+- **Project discovery = statues.** Each statue carries a `projectId`, glows while undiscovered, and is collected by pressing **`E`** in range. The statue mesh does **not** disappear on collect — only the glow does.
+- **Book UI**: in-game book lists **all** projects; uncollected ones show as locked placeholders. For now the book renders the same card content as classic mode (reuse `renderProjectCard`), just a different frame.
+- **Death & bonfires** (Dark Souls model): hand-placed `bonfire` map entities. Death respawns the player at the last rested bonfire; resting refills HP and **resets all enemies except bosses**.
+- **No region system.** The map is handcrafted; project data stays pure content with no placement/region fields.
+- **Camera**: fixed isometric offset for now. Contextual zoom later for big bosses/rooms.
+- **Attack**: mouse-click aim + attack stays.
+- **Menu**: later becomes two openable pixel-art doors (2D art, not 3D meshes — the earlier 3D-door plan is dropped). All UI goes pixel art; current CSS is placeholder.
+- **Editor mode**: dev-only map editor, not shipped. Outputs JSON to commit (live localStorage editing only if it's cheap to add).
+- **Chunk system**: needed later, once the map outgrows one hand-authored `mapLayout` array.
+
+### Build order agreed
+
+1. Statue entity + proximity/`E` interaction system (delete the dead raycast `ItemInteraction`), emitting a discovery event.
+2. Book UI (all projects, locked placeholders, reuses `renderProjectCard`).
+3. Player death + HP HUD + bonfire checkpoints (respawn, HP refill, non-boss enemy reset).
+4. Chunk system → editor mode → grass material redo → real pixel-art pass.
 
 ## Design decisions locked in
 
-- **Map vs. project data are separate concerns.** Enemies/chests/props are level design, placed and typed on their own in `mapLayout.ts` — never auto-derived 1:1 from `projects.ts`. The only link is optional `item.projectId`, resolved at collection time via `domain/collectItem.ts`.
-- **Entity/component pattern**, not per-type subclassing: `game/entities/Entity.ts` (mesh + id) + attachable `domain/components/*` (pure logic, e.g. `HealthComponent`). Player, enemies, and any future entity type reuse the same base and components — no duplicated HP/behavior code per entity type.
-- **Boss vs regular enemy**: `enemyType` is authored directly per `MapEntity`, not derived from `Project.rarity` — map design and project curation are independent axes.
-- **Combat depth**: full action combat — movement, attack timing/hitboxes, health bars. Biggest scope item in the project; build incrementally (hit detection first, feel/juice later).
-- **3D menu**: fully 3D clickable objects in-scene (two doors — "Game Mode" / "Fast Portfolio"), not flat HTML buttons with a 3D backdrop. Click → raycaster hits the door mesh → `stateMachine.changeState(...)`.
-- **Pixel UI via hand-rolled DOM+CSS**, not a canvas-2D renderer — consistent with "DOM manipulated directly." `image-rendering: pixelated` + `border-image` 9-slice framing is the intended mechanism once real art assets exist; `pixel-ui.css` currently holds CSS-only placeholders for the same class names.
+- **Map vs. project data are separate concerns.** Level content is placed and typed on its own in `mapLayout.ts` — never auto-derived 1:1 from `projects.ts`. The only link is an optional `projectId` on a map entity, resolved at interaction time.
+- **Entity/component pattern**, not per-type subclassing. Player, enemies, and future entity types reuse the same `Entity` base plus attachable components.
+- **Boss vs regular enemy**: `enemyType` is authored per `MapEntity`, not derived from `Project.rarity`.
+- **Combat depth**: full action combat — movement, attack timing/hitboxes, health bars. Built incrementally; hit detection, combos, AI, and juice (particles/shake/flash) already exist.
+- **Pixel UI via hand-rolled DOM+CSS**, not a canvas-2D renderer. `image-rendering: pixelated` + `border-image` 9-slice framing is the intended mechanism once real art exists.
 - **Project data**: hardcoded typed array in `src/data/projects.ts`, ~5-10 projects. No CMS/backend.
-- **Deploy target**: static build → GitHub Pages / Vercel / Netlify. No server-side code planned.
+- **Deploy target**: static build → GitHub Pages / Vercel / Netlify. No server-side code.
 
 ## How to work with Alban on this repo
 
 Alban is learning JS/TS through building this. Preferred workflow:
 
 - **Pair-program, not autopilot.** Propose the plan/approach for a step, explain it, wait for go-ahead, *then* write the code. Don't silently write large chunks of new logic unprompted.
-- After writing code, explain it like a professor would: what each non-obvious piece does and *why* that pattern was chosen over alternatives — not just a restatement of the code.
-- Actively point out anti-patterns, JS/TS gotchas, and better approaches, even if not explicitly asked. Treat every change as a small teaching moment.
-- Resolved teaching points (don't re-explain from scratch, just reference briefly if relevant):
-  - ~~Singleton via `if (instance) return instance` inside a constructor~~ — replaced everywhere with explicit `static getInstance()`/`static init()` (see `Experience.ts`; `EventEmitter`/`StateMachine` are plain module-level `export const` singletons instead, since nothing needed the constructor-hijack there).
-  - ~~`StateMachine` reached into the DOM directly~~ — now emits `stateChange` via `core/events.ts`; `ui/UIStateView.ts` owns the DOM side-effect.
-  - ~~`EventEmitter` had no `off()`, was untyped (`any[]`)~~ — now generic (`EventEmitter<Events>`) with `on`/`off`/`emit`.
-  - ~~Raw `THREE.Object3D` returned from entity factories~~ — no seam for HP/behavior. Replaced with `Entity` (mesh + component map) so combat/AI slot in via `domain/components/*` without touching factories' return type.
-  - ~~Switch statement dispatching on `MapEntity['kind']`~~ — replaced with a typed `Record`-based dispatch table (`entityFactories.ts`); new entity kind = one factory + one registry entry, no branch to edit.
-  - ~~Full-viewport `.screen` divs with `pointer-events: auto` but no interactive children~~ — silently swallowed all canvas clicks (3D door raycasts never fired). Only elements with actual interactive content (`.btn`, `.modal-content`, `#classic-screen`) should opt back into pointer events; bare `.screen` containers stay `pointer-events: none`.
+- After writing code, explain it like a professor would: what each non-obvious piece does and *why* that pattern was chosen over alternatives.
+- Actively point out anti-patterns, JS/TS gotchas, and better approaches, even if not explicitly asked.
+- Resolved teaching points (don't re-explain from scratch):
+  - ~~Singleton via `if (instance) return instance` inside a constructor~~ — replaced with explicit `static getInstance()`/`static init()`.
+  - ~~`StateMachine` reached into the DOM directly~~ — now emits `stateChange`; `ui/UIStateView.ts` owns the DOM side-effect.
+  - ~~`EventEmitter` had no `off()`, was untyped~~ — now generic with `on`/`off`/`emit`.
+  - ~~Raw `THREE.Object3D` returned from entity factories~~ — replaced with `Entity` (mesh + component map).
+  - ~~Switch statement dispatching on `MapEntity['kind']`~~ — replaced with a typed `Record` dispatch table.
+  - ~~Full-viewport `.screen` divs with `pointer-events: auto` but no interactive children~~ — swallowed canvas clicks. Only elements with real interactive content opt back in.
+  - ~~Combat logic living in `World`~~ — extracted to `CombatSystem`; `World` stays a scene/entity registry.
+  - ~~New `THREE` objects per enemy spawn~~ — `EnemyPool` reuses Entities; geometry shared per type, material cloned per entity (because `HitFlashComponent` mutates color).
 - Open teaching points, still relevant:
-  - Three.js resources (geometry/material/texture) need explicit `.dispose()` — no GC for GPU memory. Matters once enemies/chests are spawned and removed dynamically at runtime (item collection already removes meshes on collect — dispose() not yet added there).
+  - Three.js resources (geometry/material/texture) need explicit `.dispose()` — no GC for GPU memory. Only `AttackComponent` disposes today; item removal and pooled-entity teardown do not.
   - Check `vite.config.ts` `outDir: '../dist'` — builds outside the project folder; confirm this is intentional before relying on it for deploy.
 
 ## Conventions
 
-- TypeScript strict-ish config: `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` all on — keep code clean enough to satisfy these, don't loosen them to silence errors. Run `npx tsc --noEmit` after changes since `npm run dev` won't catch these.
-- Prefer a `type` alias over `interface` for anything used as a generic constraint (e.g. `Record<string, unknown[]>`) — `interface` supports declaration merging so TS can't prove it has no extra untyped keys; `type` is closed and checks structurally. Exception: plain data-shape interfaces meant to be `implements`ed (e.g. `Component`) — TS's weak-type check requires at least one non-optional member for those, so give them one meaningful required field rather than making everything optional.
-- Singletons: use module-level `export const instance = new X()` when construction needs no external input (`EventEmitter`, `StateMachine`). Use `private constructor` + `static init(...)`/`static getInstance()` when construction needs external input that's only available later (`Experience` needs the canvas element).
-- Discriminated unions (tagged with a `kind`/similar literal field) over one flat interface with many optional fields — lets TS narrow automatically in `switch`/dispatch without casts (see `MapEntity`).
-- File layout: `src/core/` = framework-agnostic infra (state, events). `src/data/` = pure content, no mechanics — never imports from other `src/` layers. `src/domain/` = pure derivation from `data/` (lookup tables, resolvers, components) — no Three.js/DOM imports. `src/game/` = Three.js scene graph, consumes `domain/`. `src/ui/` = DOM layer reacting to `core/events.ts`, consumes `domain/`. `game/` and `ui/` never import from each other directly — only through `core/events.ts`.
+- TypeScript strict-ish config: `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` all on — keep code clean enough to satisfy these, don't loosen them. Run `npx tsc --noEmit` after changes.
+- Prefer a `type` alias over `interface` for anything used as a generic constraint — `interface` allows declaration merging so TS can't prove it has no extra keys. Exception: plain data-shape interfaces meant to be `implements`ed (e.g. `Component`), which need at least one non-optional member for TS's weak-type check.
+- Singletons: module-level `export const instance = new X()` when construction needs no external input (`EventEmitter`, `StateMachine`, `EnemyPool`). `private constructor` + `static init(...)`/`static getInstance()` when it needs input available only later (`Experience` needs the canvas).
+- Discriminated unions (tagged with a `kind` literal) over one flat interface with many optional fields.
+- File layout: `src/core/` = framework-agnostic infra. `src/data/` = pure content, never imports other `src/` layers. `src/domain/` = pure derivation from `data/`, no Three.js/DOM. `src/game/` = Three.js scene graph. `src/ui/` = DOM layer. `game/` and `ui/` never import each other — only through `core/events.ts`.

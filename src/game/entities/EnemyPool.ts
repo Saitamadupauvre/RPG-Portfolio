@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { EnemyEntity } from '../../data/MapEntity';
 import { Entity } from './Entity';
+import { applyTransform } from './applyTransform';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthBarComponent } from './components/HealthBarComponent';
@@ -123,8 +124,7 @@ export class EnemyPool {
         entity.getComponent<HealthBarComponent>('healthBar')?.reset();
         entity.getComponent<EnemyAIComponent>('enemyAI')?.setOrigin(position);
 
-        entity.mesh.position.copy(position);
-        entity.mesh.rotation.y = source.rotationY ?? 0;
+        applyTransform(entity.mesh, source);
         entity.mesh.visible = true;
 
         return entity;

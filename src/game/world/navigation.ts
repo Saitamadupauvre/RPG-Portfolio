@@ -1,8 +1,8 @@
 import { mapLayout } from '../../data/mapLayout';
-import type { PropEntity } from '../../data/MapEntity';
+import type { MapEntity, PropEntity } from '../../data/MapEntity';
 import { buildNavGrid, type NavGrid } from '../../domain/pathfinding/NavGrid';
 
-function isCollidableProp(entity: (typeof mapLayout)[number]): entity is PropEntity {
+function isCollidableProp(entity: MapEntity): entity is PropEntity {
     return entity.kind === 'prop' && entity.collidable === true;
 }
 
@@ -11,19 +11,26 @@ const CELL_SIZE = 0.5;
 
 let cached: NavGrid | null = null;
 
-// Static nav grid built once from collidable props in mapLayout. Enemies never move
-// obstacles at runtime, so a single shared grid is safe to reuse across all pathfinders.
+// Built lazily from the current layout and cached, because enemies never move obstacles
+// at runtime. The editor is the one thing that invalidates it — hence rebuildNavGrid.
 export function getNavGrid(): NavGrid {
-    if (cached) return cached;
+    if (!cached) cached = build(mapLayout);
+    return cached;
+}
 
-    const obstacles = mapLayout
+export function rebuildNavGrid(layout: MapEntity[]) {
+    cached = build(layout);
+}
+
+function build(layout: MapEntity[]): NavGrid {
+    const obstacles = layout
         .filter(isCollidableProp)
         .map((entity) => ({
             position: [entity.position[0], entity.position[2]] as [number, number],
-            size: entity.size ?? [0.7, 0.7],
+            // Props are unit boxes, so XZ scale *is* the footprint.
+            size: [entity.scale?.[0] ?? 1, entity.scale?.[2] ?? 1] as [number, number],
         }));
 
     const half = GROUND_SIZE / 2;
-    cached = buildNavGrid(obstacles, { minX: -half, maxX: half, minZ: -half, maxZ: half }, CELL_SIZE);
-    return cached;
+    return buildNavGrid(obstacles, { minX: -half, maxX: half, minZ: -half, maxZ: half }, CELL_SIZE);
 }

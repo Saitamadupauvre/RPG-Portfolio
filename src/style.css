@@ -27,7 +27,8 @@ body {
   display: none;
 }
 
-.state-game .webgl {
+.state-game .webgl,
+.state-dead .webgl {
   display: block;
 }
 
@@ -217,4 +218,155 @@ body {
   border: 1px solid #444;
   border-radius: 2px;
   opacity: 0.7;
+}
+
+.book-content {
+  width: min(90vw, 900px);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#book-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.project-card.locked {
+  border-color: #3a3a3a;
+  opacity: 0.55;
+}
+
+.project-card.locked .project-card-title {
+  letter-spacing: 0.2em;
+}
+
+/* HUD — game-state only, never intercepts clicks */
+#hud {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.state-game #hud,
+.state-dead #hud {
+  display: flex;
+}
+
+#hp-bar {
+  width: 220px;
+  height: 18px;
+  background: #2a0d12;
+  border-color: #7a2233;
+}
+
+#hp-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--accent-crimson);
+  transition: width 120ms linear;
+}
+
+#hp-label {
+  font-size: 0.75rem;
+  color: var(--pixel-ink);
+  text-shadow: 2px 2px 0 #000;
+}
+
+/* Cartoon iris wipe: full-screen layer, hole radius painted per frame by IrisView. */
+#iris {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 8;
+}
+
+#iris.active {
+  visibility: visible;
+}
+
+#death-text {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--accent-crimson);
+  text-shadow: 4px 4px 0 #000;
+  opacity: 0;
+  transition: opacity 600ms ease-in;
+  pointer-events: none;
+  z-index: 9;
+}
+
+#death-text.visible {
+  opacity: 1;
+}
+
+/* Dev-only editor panel — shown only in the EDITOR state */
+#editor-panel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: 320px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  background: var(--pixel-bg);
+  border-color: var(--accent-teal);
+  color: var(--pixel-ink);
+  z-index: 6;
+  pointer-events: auto;
+}
+
+.state-editor #editor-panel {
+  display: flex;
+}
+
+.editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.editor-btn {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  background: #22242f;
+  color: var(--pixel-ink);
+  border: 2px solid #444;
+  cursor: pointer;
+}
+
+.editor-btn.armed {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+#editor-inspector {
+  font-size: 0.7rem;
+  white-space: pre;
+  background: #0d0e15;
+  border: 2px solid #333;
+  padding: 0.4rem;
+  margin: 0;
+}
+
+.editor-hint {
+  font-size: 0.62rem;
+  opacity: 0.6;
+  line-height: 1.4;
 }

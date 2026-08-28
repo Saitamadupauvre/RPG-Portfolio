@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { World } from './world/World';
 import { PlayerAttackInteraction } from './PlayerAttackInteraction';
+import { EditorSystem } from './editor/EditorSystem';
+import { stateMachine } from '../core/StateMachine';
 
 export class Experience {
     private static instance: Experience;
@@ -12,6 +14,9 @@ export class Experience {
     public timer: THREE.Timer;
 
     public world: World;
+    // Dev only: import.meta.env.DEV is a compile-time constant, so the whole editor is
+    // tree-shaken out of the production bundle instead of just being unreachable in it.
+    private editor: EditorSystem | null = null;
 
     private constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -35,6 +40,13 @@ export class Experience {
         this.world = new World(this);
         new PlayerAttackInteraction(this);
 
+        if (import.meta.env.DEV) {
+            this.editor = new EditorSystem(this);
+            window.addEventListener('keydown', (event) => {
+                if (event.code === 'F2') this.toggleEditor();
+            });
+        }
+
         window.addEventListener('resize', () => this.resize());
 
         this.tick();
@@ -50,6 +62,19 @@ export class Experience {
         return Experience.instance;
     }
 
+    private toggleEditor() {
+        if (!this.editor) return;
+
+        const state = stateMachine.getState();
+        if (state === 'EDITOR') {
+            this.editor.exit();
+            stateMachine.changeState('GAME');
+        } else if (state === 'GAME') {
+            stateMachine.changeState('EDITOR');
+            this.editor.enter();
+        }
+    }
+
     private resize() {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
@@ -60,6 +85,7 @@ export class Experience {
         this.timer.update();
 
         if (this.world) this.world.update(this.timer.getDelta());
+        this.editor?.update();
 
         this.renderer.render(this.scene, this.camera);
 

@@ -4,6 +4,7 @@ import { MovementComponent } from './components/MovementComponent';
 import { AttackComponent } from './components/AttackComponent';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
+import { events } from '../../core/events';
 
 const PLAYER_SPEED = 4;
 const VISION_CUBE_OFFSET = 0.9;
@@ -32,6 +33,10 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     return new Entity('player', mesh, PLAYER_RADIUS)
         .addComponent('movement', movement)
         .addComponent('attack', attack)
-        .addComponent('health', new HealthComponent(PLAYER_HP))
+        // The game layer is where a pure domain component gets bridged to the UI:
+        // HealthComponent stays framework-free, the callback does the publishing.
+        .addComponent('health', new HealthComponent(PLAYER_HP, (hp, maxHp) => {
+            events.emit('playerHealthChanged', hp, maxHp);
+        }))
         .addComponent('hitFlash', new HitFlashComponent(material));
 }

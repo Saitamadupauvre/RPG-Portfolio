@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ChestEntity } from '../../data/MapEntity';
 import { Entity } from './Entity';
+import { applyTransform } from './applyTransform';
 
 const chestColor: Record<ChestEntity['chestTier'], number> = {
     wood: 0x8b5a2b,
@@ -13,7 +14,7 @@ export function createChest(entity: ChestEntity): Entity {
     const material = new THREE.MeshStandardMaterial({ color: chestColor[entity.chestTier] });
     const mesh = new THREE.Mesh(geometry, material);
 
-    mesh.position.set(...entity.position);
+    applyTransform(mesh, entity);
 
     return new Entity(entity.id, mesh);
 }

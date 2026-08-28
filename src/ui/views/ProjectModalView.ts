@@ -1,5 +1,4 @@
 import { events } from '../../core/events';
-import { resolveItemProject } from '../../domain/collectItem';
 import { projectToUICardStyle } from '../../domain/CardStyle';
 import { renderProjectCard } from '../components/renderProjectCard';
 
@@ -12,10 +11,7 @@ export function initProjectModalView() {
     const close = () => modal.classList.remove('open');
     closeBtn.addEventListener('click', close);
 
-    events.on('itemCollected', (item) => {
-        const project = resolveItemProject(item);
-        if (!project) return;
-
+    events.on('projectDiscovered', (project) => {
         body.replaceChildren(renderProjectCard(project, projectToUICardStyle(project)));
         modal.classList.add('open');
     });

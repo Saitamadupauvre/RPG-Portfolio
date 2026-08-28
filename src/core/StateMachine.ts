@@ -1,7 +1,7 @@
 import { events } from './events';
 
-export type AppState = 'LOADING' | 'MENU' | 'GAME' | 'CLASSIC';
-
+export type AppState = 'LOADING' | 'MENU' | 'GAME' | 'CLASSIC' | 'DEAD' | 'EDITOR';
+ 
 class StateMachine {
     private currentState: AppState = 'LOADING';
 

@@ -13,11 +13,30 @@ export type GrassSurfaceOptions = {
     maxDistance?: number;
 };
 
+/** Draw a `ratio` slice of a chunk's blades once it is `distance` units away. */
+export type GrassLodLevel = { distance: number; ratio: number };
+
+/**
+ * Blades are stored tallest-first, so a ratio keeps the most visible ones and
+ * the field thins out instead of dropping whole chunks. Tuned against the
+ * scene fog (26..72) so the last tier dies inside the fog, never in clear view.
+ */
+const DEFAULT_LOD: GrassLodLevel[] = [
+    { distance: 18, ratio: 1 },
+    { distance: 34, ratio: 0.5 },
+    { distance: 52, ratio: 0.22 },
+    { distance: Infinity, ratio: 0.09 },
+];
+
+const DEFAULT_MAX_DISTANCE = 70;
+
 type Chunk = {
     mesh: THREE.InstancedMesh;
     /** Bounding sphere in the target's local space. */
     sphere: THREE.Sphere;
     target: THREE.Object3D;
+    /** Instances the chunk holds; mesh.count is the LOD slice of it. */
+    capacity: number;
 };
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -42,6 +61,31 @@ const _leanAxis = new THREE.Vector3();
 
 const range = (min: number, max: number) => min + Math.random() * (max - min);
 
+type Bucket = {
+    matrices: THREE.Matrix4[];
+    tints: number[];
+    heights: number[];
+    box: THREE.Box3;
+};
+
+/**
+ * Reorders a chunk tallest blade first. LOD then just shortens the draw count,
+ * and what survives at distance is the tall grass — the blades that actually
+ * carry the silhouette — instead of a random, patchy-looking subset.
+ */
+function sortBucketByHeight(bucket: Bucket): Bucket {
+    const order = bucket.heights
+        .map((height, index) => ({ height, index }))
+        .sort((a, b) => b.height - a.height);
+
+    return {
+        matrices: order.map(({ index }) => bucket.matrices[index]),
+        tints: order.map(({ index }) => bucket.tints[index]),
+        heights: order.map(({ height }) => height),
+        box: bucket.box,
+    };
+}
+
 /**
  * Scatters instanced grass blades over any mesh's triangles.
  *
@@ -55,11 +99,17 @@ export class GrassSurface {
     private material: THREE.MeshLambertMaterial;
     private chunks: Chunk[] = [];
     private maxDistance: number;
+    private lod: GrassLodLevel[];
 
-    constructor(options: { tipColor?: THREE.ColorRepresentation; maxDistance?: number } = {}) {
+    constructor(options: {
+        tipColor?: THREE.ColorRepresentation;
+        maxDistance?: number;
+        lod?: GrassLodLevel[];
+    } = {}) {
         this.uniforms = createGrassUniforms(options.tipColor);
         this.material = createGrassMaterial(this.uniforms);
-        this.maxDistance = options.maxDistance ?? 30;
+        this.maxDistance = options.maxDistance ?? DEFAULT_MAX_DISTANCE;
+        this.lod = [...(options.lod ?? DEFAULT_LOD)].sort((a, b) => a.distance - b.distance);
     }
 
     public attach(target: THREE.Mesh, options: GrassSurfaceOptions = {}) {
@@ -73,7 +123,7 @@ export class GrassSurface {
         const bladeCount = Math.round(density * total);
         // Each bucket grows its own bounding box as blades land in it, rather
         // than keeping every sampled point around just to measure it later.
-        const buckets = new Map<string, { matrices: THREE.Matrix4[]; tints: number[]; box: THREE.Box3 }>();
+        const buckets = new Map<string, Bucket>();
 
         for (let i = 0; i < bladeCount; i++) {
             const triangle = this.pickTriangle(areas, total);
@@ -93,23 +143,26 @@ export class GrassSurface {
             const width = range(0.8, 1.2);
             // Height varies a lot on purpose: a uniform-height lawn reads as a
             // flat green carpet, mixed heights read as grass.
-            _scale.set(width, range(0.55, 1.35), width);
+            const height = range(0.55, 1.35);
+            _scale.set(width, height, width);
             _matrix.compose(_point, _qAlign, _scale);
 
             const key = this.chunkKey(_point, chunkSize);
             let bucket = buckets.get(key);
             if (!bucket) {
-                bucket = { matrices: [], tints: [], box: new THREE.Box3().makeEmpty() };
+                bucket = { matrices: [], tints: [], heights: [], box: new THREE.Box3().makeEmpty() };
                 buckets.set(key, bucket);
             }
             bucket.matrices.push(_matrix.clone());
             // Per-blade brightness. Without it the field is one flat wash; the
             // speckle is most of what makes painted grass look hand-made.
             bucket.tints.push(range(0.85, 1.15));
+            bucket.heights.push(height);
             bucket.box.expandByPoint(_point);
         }
 
-        for (const { matrices, tints, box } of buckets.values()) {
+        for (const bucket of buckets.values()) {
+            const { matrices, tints, box } = sortBucketByHeight(bucket);
             // Cloned per chunk because aTint is an *instanced* attribute, and
             // instanced attributes live on the geometry — a shared geometry
             // could only ever carry one chunk's tints. The blade itself is a
@@ -130,7 +183,7 @@ export class GrassSurface {
             box.getBoundingSphere(sphere);
             sphere.radius += BLADE_HEIGHT * 1.5;
 
-            this.chunks.push({ mesh, sphere, target });
+            this.chunks.push({ mesh, sphere, target, capacity: matrices.length });
         }
     }
 
@@ -143,9 +196,23 @@ export class GrassSurface {
 
         for (const chunk of this.chunks) {
             _sphere.copy(chunk.sphere).applyMatrix4(chunk.target.matrixWorld);
-            const inRange = _sphere.center.distanceTo(camera.position) - _sphere.radius < this.maxDistance;
-            chunk.mesh.visible = inRange && _frustum.intersectsSphere(_sphere);
+            const distance = _sphere.center.distanceTo(camera.position) - _sphere.radius;
+
+            chunk.mesh.visible = distance < this.maxDistance && _frustum.intersectsSphere(_sphere);
+            if (!chunk.mesh.visible) continue;
+
+            // InstancedMesh.count is the draw count, not the allocation: lowering
+            // it skips the tail of the buffer, so a coarser LOD costs nothing to
+            // switch to and needs no second mesh.
+            chunk.mesh.count = Math.max(1, Math.round(chunk.capacity * this.ratioFor(distance)));
         }
+    }
+
+    private ratioFor(distance: number): number {
+        for (const level of this.lod) {
+            if (distance < level.distance) return level.ratio;
+        }
+        return this.lod[this.lod.length - 1].ratio;
     }
 
     public dispose() {

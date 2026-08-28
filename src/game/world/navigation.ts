@@ -1,9 +1,12 @@
 import { mapLayout } from '../../data/mapLayout';
-import type { MapEntity, PropEntity } from '../../data/MapEntity';
+import type { MapEntity } from '../../data/MapEntity';
 import { buildNavGrid, type NavGrid } from '../../domain/pathfinding/NavGrid';
 
-function isCollidableProp(entity: MapEntity): entity is PropEntity {
-    return entity.kind === 'prop' && entity.collidable === true;
+const LANDMARK_FOOTPRINT = 1;
+
+function isBlocking(entity: MapEntity): boolean {
+    if (entity.kind === 'prop') return entity.collidable === true;
+    return entity.kind === 'statue' || entity.kind === 'bonfire';
 }
 
 const GROUND_SIZE = 50;
@@ -11,8 +14,6 @@ const CELL_SIZE = 0.5;
 
 let cached: NavGrid | null = null;
 
-// Built lazily from the current layout and cached, because enemies never move obstacles
-// at runtime. The editor is the one thing that invalidates it — hence rebuildNavGrid.
 export function getNavGrid(): NavGrid {
     if (!cached) cached = build(mapLayout);
     return cached;
@@ -24,11 +25,14 @@ export function rebuildNavGrid(layout: MapEntity[]) {
 
 function build(layout: MapEntity[]): NavGrid {
     const obstacles = layout
-        .filter(isCollidableProp)
+        .filter(isBlocking)
         .map((entity) => ({
             position: [entity.position[0], entity.position[2]] as [number, number],
-            // Props are unit boxes, so XZ scale *is* the footprint.
-            size: [entity.scale?.[0] ?? 1, entity.scale?.[2] ?? 1] as [number, number],
+
+            size: [
+                (entity.scale?.[0] ?? 1) * LANDMARK_FOOTPRINT,
+                (entity.scale?.[2] ?? 1) * LANDMARK_FOOTPRINT,
+            ] as [number, number],
         }));
 
     const half = GROUND_SIZE / 2;

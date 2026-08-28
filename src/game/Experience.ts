@@ -14,8 +14,7 @@ export class Experience {
     public timer: THREE.Timer;
 
     public world: World;
-    // Dev only: import.meta.env.DEV is a compile-time constant, so the whole editor is
-    // tree-shaken out of the production bundle instead of just being unreachable in it.
+
     private editor: EditorSystem | null = null;
 
     private constructor(canvas: HTMLCanvasElement) {
@@ -34,6 +33,12 @@ export class Experience {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // Without tone mapping, anything the lights push past 1.0 clips channel
+        // by channel and slides toward white — which is what made the greens
+        // look washed out. Neutral rolls highlights off while keeping
+        // saturation, unlike ACESFilmic which deliberately desaturates them.
+        this.renderer.toneMapping = THREE.NeutralToneMapping;
+        this.renderer.toneMappingExposure = 1.1;
 
         this.timer = new THREE.Timer();
 
@@ -92,4 +97,3 @@ export class Experience {
         window.requestAnimationFrame(() => this.tick());
     }
 }
-

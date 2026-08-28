@@ -2,35 +2,37 @@ import * as THREE from "three";
 import type { Experience } from "../Experience";
 import { Environment } from "./Environment";
 import { events } from "../../core/events";
-import { stateMachine } from "../../core/StateMachine";
+import { stateMachine, type AppState } from "../../core/StateMachine";
 import { mapLayout } from "../../data/mapLayout";
-import type { ItemEntity, MapEntity } from "../../data/MapEntity";
+import type { MapEntity } from "../../data/MapEntity";
 import { getCheckpoint } from "../../domain/checkpoint";
-import { HealthComponent } from "../../domain/components/HealthComponent";
 import type { Entity } from "../entities/Entity";
 import { createMapEntity } from "../entities/entityFactories";
 import { createPlayer } from "../entities/PlayerFactory";
+import { bindPlayerStats } from "../playerStats";
 import { enemyPool } from "../entities/EnemyPool";
 import { CombatSystem } from "../CombatSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
 import { rebuildNavGrid } from "./navigation";
+import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
+import { createGroundMaterial } from "./grass/groundMaterial";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 const GROUND_SIZE = 50;
-// Matches the iris-wipe close duration in ui/views/IrisView.ts: the screen is fully black
-// when the player is teleported, so the respawn never happens on camera.
+
 const RESPAWN_DELAY_MS = 1200;
 
 export class World {
     private experience: Experience;
     private entities: Entity[] = [];
-    public items: { entity: Entity; source: ItemEntity }[] = [];
     public entityGroup = new THREE.Group();
     private combat: CombatSystem;
     private collision = new EntityCollisionSystem();
     private interaction = new InteractionSystem();
     private paused = false;
+    private grass = new GrassSurface();
+    private grassColliders: GrassCollider[] = [];
     public player: Entity;
 
     constructor(experience: Experience) {
@@ -41,14 +43,17 @@ export class World {
         this.entityGroup.visible = this.isGameVisible(stateMachine.getState());
 
         const groundGeometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
-        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x5cb85c });
+        const groundMaterial = createGroundMaterial();
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
         this.entityGroup.add(ground);
+        this.grass.attach(ground, { density: 90, chunkSize: 4 });
 
         this.player = createPlayer(CAMERA_OFFSET, this.entityGroup);
         this.player.mesh.castShadow = true;
         this.entityGroup.add(this.player.mesh);
+        bindPlayerStats(this.player);
 
         enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup);
 
@@ -69,23 +74,24 @@ export class World {
 
         this.loadLayout(mapLayout);
 
-        events.on('itemCollected', (item) => this.removeItem(item.id));
-        events.on('pauseChanged', (paused) => { this.paused = paused; });
+        events.on('pauseChanged', (paused) => {
+            this.paused = paused;
+
+            if (paused) this.stopPlayerInput();
+        });
         events.on('bonfireRested', () => {
-            this.player.getComponent<HealthComponent>('health')?.refill();
+            this.player.getComponent('health')?.refill();
             this.combat.resetEnemies();
         });
     }
 
-    // Swaps the whole level in one call: used at boot with mapLayout, and by the editor
-    // every time a placement changes, so there's a single build path to keep correct.
     public loadLayout(layout: MapEntity[]) {
         for (const entity of this.entities) {
             this.entityGroup.remove(entity.mesh);
+            entity.dispose();
         }
 
         this.entities = [];
-        this.items = [];
         this.combat.clear();
         rebuildNavGrid(layout);
 
@@ -94,7 +100,6 @@ export class World {
             this.entities.push(entity);
             this.entityGroup.add(entity.mesh);
 
-            if (mapEntity.kind === 'item') this.items.push({ entity, source: mapEntity });
             if (mapEntity.kind === 'enemy') this.combat.addEnemy(entity, mapEntity);
         }
     }
@@ -103,27 +108,18 @@ export class World {
         return this.entities;
     }
 
-    // The world stays rendered while dead so the iris wipe closes over the death scene,
-    // not over a blank screen — only simulation stops.
-    private isGameVisible(state: string) {
+    private isGameVisible(state: AppState) {
         return state === 'GAME' || state === 'DEAD' || state === 'EDITOR';
-    }
-
-    private removeItem(itemId: string) {
-        const collected = this.items.find(({ source }) => source.id === itemId);
-        if (!collected) return;
-
-        this.entityGroup.remove(collected.entity.mesh);
-        this.entities = this.entities.filter((e) => e !== collected.entity);
-        this.items = this.items.filter(({ source }) => source.id !== itemId);
     }
 
     public update(dt: number) {
         const camera = this.experience.camera;
         const state = stateMachine.getState();
 
-        // Paused (book open), dead, or editing: freeze simulation. The editor drives its
-        // own camera, so the follow-cam is skipped too.
+        // Before the early return, so wind keeps blowing while paused, dead or
+        // in the editor rather than freezing mid-sway.
+        this.updateGrass(camera);
+
         if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
 
         for (const entity of this.entities) {
@@ -137,7 +133,27 @@ export class World {
         this.followPlayer(camera);
         this.combat.update(dt, camera);
 
-        if (this.player.getComponent<HealthComponent>('health')?.isDead()) this.die(camera);
+        if (this.player.getComponent('health')?.isDead()) this.die(camera);
+    }
+
+    private updateGrass(camera: THREE.PerspectiveCamera) {
+        // Chunk culling reads matrixWorldInverse, which only the renderer
+        // refreshes — without this the frustum test lags a frame behind.
+        camera.updateMatrixWorld();
+
+        this.grassColliders.length = 0;
+        for (const entity of [...this.entities, this.player]) {
+            // collisionRadius is optional on Entity; props without one flatten nothing.
+            if (entity.collisionRadius === undefined) continue;
+            this.grassColliders.push({ position: entity.mesh.position, radius: entity.collisionRadius });
+        }
+
+        this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);
+    }
+
+    private stopPlayerInput() {
+        this.player.getComponent('movement')?.clearInput();
+        this.player.getComponent('dash')?.cancel();
     }
 
     private followPlayer(camera: THREE.PerspectiveCamera) {
@@ -146,13 +162,13 @@ export class World {
         camera.updateMatrixWorld();
     }
 
-    // Called when leaving the editor: puts the camera back behind the player.
     public resetCamera() {
         this.followPlayer(this.experience.camera);
     }
 
     private die(camera: THREE.PerspectiveCamera) {
         stateMachine.changeState('DEAD');
+        this.stopPlayerInput();
         const [x, y] = this.toScreen(this.player.mesh.position, camera);
         events.emit('playerDied', x, y);
 
@@ -160,16 +176,14 @@ export class World {
     }
 
     private respawn(camera: THREE.PerspectiveCamera) {
-        // Only XZ comes from the checkpoint: bonfires sit on the ground (y = 0) while the
-        // player capsule's origin is at its center height.
+        if (stateMachine.getState() !== 'DEAD') return;
+
         const [checkpointX, , checkpointZ] = getCheckpoint();
         this.player.mesh.position.x = checkpointX;
         this.player.mesh.position.z = checkpointZ;
-        this.player.getComponent<HealthComponent>('health')?.refill();
+        this.player.getComponent('health')?.refill();
         this.combat.resetEnemies();
 
-        // Camera must be moved before projecting, or the iris would open on the spot the
-        // player died at instead of where they now stand.
         this.followPlayer(camera);
         stateMachine.changeState('GAME');
 
@@ -177,8 +191,6 @@ export class World {
         events.emit('playerRespawned', x, y);
     }
 
-    // World point -> pixel coordinates. project() gives normalized device coords in -1..1,
-    // which map to the viewport with the usual half-width scale and a flipped Y axis.
     private toScreen(position: THREE.Vector3, camera: THREE.PerspectiveCamera): [number, number] {
         const ndc = position.clone().project(camera);
         return [

@@ -1,9 +1,7 @@
 import * as THREE from 'three';
 import type { Experience } from './Experience';
 import { stateMachine } from '../core/StateMachine';
-import type { AttackComponent } from './entities/components/AttackComponent';
 
-// Left-click aims + attacks toward the mouse position, raycast onto the ground plane at player height.
 export class PlayerAttackInteraction {
     private experience: Experience;
     private raycaster = new THREE.Raycaster();
@@ -19,7 +17,7 @@ export class PlayerAttackInteraction {
         if (stateMachine.getState() !== 'GAME') return;
 
         const player = this.experience.world.player;
-        const attack = player.getComponent<AttackComponent>('attack');
+        const attack = player.getComponent('attack');
         if (!attack) return;
 
         this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;

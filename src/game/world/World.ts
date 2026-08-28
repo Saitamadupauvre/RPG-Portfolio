@@ -14,7 +14,7 @@ import { enemyPool } from "../entities/EnemyPool";
 import { CombatSystem } from "../CombatSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
-import { rebuildNavGrid } from "./navigation";
+import { findFreePoint, rebuildNavGrid } from "./navigation";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { createGroundMaterial } from "./grass/groundMaterial";
 
@@ -179,8 +179,9 @@ export class World {
         if (stateMachine.getState() !== 'DEAD') return;
 
         const [checkpointX, , checkpointZ] = getCheckpoint();
-        this.player.mesh.position.x = checkpointX;
-        this.player.mesh.position.z = checkpointZ;
+        const [spawnX, spawnZ] = findFreePoint(checkpointX, checkpointZ);
+        this.player.mesh.position.x = spawnX;
+        this.player.mesh.position.z = spawnZ;
         this.player.getComponent('health')?.refill();
         this.combat.resetEnemies();
 

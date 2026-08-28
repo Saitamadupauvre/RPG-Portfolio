@@ -1,6 +1,14 @@
 import { mapLayout } from '../../data/mapLayout';
 import type { MapEntity } from '../../data/MapEntity';
-import { buildNavGrid, type NavGrid } from '../../domain/pathfinding/NavGrid';
+import {
+    buildNavGrid,
+    colToWorld,
+    isBlocked,
+    rowToWorld,
+    worldToCol,
+    worldToRow,
+    type NavGrid,
+} from '../../domain/pathfinding/NavGrid';
 
 const LANDMARK_FOOTPRINT = 1;
 
@@ -21,6 +29,35 @@ export function getNavGrid(): NavGrid {
 
 export function rebuildNavGrid(layout: MapEntity[]) {
     cached = build(layout);
+}
+
+const MAX_SPAWN_SEARCH_RINGS = 8;
+
+/**
+ * Nearest walkable point to [x, z]. Bonfires block their own cell, so a raw
+ * checkpoint position would drop the player inside an obstacle where every
+ * slide test fails and movement looks frozen.
+ */
+export function findFreePoint(x: number, z: number): [number, number] {
+    const grid = getNavGrid();
+    const col = worldToCol(grid, x);
+    const row = worldToRow(grid, z);
+
+    if (!isBlocked(grid, col, row)) return [x, z];
+
+    for (let ring = 1; ring <= MAX_SPAWN_SEARCH_RINGS; ring++) {
+        for (let dRow = -ring; dRow <= ring; dRow++) {
+            for (let dCol = -ring; dCol <= ring; dCol++) {
+                // Only the ring's edge; inner cells were tested in earlier rings.
+                if (Math.max(Math.abs(dRow), Math.abs(dCol)) !== ring) continue;
+                if (isBlocked(grid, col + dCol, row + dRow)) continue;
+
+                return [colToWorld(grid, col + dCol), rowToWorld(grid, row + dRow)];
+            }
+        }
+    }
+
+    return [x, z];
 }
 
 function build(layout: MapEntity[]): NavGrid {

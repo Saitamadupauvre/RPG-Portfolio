@@ -5,8 +5,6 @@ export function initUIStateView() {
     if (!uiContainer) return;
 
     events.on('stateChange', (newState) => {
-        // Assigning className wholesale would drop `pixel-ui` (and anything else set in
-        // the markup) — only the state class is ours to replace.
         const stateClass = `state-${newState.toLowerCase()}`;
         setStateClass(uiContainer, stateClass);
         setStateClass(document.body, stateClass);

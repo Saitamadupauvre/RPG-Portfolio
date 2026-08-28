@@ -4,9 +4,6 @@ import type { CardStyle } from '../../domain/CardStyle';
 const LOCKED_TITLE = '???';
 const LOCKED_DESCRIPTION = 'Not yet found. Explore the world to reveal this project.';
 
-// One renderer for every surface that shows a project (classic list, discovery modal, book).
-// `locked` hides the content but keeps the frame, so an undiscovered entry still shows its
-// rarity and its slot in the list — that's the discovery incentive.
 export function renderProjectCard(project: Project, cardStyle: CardStyle, locked = false): HTMLElement {
     const card = document.createElement('div');
     card.className = `project-card pixel-panel rarity-${cardStyle.frameVariant}`;

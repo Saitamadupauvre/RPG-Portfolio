@@ -1,7 +1,3 @@
-/* Pixel-art UI groundwork — placeholder look until real pixel-art assets exist.
-   Real pixel font + border-image 9-slice frame PNGs slot in here later:
-   swap the font-family/box-shadow rules below, structure/classes stay the same. */
-
 :root {
   --pixel-font: 'Courier New', Courier, monospace;
   --rarity-common: #888888;
@@ -11,7 +7,6 @@
   --pixel-bg: #14151f;
   --pixel-ink: #eeeeee;
 
-  /* Menu accents — swap for pixel-art palette later, class names stay same */
   --accent-gold: #e6b83a;
   --accent-crimson: #c9425a;
   --accent-teal: #3ae6c9;
@@ -22,7 +17,6 @@
   image-rendering: pixelated;
 }
 
-/* Hard-edged "stepped" panel look: no border-radius, no blur, offset solid shadow */
 .pixel-panel {
   border-radius: 0;
   border-width: 3px;
@@ -35,7 +29,6 @@
   letter-spacing: 0.05em;
 }
 
-/* Interaction prompt: hidden by default, shown only while the game layer reports a target. */
 #interact-prompt {
   position: fixed;
   bottom: 12%;

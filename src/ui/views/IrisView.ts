@@ -1,16 +1,11 @@
 import { events } from '../../core/events';
 
-// Cartoon iris wipe. The overlay is a full-screen element whose background is a radial
-// gradient: transparent inside the hole radius, solid black outside it. The radius is
-// tweened in JS per frame rather than by a CSS transform, because scaling a small circle
-// up to screen size stretches its rasterized texture (blurry, and past a point the GPU
-// gives up and renders a square). A gradient is repainted at full size every frame instead.
-const CLOSE_MS = 1200;   // keep in sync with RESPAWN_DELAY_MS in game/world/World.ts
+const CLOSE_MS = 1200;
 const PEEK_MS = 350;
 const PEEK_HOLD_MS = 500;
 const OPEN_MS = 900;
 const PEEK_RADIUS = 110;
-const EDGE_FEATHER = 2; // px of softness so the hole's edge isn't a jagged aliased ring
+const EDGE_FEATHER = 2;
 
 export function initIrisView() {
     const iris = document.getElementById('iris');
@@ -30,8 +25,6 @@ export function initIrisView() {
             `rgba(0, 0, 0, 0) ${radius}px, #000 ${radius + EDGE_FEATHER}px)`;
     };
 
-    // easeInOutQuad: slow at both ends, quick through the middle — reads as a deliberate
-    // camera iris rather than a linear mechanical wipe.
     const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
     const tween = (to: number, durationMs: number, onDone?: () => void) => {
@@ -55,7 +48,6 @@ export function initIrisView() {
         frame = requestAnimationFrame(step);
     };
 
-    // A resize mid-wipe would leave black bars outside the old gradient box, so repaint.
     window.addEventListener('resize', paint);
 
     events.on('playerDied', (x, y) => {

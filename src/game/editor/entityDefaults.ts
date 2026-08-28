@@ -1,9 +1,6 @@
 import type { MapEntity, Vec3 } from '../../data/MapEntity';
 import { projects } from '../../data/projects';
 
-// Per-kind constructors for freshly placed entities. A `Record` keyed on `kind` (rather
-// than a switch) means adding a MapEntity kind is a compile error here until it's handled —
-// same trick as the entity factory dispatch table.
 const builders: {
     [K in MapEntity['kind']]: (id: string, position: Vec3, variant: string) => Extract<MapEntity, { kind: K }>;
 } = {

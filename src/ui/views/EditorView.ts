@@ -4,8 +4,6 @@ import { projects } from '../../data/projects';
 
 type PaletteEntry = { kind: MapEntity['kind']; variant: string; label: string };
 
-// Palette is data, not markup: the buttons are generated from this list so adding a
-// placeable variant is a one-line change here.
 const palette: PaletteEntry[] = [
     { kind: 'enemy', variant: 'grunt', label: 'Grunt' },
     { kind: 'enemy', variant: 'elite', label: 'Elite' },
@@ -45,7 +43,6 @@ export function initEditorView() {
         button.className = 'btn editor-btn';
         button.textContent = entry.label;
         button.addEventListener('click', () => {
-            // Clicking the armed button again disarms it, so you can go back to selecting.
             const disarm = armed === button;
             armed?.classList.remove('armed');
             armed = disarm ? null : button;
@@ -76,8 +73,6 @@ export function initEditorView() {
     });
 }
 
-// Live numeric readout of the selection, updated on every gizmo frame — the editor's
-// equivalent of Unity's inspector transform block.
 function describe(entity: MapEntity): string {
     const round = (values: number[] | undefined, fallback: number) =>
         (values ?? [fallback, fallback, fallback]).map((value) => value.toFixed(2)).join(', ');

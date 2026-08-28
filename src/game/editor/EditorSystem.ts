@@ -11,10 +11,6 @@ import { createDefaultEntity, uniqueId } from './entityDefaults';
 
 const GRID_SNAP = 0.5;
 
-// Dev-only level editor: orbit camera, click to select, Unity-style W/E/R gizmos, click the
-// ground to place the armed entity kind. Every gizmo drag writes straight back into the
-// working layout, and the whole world is rebuilt from that layout — so what you see in the
-// editor is literally what the game will build from the exported JSON, no preview code path.
 export class EditorSystem {
     private experience: Experience;
     private orbit: OrbitControls;
@@ -39,21 +35,17 @@ export class EditorSystem {
         this.gizmo = new TransformControls(camera, canvas);
         this.gizmo.setTranslationSnap(GRID_SNAP);
         this.gizmo.setRotationSnap(Math.PI / 12);
-        // getHelper() is the visual half of the controls; since r169 the controls object
-        // itself is not an Object3D, so this is what actually goes into the scene.
+
         scene.add(this.gizmo.getHelper());
 
         this.grid = new THREE.GridHelper(50, 100, 0x666666, 0x333333);
         this.grid.visible = false;
         scene.add(this.grid);
 
-        // Orbiting while dragging a gizmo axis would fight the drag, so they take turns.
         this.gizmo.addEventListener('dragging-changed', (event) => {
             this.orbit.enabled = !event.value;
         });
 
-        // Writing on every frame of the drag keeps the layout the single source of truth,
-        // so an export mid-session can never be stale.
         this.gizmo.addEventListener('objectChange', () => this.commitTransform());
 
         canvas.addEventListener('pointerdown', (event) => this.onPointerDown(event));
@@ -95,7 +87,7 @@ export class EditorSystem {
 
     private onPointerDown(event: PointerEvent) {
         if (stateMachine.getState() !== 'EDITOR' || event.button !== 0) return;
-        // A click that started on a gizmo axis is a drag, not a selection.
+
         if (this.gizmo.dragging) return;
 
         this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -110,8 +102,6 @@ export class EditorSystem {
         this.select(this.pickEntityId());
     }
 
-    // Meshes are often groups (statue, bonfire), so the hit object can be a child several
-    // levels down — walk up to whichever ancestor the world registered as the entity root.
     private pickEntityId(): string | null {
         const roots = this.experience.world.getEntities();
         const hits = this.raycaster.intersectObjects(roots.map((entity) => entity.mesh), true);
@@ -192,8 +182,6 @@ export class EditorSystem {
         this.select(copy.id);
     }
 
-    // Rebuilding the whole world after a structural change (add/delete) is cheap at this
-    // map size and removes a whole class of "scene and data drifted apart" bugs.
     private rebuild() {
         this.experience.world.loadLayout(this.layout);
         saveWorkingLayout(this.layout);

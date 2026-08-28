@@ -1,5 +1,4 @@
 export interface NavObstacle {
-    // Center position and XZ footprint, both in world units.
     position: [number, number];
     size: [number, number];
 }

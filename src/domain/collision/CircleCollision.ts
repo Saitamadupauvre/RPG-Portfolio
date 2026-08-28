@@ -11,9 +11,6 @@ export interface Push {
     bz: number;
 }
 
-// Pure XZ circle-overlap resolution: returns corrected positions that split the overlap
-// evenly between both circles, or null if they don't overlap. No THREE dependency so it
-// stays testable/derivable independent of the render layer.
 export function resolveCircleOverlap(a: Circle, b: Circle): Push | null {
     const dx = b.x - a.x;
     const dz = b.z - a.z;
@@ -23,7 +20,7 @@ export function resolveCircleOverlap(a: Circle, b: Circle): Push | null {
     if (distSq >= minDist * minDist) return null;
 
     const dist = Math.sqrt(distSq);
-    // Circles share the exact same point — push along an arbitrary axis to separate them.
+
     const [nx, nz] = dist === 0 ? [1, 0] : [dx / dist, dz / dist];
     const overlap = minDist - dist;
     const half = overlap / 2;

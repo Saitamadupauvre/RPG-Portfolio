@@ -13,7 +13,6 @@ const NEIGHBORS = [
     [1, 1], [1, -1], [-1, 1], [-1, -1],
 ];
 
-// Returns world-space [x, z] waypoints from start to end, or null if unreachable.
 export function findPath(grid: NavGrid, start: [number, number], end: [number, number]): [number, number][] | null {
     const startCol = worldToCol(grid, start[0]);
     const startRow = worldToRow(grid, start[1]);
@@ -42,7 +41,6 @@ export function findPath(grid: NavGrid, start: [number, number], end: [number, n
             if (isBlocked(grid, col, row)) continue;
             if (closed.has(key(col, row))) continue;
 
-            // Block diagonal cuts through a corner pair of solid cells.
             if (dc !== 0 && dr !== 0 && (isBlocked(grid, current.col + dc, current.row) || isBlocked(grid, current.col, current.row + dr))) continue;
 
             const stepCost = dc !== 0 && dr !== 0 ? Math.SQRT2 : 1;

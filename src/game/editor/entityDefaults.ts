@@ -1,6 +1,8 @@
 import type { MapEntity, Vec3 } from '../../data/MapEntity';
 import { projects } from '../../data/projects';
 
+const chestCoins: Record<'wood' | 'silver' | 'gold', number> = { wood: 25, silver: 60, gold: 120 };
+
 const builders: {
     [K in MapEntity['kind']]: (id: string, position: Vec3, variant: string) => Extract<MapEntity, { kind: K }>;
 } = {
@@ -10,12 +12,18 @@ const builders: {
         enemyType: (variant || 'grunt') as 'grunt' | 'elite' | 'boss',
         position,
     }),
-    chest: (id, position, variant) => ({
-        kind: 'chest',
-        id,
-        chestTier: (variant || 'wood') as 'wood' | 'silver' | 'gold',
-        position,
-    }),
+    chest: (id, position, variant) => {
+        const chestTier = (variant || 'wood') as 'wood' | 'silver' | 'gold';
+        return {
+            kind: 'chest',
+            id,
+            chestTier,
+            // Editor-placed chests must still be valid content; hand-edit the loot
+            // array in the exported JSON for anything richer than coins.
+            loot: [{ kind: 'coins', amount: chestCoins[chestTier] }],
+            position,
+        };
+    },
     item: (id, position, variant) => ({
         kind: 'item',
         id,

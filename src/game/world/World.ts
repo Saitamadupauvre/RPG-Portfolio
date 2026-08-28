@@ -83,6 +83,10 @@ export class World {
             this.player.getComponent('health')?.refill();
             this.combat.resetEnemies();
         });
+
+        // After loadLayout: findFreePoint reads the nav grid, which only exists
+        // once the layout has been rebuilt.
+        this.placeAtCheckpoint(this.experience.camera);
     }
 
     public loadLayout(layout: MapEntity[]) {
@@ -178,18 +182,25 @@ export class World {
     private respawn(camera: THREE.PerspectiveCamera) {
         if (stateMachine.getState() !== 'DEAD') return;
 
-        const [checkpointX, , checkpointZ] = getCheckpoint();
-        const [spawnX, spawnZ] = findFreePoint(checkpointX, checkpointZ);
-        this.player.mesh.position.x = spawnX;
-        this.player.mesh.position.z = spawnZ;
+        this.placeAtCheckpoint(camera);
         this.player.getComponent('health')?.refill();
         this.combat.resetEnemies();
 
-        this.followPlayer(camera);
         stateMachine.changeState('GAME');
 
         const [x, y] = this.toScreen(this.player.mesh.position, camera);
         events.emit('playerRespawned', x, y);
+    }
+
+    /** Drop the player on the last rested bonfire and snap the camera to them. */
+    private placeAtCheckpoint(camera: THREE.PerspectiveCamera) {
+        const [checkpointX, , checkpointZ] = getCheckpoint();
+        const [spawnX, spawnZ] = findFreePoint(checkpointX, checkpointZ);
+
+        this.player.mesh.position.x = spawnX;
+        this.player.mesh.position.z = spawnZ;
+
+        this.followPlayer(camera);
     }
 
     private toScreen(position: THREE.Vector3, camera: THREE.PerspectiveCamera): [number, number] {

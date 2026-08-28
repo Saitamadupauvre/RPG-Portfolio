@@ -1,6 +1,7 @@
 import { events } from '../core/events';
+import type { StatId } from '../data/stats';
 
-export type StatId = 'health' | 'damage' | 'speed';
+export type { StatId };
 
 export type StatDefinition = {
     id: StatId;
@@ -145,6 +146,21 @@ export function buyUpgrade(id: StatId): boolean {
     save();
 
     events.emit('coinsChanged', state.coins);
+    events.emit('playerStatsChanged', getPlayerStats());
+    return true;
+}
+
+/**
+ * Free level, no coin cost — chest loot and other rewards use this instead of
+ * `buyUpgrade` so the cost curve stays a shop concern.
+ */
+export function grantStatLevel(id: StatId): boolean {
+    const definition = definitionById.get(id);
+    if (!definition || state.levels[id] >= definition.maxLevel) return false;
+
+    state.levels[id] += 1;
+    save();
+
     events.emit('playerStatsChanged', getPlayerStats());
     return true;
 }

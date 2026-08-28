@@ -11,6 +11,17 @@ export const mapLayout: MapEntity[] = [
     { kind: 'statue', id: 'statue-two', projectId: 'project-two', position: [-7, 0, 4] },
     { kind: 'statue', id: 'statue-three', projectId: 'project-three', position: [7, 0, 4] },
 
+    { kind: 'chest', id: 'chest-coins', chestTier: 'wood', position: [5, 0, -2], loot: [{ kind: 'coins', amount: 40 }] },
+    { kind: 'chest', id: 'chest-vitality', chestTier: 'silver', position: [-5, 0, -8], loot: [{ kind: 'stat', statId: 'health' }] },
+    {
+        kind: 'chest', id: 'chest-hoard', chestTier: 'gold', position: [9, 0, -9],
+        loot: [
+            { kind: 'coins', amount: 120 },
+            { kind: 'stat', statId: 'speed' },
+            { kind: 'project', projectId: 'project-three' },
+        ],
+    },
+
     { kind: 'prop', id: 'wall-1', propType: 'wall', position: [-3.5, 1, 1.5], scale: [5, 1, 0.6], collidable: true },
     { kind: 'prop', id: 'wall-2', propType: 'wall', position: [3.5, 1, 1.5], scale: [5, 1, 0.6], collidable: true },
 ];

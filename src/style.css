@@ -52,9 +52,20 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  transition: opacity 0.5s ease;
+  /* visibility (not just opacity) so buttons inside a hidden screen stop being
+     hit targets - `.btn { pointer-events: auto }` otherwise re-enables them
+     through the screen's `pointer-events: none`. Delayed so the fade-out plays. */
+  transition: opacity 0.5s ease, visibility 0s linear 0.5s;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+}
+
+.state-loading #loading-screen,
+.state-menu #menu-screen,
+.state-classic #classic-screen {
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .state-loading #loading-screen {
@@ -251,6 +262,24 @@ body {
 .state-game #hud,
 .state-dead #hud {
   display: flex;
+}
+
+#loot-toast {
+  position: fixed;
+  top: 4rem;
+  left: 1rem;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 160ms linear;
+}
+
+#loot-toast.visible {
+  opacity: 1;
+  visibility: visible;
 }
 
 #hp-bar {

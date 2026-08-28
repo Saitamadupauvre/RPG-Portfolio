@@ -11,6 +11,7 @@ const palette: PaletteEntry[] = [
     { kind: 'prop', variant: 'wall', label: 'Wall' },
     { kind: 'prop', variant: 'decor', label: 'Decor' },
     { kind: 'chest', variant: 'wood', label: 'Chest (wood)' },
+    { kind: 'chest', variant: 'silver', label: 'Chest (silver)' },
     { kind: 'chest', variant: 'gold', label: 'Chest (gold)' },
     { kind: 'item', variant: 'shard', label: 'Item' },
     { kind: 'bonfire', variant: '', label: 'Bonfire' },

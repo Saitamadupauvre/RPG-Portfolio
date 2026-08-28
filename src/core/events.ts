@@ -17,6 +17,7 @@ export type AppEvents = {
     playerRespawned: [screenX: number, screenY: number];
     bonfireRested: [];
     coinsChanged: [coins: number];
+    chestOpened: [messages: string[]];
     playerStatsChanged: [stats: PlayerStats];
     upgradeBoardRequested: [];
     pauseChanged: [paused: boolean];

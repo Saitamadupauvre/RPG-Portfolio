@@ -1,3 +1,5 @@
+import type { StatId } from './stats';
+
 export type Vec3 = [number, number, number];
 
 export interface MapEntityTransform {
@@ -12,10 +14,20 @@ export interface EnemyEntity extends MapEntityTransform {
     enemyType: 'grunt' | 'elite' | 'boss';
 }
 
+/**
+ * What a chest hands out. Tagged union so new reward kinds are added by writing
+ * one member plus one handler in `domain/chestLoot.ts` — nothing else changes.
+ */
+export type ChestLoot =
+    | { kind: 'coins'; amount: number }
+    | { kind: 'project'; projectId: string }
+    | { kind: 'stat'; statId: StatId };
+
 export interface ChestEntity extends MapEntityTransform {
     kind: 'chest';
     id: string;
     chestTier: 'wood' | 'silver' | 'gold';
+    loot: ChestLoot[];
 }
 
 export interface ItemEntity extends MapEntityTransform {

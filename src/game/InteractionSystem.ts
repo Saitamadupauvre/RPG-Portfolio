@@ -37,7 +37,9 @@ export class InteractionSystem {
 
         for (const entity of entities) {
             const interactable = entity.getComponent('interactable');
-            if (!interactable) continue;
+            // A spent interactable (looted chest) keeps its component but no actions;
+            // skipping it here stops it from shadowing a live one standing further away.
+            if (!interactable || interactable.actions.length === 0) continue;
 
             const distanceSq = entity.mesh.position.distanceToSquared(playerPosition);
             if (distanceSq > interactable.radius * interactable.radius) continue;

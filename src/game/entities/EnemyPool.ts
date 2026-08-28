@@ -17,22 +17,21 @@ interface EnemyLook {
     aggroRadius: number;
     deaggroRadius: number;
     attackRange: number;
+    coins: number;
     combo: ComboMove[];
 }
 
-// Per-type combo pattern: grunt has a single jab, elite chains a quick-then-heavy pair.
-// Adding a move to either array (or a new enemyType entry) is the entire extension surface.
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
         size: 0.6, color: 0x33aa33, hp: 20,
-        moveSpeed: 2, aggroRadius: 5, deaggroRadius: 8, attackRange: 1.1,
+        moveSpeed: 2, aggroRadius: 5, deaggroRadius: 8, attackRange: 1.1, coins: 5,
         combo: [
             { options: { damage: 8, distance: 0.9, duration: 0.25, color: 0xffaa00 }, recovery: 0.5, windup: 0.4 },
         ],
     },
     elite: {
         size: 0.9, color: 0xdd8822, hp: 50,
-        moveSpeed: 2.5, aggroRadius: 6, deaggroRadius: 10, attackRange: 1.3,
+        moveSpeed: 2.5, aggroRadius: 6, deaggroRadius: 10, attackRange: 1.3, coins: 18,
         combo: [
             { options: { damage: 6, distance: 1, duration: 0.2, color: 0xffaa00 }, recovery: 0.25, windup: 0.3 },
             { options: { damage: 14, distance: 1.2, duration: 0.35, color: 0xff3300 }, recovery: 0.7, windup: 0.5 },
@@ -40,7 +39,7 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     },
     boss: {
         size: 1.4, color: 0xcc2222, hp: 200,
-        moveSpeed: 2.2, aggroRadius: 8, deaggroRadius: 14, attackRange: 1.6,
+        moveSpeed: 2.2, aggroRadius: 8, deaggroRadius: 14, attackRange: 1.6, coins: 80,
         combo: [
             { options: { damage: 10, distance: 1.4, duration: 0.25, color: 0xffaa00 }, recovery: 0.3, windup: 0.4 },
             { options: { damage: 10, distance: 1.4, duration: 0.25, color: 0xffaa00 }, recovery: 0.3, windup: 0.4 },
@@ -49,9 +48,11 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     },
 };
 
-// Geometry has no per-instance state, so it's shared per enemyType across every pooled
-// mesh. Material can't be shared the same way — HitFlashComponent mutates its color, so
-// each entity clones its own instance off this template (cloned once, then reused via pooling).
+/** Coins dropped on kill, authored per enemy type next to its other stats. */
+export function getEnemyCoinReward(type: EnemyEntity['enemyType']): number {
+    return enemyLook[type].coins;
+}
+
 const sharedGeometry = new Map<EnemyEntity['enemyType'], THREE.BufferGeometry>();
 const materialTemplate = new Map<EnemyEntity['enemyType'], THREE.MeshStandardMaterial>();
 
@@ -74,8 +75,6 @@ function createMaterial(type: EnemyEntity['enemyType']) {
     return template.clone();
 }
 
-// Pools dead enemy Entities per type so a kill+respawn cycle reuses the mesh/components
-// instead of churning new THREE objects and hitting the GC/GPU-alloc path every time.
 export class EnemyPool {
     private free = new Map<EnemyEntity['enemyType'], Entity[]>();
     private camera: THREE.Camera | null = null;
@@ -119,10 +118,12 @@ export class EnemyPool {
         const pool = this.free.get(source.enemyType);
         const entity = pool?.pop() ?? this.createEnemy(source.enemyType, source.id, position);
 
-        const health = entity.getComponent<HealthComponent>('health');
+        entity.id = source.id;
+
+        const health = entity.getComponent('health');
         if (health) health.hp = health.maxHp;
-        entity.getComponent<HealthBarComponent>('healthBar')?.reset();
-        entity.getComponent<EnemyAIComponent>('enemyAI')?.setOrigin(position);
+        entity.getComponent('healthBar')?.reset();
+        entity.getComponent('enemyAI')?.setOrigin(position);
 
         applyTransform(entity.mesh, source);
         entity.mesh.visible = true;

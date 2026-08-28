@@ -3,10 +3,8 @@ import type { Component } from './Component';
 export class HealthComponent implements Component {
     public readonly name = 'health';
     public hp: number;
-    public readonly maxHp: number;
+    public maxHp: number;
 
-    // Optional so enemies stay zero-cost: only the player wires this up, to bridge hp
-    // changes to the UI without HealthComponent importing anything from core/ or ui/.
     private onChange?: (hp: number, maxHp: number) => void;
 
     constructor(maxHp: number, onChange?: (hp: number, maxHp: number) => void) {
@@ -17,16 +15,28 @@ export class HealthComponent implements Component {
 
     public takeDamage(amount: number) {
         this.hp = Math.max(0, this.hp - amount);
-        this.onChange?.(this.hp, this.maxHp);
+        this.publish();
+    }
+
+    /** Upgrades change maxHp at runtime; keep the missing-HP amount stable. */
+    public setMaxHp(maxHp: number) {
+        const missing = this.maxHp - this.hp;
+        this.maxHp = maxHp;
+        this.hp = Math.max(1, Math.min(maxHp, maxHp - missing));
+        this.publish();
     }
 
     public heal(amount: number) {
         this.hp = Math.min(this.maxHp, this.hp + amount);
-        this.onChange?.(this.hp, this.maxHp);
+        this.publish();
     }
 
     public refill() {
         this.hp = this.maxHp;
+        this.publish();
+    }
+
+    public publish() {
         this.onChange?.(this.hp, this.maxHp);
     }
 

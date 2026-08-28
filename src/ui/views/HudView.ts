@@ -1,11 +1,18 @@
 import { events } from '../../core/events';
+import { getCoins } from '../../domain/playerProgress';
 
-// Player HP bar. Width-only updates (no re-render) so damage never touches the DOM tree,
-// just one style property — cheap enough to run on every hit.
 export function initHudView() {
     const fill = document.getElementById('hp-fill');
     const label = document.getElementById('hp-label');
-    if (!fill || !label) return;
+    const coins = document.getElementById('coin-count');
+    if (!fill || !label || !coins) return;
+
+    const renderCoins = (amount: number) => {
+        coins.textContent = `${amount} coins`;
+    };
+
+    renderCoins(getCoins());
+    events.on('coinsChanged', renderCoins);
 
     events.on('playerHealthChanged', (hp, maxHp) => {
         const ratio = Math.max(0, hp / maxHp);

@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 import type { Entity } from './entities/Entity';
 import type { EnemyEntity } from '../data/MapEntity';
-import type { AttackComponent } from './entities/components/AttackComponent';
-import type { HitFlashComponent } from './entities/components/HitFlashComponent';
-import { HealthComponent } from '../domain/components/HealthComponent';
-import type { EnemyAIComponent } from './entities/components/EnemyAIComponent';
-import type { HealthBarComponent } from './entities/components/HealthBarComponent';
-import { enemyPool } from './entities/EnemyPool';
+import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
+import { addCoins } from '../domain/playerProgress';
 import { applyTransform } from './entities/applyTransform';
 import { HitParticles } from './effects/HitParticles';
 import { ScreenShake } from './effects/ScreenShake';
@@ -14,11 +10,9 @@ import { ScreenShake } from './effects/ScreenShake';
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;
 
-// Owns enemy-vs-player combat resolution and its visual feedback (hit particles, screen
-// shake, damage flash) so World stays a scene/entity registry rather than a combat engine.
 export class CombatSystem {
     private enemies: { entity: Entity; source: EnemyEntity }[] = [];
-    // Every enemy ever registered, alive or dead — bonfire rest rebuilds the world from this.
+
     private sources: EnemyEntity[] = [];
     private hitParticles: HitParticles;
     private screenShake = new ScreenShake();
@@ -26,6 +20,10 @@ export class CombatSystem {
     private player: Entity;
     private onKill: (entity: Entity) => void;
     private onSpawn: (entity: Entity) => void;
+
+    private scratchBoxA = new THREE.Box3();
+    private scratchBoxB = new THREE.Box3();
+    private scratchCenter = new THREE.Vector3();
 
     constructor(
         entityGroup: THREE.Group,
@@ -40,7 +38,6 @@ export class CombatSystem {
         this.hitParticles = new HitParticles(entityGroup);
     }
 
-    // Editor reloads swap the whole level, so the enemy registry has to be emptied with it.
     public clear() {
         this.enemies = [];
         this.sources = [];
@@ -51,9 +48,6 @@ export class CombatSystem {
         this.sources.push(source);
     }
 
-    // Souls rule: resting restores the world. Bosses stay dead, everything else comes back
-    // to full hp at its authored origin — living enemies are reset in place rather than
-    // recreated, so no pool churn and no duplicate entities.
     public resetEnemies() {
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;
@@ -71,12 +65,12 @@ export class CombatSystem {
     }
 
     private resetEnemy(entity: Entity, source: EnemyEntity) {
-        const health = entity.getComponent<HealthComponent>('health');
+        const health = entity.getComponent('health');
         if (health) health.hp = health.maxHp;
 
-        entity.getComponent<HealthBarComponent>('healthBar')?.reset();
+        entity.getComponent('healthBar')?.reset();
         applyTransform(entity.mesh, source);
-        entity.getComponent<EnemyAIComponent>('enemyAI')?.setOrigin(entity.mesh.position.clone());
+        entity.getComponent('enemyAI')?.setOrigin(entity.mesh.position.clone());
     }
 
     public update(dt: number, camera: THREE.Camera) {
@@ -87,13 +81,13 @@ export class CombatSystem {
     }
 
     private resolveEnemyAttacks() {
-        const playerHealth = this.player.getComponent<HealthComponent>('health');
+        const playerHealth = this.player.getComponent('health');
         if (!playerHealth) return;
 
-        const playerBox = new THREE.Box3().setFromObject(this.player.mesh);
+        const playerBox = this.scratchBoxA.setFromObject(this.player.mesh);
 
         for (const { entity } of this.enemies) {
-            const attack = entity.getComponent<AttackComponent>('attack');
+            const attack = entity.getComponent('attack');
             if (!attack?.isAttacking) continue;
 
             const hitbox = attack.getHitbox();
@@ -101,29 +95,29 @@ export class CombatSystem {
             if (!attack.registerHit(this.player.id)) continue;
 
             playerHealth.takeDamage(attack.damage);
-            this.player.getComponent<HitFlashComponent>('hitFlash')?.trigger();
-            this.hitParticles.spawnBurst(playerBox.getCenter(new THREE.Vector3()));
+            this.player.getComponent('hitFlash')?.trigger();
+            this.hitParticles.spawnBurst(playerBox.getCenter(this.scratchCenter));
             this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
         }
     }
 
     private resolveAttack() {
-        const attack = this.player.getComponent<AttackComponent>('attack');
+        const attack = this.player.getComponent('attack');
         if (!attack?.isAttacking) return;
 
         const hitbox = attack.getHitbox();
         if (!hitbox) return;
 
         for (const { entity, source } of this.enemies) {
-            const enemyBox = new THREE.Box3().setFromObject(entity.mesh);
+            const enemyBox = this.scratchBoxB.setFromObject(entity.mesh);
             if (!hitbox.intersectsBox(enemyBox)) continue;
             if (!attack.registerHit(entity.id)) continue;
 
-            const health = entity.getComponent<HealthComponent>('health');
+            const health = entity.getComponent('health');
             health?.takeDamage(attack.damage);
 
-            entity.getComponent<HitFlashComponent>('hitFlash')?.trigger();
-            this.hitParticles.spawnBurst(enemyBox.getCenter(new THREE.Vector3()));
+            entity.getComponent('hitFlash')?.trigger();
+            this.hitParticles.spawnBurst(enemyBox.getCenter(this.scratchCenter));
             this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
 
             if (health?.isDead()) this.killEnemy(entity, source);
@@ -134,6 +128,7 @@ export class CombatSystem {
         this.entityGroup.remove(entity.mesh);
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
         enemyPool.release(entity, source.enemyType);
+        addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
     }
 }

@@ -24,8 +24,6 @@ const DEFAULTS: Required<AttackHitboxOptions> = {
     damage: 10,
 };
 
-// Reusable melee-hitbox component: attach to any Entity's mesh (player, enemy, ...).
-// trigger(aimPoint) faces the mesh at aimPoint and spawns a transient hitbox in front of it.
 export class AttackComponent implements Component {
     public readonly name = 'attack';
 
@@ -55,8 +53,11 @@ export class AttackComponent implements Component {
         return this.activeOptions.damage;
     }
 
-    // Rotates to face aimPoint without spawning a hitbox — lets a caller (e.g. a combo
-    // windup) telegraph the swing direction before the hit actually lands.
+    /** Base damage of every future swing; the live swing keeps its own value. */
+    public setBaseDamage(damage: number) {
+        this.options = { ...this.options, damage };
+    }
+
     public face(aimPoint: THREE.Vector3): THREE.Vector3 | null {
         const direction = new THREE.Vector3().subVectors(aimPoint, this.mesh.position).setY(0);
         if (direction.lengthSq() === 0) return null;
@@ -65,8 +66,6 @@ export class AttackComponent implements Component {
         return direction;
     }
 
-    // overrides lets a caller (e.g. a combo system) vary hitbox/damage per swing without
-    // needing a separate AttackComponent per move.
     public trigger(aimPoint: THREE.Vector3, overrides: AttackHitboxOptions = {}) {
         if (this.hitbox) return;
 
@@ -90,13 +89,11 @@ export class AttackComponent implements Component {
         this.hitIds.clear();
     }
 
-    // Hitbox world-space bounds for collision checks against other entities' meshes.
     public getHitbox(): THREE.Box3 | null {
         if (!this.hitbox) return null;
         return new THREE.Box3().setFromObject(this.hitbox);
     }
 
-    // Each swing should only damage a given target once, even if checked across several frames.
     public registerHit(id: string): boolean {
         if (this.hitIds.has(id)) return false;
         this.hitIds.add(id);

@@ -7,6 +7,7 @@ import { initProjectModalView } from './ui/views/ProjectModalView';
 import { initInteractPromptView } from './ui/views/InteractPromptView';
 import { initBookView } from './ui/views/BookView';
 import { initHudView } from './ui/views/HudView';
+import { initUpgradeBoardView } from './ui/views/UpgradeBoardView';
 import { initIrisView } from './ui/views/IrisView';
 import { initEditorView } from './ui/views/EditorView';
 
@@ -17,6 +18,7 @@ initProjectModalView();
 initInteractPromptView();
 initBookView();
 initHudView();
+initUpgradeBoardView();
 initIrisView();
 if (import.meta.env.DEV) initEditorView();
 

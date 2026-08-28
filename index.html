@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,19 +7,15 @@
   <link rel="stylesheet" href="./src/style.css">
   <link rel="stylesheet" href="./src/style/pixel-ui.css">
 </head>
-
 <body>
   <canvas class="webgl"></canvas>
-
   <div id="ui-container" class="state-loading pixel-ui">
-
     <div class="screen" id="loading-screen">
       <h1>Loading Universe...</h1>
       <div class="progress-bar">
         <div id="progress-fill"></div>
       </div>
     </div>
-
     <div class="screen" id="menu-screen">
       <h1 class="title">SOLDIER'S PORTFOLIO</h1>
       <div class="menu-actions">
@@ -28,19 +23,17 @@
         <button class="btn" id="btn-enter-classic">Fast Portfolio</button>
       </div>
     </div>
-
     <div class="screen" id="classic-screen">
       <h1 class="title">Projects</h1>
       <div id="classic-project-list"></div>
     </div>
-
     <div id="hud">
       <div id="hp-bar" class="pixel-panel">
         <div id="hp-fill"></div>
       </div>
       <span id="hp-label" class="pixel-text">100 / 100</span>
+      <span id="coin-count" class="pixel-text">0 coins</span>
     </div>
-
     <div id="editor-panel" class="pixel-panel">
       <h3 class="pixel-text">Editor (F2)</h3>
       <div id="editor-modes" class="editor-row"></div>
@@ -52,9 +45,7 @@
       </div>
       <p class="editor-hint">click ground to place · click entity to select · W/E/R gizmo · Ctrl+D duplicate · Del remove</p>
     </div>
-
     <div id="interact-prompt" class="pixel-panel"></div>
-
     <div class="modal" id="book">
       <div class="modal-content pixel-panel book-content">
         <button id="btn-close-book" class="close-btn">×</button>
@@ -62,20 +53,23 @@
         <div id="book-list"></div>
       </div>
     </div>
-
+    <div class="modal" id="upgrade-board">
+      <div class="modal-content pixel-panel upgrade-content">
+        <button id="btn-close-upgrade" class="close-btn">×</button>
+        <h2 class="title">Level Up</h2>
+        <p id="upgrade-coins" class="pixel-text">0 coins</p>
+        <div id="upgrade-list"></div>
+      </div>
+    </div>
     <div class="modal" id="project-modal">
       <div class="modal-content pixel-panel">
         <button id="btn-close-modal" class="close-btn">×</button>
         <div id="project-modal-body"></div>
       </div>
     </div>
-
   </div>
-
   <div id="iris"></div>
   <div id="death-text" class="pixel-text">YOU DIED</div>
-
   <script type="module" src="./src/main.ts"></script>
 </body>
-
 </html>

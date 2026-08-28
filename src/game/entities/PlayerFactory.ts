@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Entity } from './Entity';
 import { MovementComponent } from './components/MovementComponent';
+import { DashComponent } from './components/DashComponent';
 import { AttackComponent } from './components/AttackComponent';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
@@ -17,7 +18,6 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(0, 0.9, 0);
 
-    // Marks the mesh's local forward axis so facing direction is visible at a glance.
     const visionGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
     const visionMaterial = new THREE.MeshStandardMaterial({ color: 0x2255ff });
     const visionCube = new THREE.Mesh(visionGeometry, visionMaterial);
@@ -30,13 +30,16 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
         onAttackEnd: () => movement.setLocked(false),
     });
 
+    const health = new HealthComponent(PLAYER_HP, (hp, maxHp) => {
+        events.emit('playerHealthChanged', hp, maxHp);
+    });
+
+    health.publish();
+
     return new Entity('player', mesh, PLAYER_RADIUS)
         .addComponent('movement', movement)
+        .addComponent('dash', new DashComponent(mesh, movement))
         .addComponent('attack', attack)
-        // The game layer is where a pure domain component gets bridged to the UI:
-        // HealthComponent stays framework-free, the callback does the publishing.
-        .addComponent('health', new HealthComponent(PLAYER_HP, (hp, maxHp) => {
-            events.emit('playerHealthChanged', hp, maxHp);
-        }))
+        .addComponent('health', health)
         .addComponent('hitFlash', new HitFlashComponent(material));
 }

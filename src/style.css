@@ -1,10 +1,8 @@
-/* src/style.css */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: 'Courier New', Courier, monospace;
-  /* Gaming vibe */
 }
 
 html,
@@ -15,7 +13,6 @@ body {
   height: 100%;
 }
 
-/* 3D Canvas Background — game mode only */
 .webgl {
   position: fixed;
   top: 0;
@@ -42,13 +39,11 @@ body {
   pointer-events: none;
 }
 
-/* Interactive elements must regain pointer-events */
 .btn,
 .modal-content {
   pointer-events: auto;
 }
 
-/* Standard Screen Views */
 .screen {
   position: absolute;
   width: 100%;
@@ -62,7 +57,6 @@ body {
   pointer-events: none;
 }
 
-/* State Machine CSS bindings */
 .state-loading #loading-screen {
   opacity: 1;
   pointer-events: auto;
@@ -243,7 +237,6 @@ body {
   letter-spacing: 0.2em;
 }
 
-/* HUD — game-state only, never intercepts clicks */
 #hud {
   position: fixed;
   top: 1rem;
@@ -280,7 +273,6 @@ body {
   text-shadow: 2px 2px 0 #000;
 }
 
-/* Cartoon iris wipe: full-screen layer, hole radius painted per frame by IrisView. */
 #iris {
   position: fixed;
   inset: 0;
@@ -312,7 +304,6 @@ body {
   opacity: 1;
 }
 
-/* Dev-only editor panel — shown only in the EDITOR state */
 #editor-panel {
   position: fixed;
   top: 1rem;
@@ -369,4 +360,55 @@ body {
   font-size: 0.62rem;
   opacity: 0.6;
   line-height: 1.4;
+}
+
+#coin-count {
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  text-shadow: 2px 2px 0 #000;
+}
+
+.upgrade-content {
+  width: min(520px, 90vw);
+}
+
+#upgrade-coins {
+  margin: 0 0 1rem;
+  color: var(--accent-gold);
+}
+
+#upgrade-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.upgrade-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-color: #555;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.upgrade-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.upgrade-name {
+  color: var(--pixel-ink);
+}
+
+.upgrade-detail {
+  font-size: 0.75rem;
+  color: var(--accent-teal);
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

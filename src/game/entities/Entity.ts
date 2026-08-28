@@ -8,11 +8,14 @@ export class Entity {
     public readonly mesh: THREE.Object3D;
 
     public readonly collisionRadius?: number;
+    /** Static bodies push others out but are never pushed themselves. */
+    public readonly isStatic: boolean;
     private components = new Map<ComponentKey, Component>();
     private disposer?: () => void;
 
-    constructor(id: string, mesh: THREE.Object3D, collisionRadius?: number) {
+    constructor(id: string, mesh: THREE.Object3D, collisionRadius?: number, isStatic = false) {
         this.id = id;
+        this.isStatic = isStatic;
         this.mesh = mesh;
         this.collisionRadius = collisionRadius;
     }

@@ -5,12 +5,13 @@ export interface Circle {
 }
 
 export interface Push {
-    ax: number;
-    az: number;
-    bx: number;
-    bz: number;
+    /** Unit vector from a to b; b moves along it, a against it. */
+    nx: number;
+    nz: number;
+    overlap: number;
 }
 
+/** How deep two circles overlap and along which axis. Who moves is the caller's call. */
 export function resolveCircleOverlap(a: Circle, b: Circle): Push | null {
     const dx = b.x - a.x;
     const dz = b.z - a.z;
@@ -22,13 +23,5 @@ export function resolveCircleOverlap(a: Circle, b: Circle): Push | null {
     const dist = Math.sqrt(distSq);
 
     const [nx, nz] = dist === 0 ? [1, 0] : [dx / dist, dz / dist];
-    const overlap = minDist - dist;
-    const half = overlap / 2;
-
-    return {
-        ax: a.x - nx * half,
-        az: a.z - nz * half,
-        bx: b.x + nx * half,
-        bz: b.z + nz * half,
-    };
+    return { nx, nz, overlap: minDist - dist };
 }

@@ -13,15 +13,23 @@ export class EntityCollisionSystem {
     }
 
     private resolvePair(a: Entity, b: Entity) {
+        // Two statues overlapping is a level-design problem, not a runtime one.
+        if (a.isStatic && b.isStatic) return;
+
         const push = resolveCircleOverlap(
             { x: a.mesh.position.x, z: a.mesh.position.z, radius: a.collisionRadius as number },
             { x: b.mesh.position.x, z: b.mesh.position.z, radius: b.collisionRadius as number },
         );
         if (!push) return;
 
-        a.mesh.position.x = push.ax;
-        a.mesh.position.z = push.az;
-        b.mesh.position.x = push.bx;
-        b.mesh.position.z = push.bz;
+        // A static body takes none of the correction, so the other one absorbs
+        // all of it and the statue stays where the level author put it.
+        const aShare = a.isStatic ? 0 : b.isStatic ? 1 : 0.5;
+        const bShare = 1 - aShare;
+
+        a.mesh.position.x -= push.nx * push.overlap * aShare;
+        a.mesh.position.z -= push.nz * push.overlap * aShare;
+        b.mesh.position.x += push.nx * push.overlap * bShare;
+        b.mesh.position.z += push.nz * push.overlap * bShare;
     }
 }

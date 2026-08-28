@@ -45,7 +45,7 @@ export function createStatue(entity: StatueEntity): Entity {
         },
     }]);
 
-    return new Entity(entity.id, group, STATUE_COLLISION_RADIUS)
+    return new Entity(entity.id, group, STATUE_COLLISION_RADIUS, true)
         .addComponent('glow', glow)
         .addComponent('interactable', interactable);
 }

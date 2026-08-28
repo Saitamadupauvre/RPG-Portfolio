@@ -44,7 +44,7 @@ export function createBonfire(entity: BonfireEntity): Entity {
         },
     ]);
 
-    return new Entity(entity.id, group, COLLISION_RADIUS)
+    return new Entity(entity.id, group, COLLISION_RADIUS, true)
         .addComponent('glow', glow)
         .addComponent('interactable', interactable);
 }

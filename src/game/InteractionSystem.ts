@@ -2,33 +2,33 @@ import * as THREE from 'three';
 import { events } from '../core/events';
 import { stateMachine } from '../core/StateMachine';
 import type { Entity } from './entities/Entity';
-import type { InteractableComponent } from './entities/components/InteractableComponent';
+import type { InteractAction } from './entities/components/InteractableComponent';
 
-const INTERACT_KEY = 'KeyE';
-
-// Picks the single closest in-range interactable each frame, publishes its label for the
-// DOM prompt, and routes the interact key to it. Centralising this means a new interactable
-// entity type only needs an InteractableComponent — no extra listener, no extra prompt code.
 export class InteractionSystem {
-    private currentLabel: string | null = null;
-    private pressed = false;
+    private currentActions: readonly InteractAction[] | null = null;
+    private pressedKeys = new Set<string>();
 
     constructor() {
         window.addEventListener('keydown', (event) => {
-            // Ignore auto-repeat so holding E doesn't fire the interaction every frame.
-            if (event.code === INTERACT_KEY && !event.repeat) this.pressed = true;
+            // Only remember keys the current target actually listens for, so
+            // unrelated presses never queue up between frames.
+            if (event.repeat) return;
+            if (!this.currentActions?.some((action) => action.key === event.code)) return;
+
+            this.pressedKeys.add(event.code);
         });
     }
 
     public update(entities: Entity[], playerPosition: THREE.Vector3) {
         const target = stateMachine.getState() === 'GAME' ? this.findNearest(entities, playerPosition) : null;
+        const actions = target?.getComponent('interactable')?.actions ?? null;
 
-        this.setPrompt(target?.getComponent<InteractableComponent>('interactable')?.label ?? null);
+        this.setPrompt(actions);
 
-        if (this.pressed) {
-            this.pressed = false;
-            target?.getComponent<InteractableComponent>('interactable')?.interact();
+        for (const key of this.pressedKeys) {
+            target?.getComponent('interactable')?.interact(key);
         }
+        this.pressedKeys.clear();
     }
 
     private findNearest(entities: Entity[], playerPosition: THREE.Vector3): Entity | null {
@@ -36,10 +36,9 @@ export class InteractionSystem {
         let nearestDistance = Infinity;
 
         for (const entity of entities) {
-            const interactable = entity.getComponent<InteractableComponent>('interactable');
+            const interactable = entity.getComponent('interactable');
             if (!interactable) continue;
 
-            // Squared distance: same ordering as real distance, no sqrt per entity per frame.
             const distanceSq = entity.mesh.position.distanceToSquared(playerPosition);
             if (distanceSq > interactable.radius * interactable.radius) continue;
             if (distanceSq >= nearestDistance) continue;
@@ -51,10 +50,10 @@ export class InteractionSystem {
         return nearest;
     }
 
-    // Only emits on change, so the UI layer isn't rewritten 60 times a second.
-    private setPrompt(label: string | null) {
-        if (label === this.currentLabel) return;
-        this.currentLabel = label;
-        events.emit('interactPromptChange', label);
+    private setPrompt(actions: readonly InteractAction[] | null) {
+        if (actions === this.currentActions) return;
+
+        this.currentActions = actions;
+        events.emit('interactPromptChange', actions);
     }
 }

@@ -1,22 +1,26 @@
 import type { Component } from '../../../domain/components/Component';
+import type { PromptAction } from '../../../core/events';
 
-// Marks an entity as usable with the interact key. Holds only *what* interacting means
-// and how close you must be — deciding *which* interactable wins and rendering the
-// prompt is InteractionSystem's job, so statues, bonfires and chests all share one flow.
+/** A prompt line plus the code it runs. `key` is a KeyboardEvent.code. */
+export interface InteractAction extends PromptAction {
+    run: () => void;
+}
+
 export class InteractableComponent implements Component {
     public readonly name = 'interactable';
     public readonly radius: number;
-    public label: string;
+    public actions: InteractAction[];
 
-    private onInteract: () => void;
-
-    constructor(radius: number, label: string, onInteract: () => void) {
+    constructor(radius: number, actions: InteractAction[]) {
         this.radius = radius;
-        this.label = label;
-        this.onInteract = onInteract;
+        this.actions = actions;
     }
 
-    public interact() {
-        this.onInteract();
+    public interact(key: string): boolean {
+        const action = this.actions.find((candidate) => candidate.key === key);
+        if (!action) return false;
+
+        action.run();
+        return true;
     }
 }

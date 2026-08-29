@@ -12,6 +12,10 @@ Visual split: **3D low-poly** for the game world (Three.js meshes), **2D pixel-a
 
 Stack: Vite + TypeScript + Three.js. No framework (no React/Vue) — DOM is manipulated directly via `document.getElementById`/`document.createElement` etc, Three.js owns the WebGL canvas.
 
+## Commits
+
+Commit messages: one line, conventional-commit style (`feat(scope): summary`, `fix(scope): summary`), no attribution/co-author lines.
+
 ## Commands
 
 - `npm run dev` — start Vite dev server (port 3000, see `vite.config.ts`)

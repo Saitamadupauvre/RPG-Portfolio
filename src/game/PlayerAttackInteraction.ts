@@ -17,8 +17,8 @@ export class PlayerAttackInteraction {
         if (stateMachine.getState() !== 'GAME') return;
 
         const player = this.experience.world.player;
-        const attack = player.getComponent('attack');
-        if (!attack) return;
+        const combo = player.getComponent('combo');
+        if (!combo) return;
 
         this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -29,6 +29,6 @@ export class PlayerAttackInteraction {
         const target = new THREE.Vector3();
         if (!this.raycaster.ray.intersectPlane(this.groundPlane, target)) return;
 
-        attack.trigger(target);
+        combo.trigger(target);
     }
 }

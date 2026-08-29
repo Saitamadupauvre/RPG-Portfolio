@@ -63,6 +63,10 @@ export class MovementComponent implements Component {
         return move.lengthSq() > 0 ? move.normalize() : null;
     }
 
+    public isMoving(): boolean {
+        return this.getInputDirection() !== null;
+    }
+
     public update(dt: number) {
         const move = this.getInputDirection();
         if (!move) return;

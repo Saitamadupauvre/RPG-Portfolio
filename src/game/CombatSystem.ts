@@ -4,7 +4,7 @@ import type { EnemyEntity } from '../data/MapEntity';
 import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
 import { applyTransform } from './entities/applyTransform';
-import { HitParticles } from './effects/HitParticles';
+import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
 
 const HIT_SHAKE_INTENSITY = 0.1;
@@ -14,7 +14,7 @@ export class CombatSystem {
     private enemies: { entity: Entity; source: EnemyEntity }[] = [];
 
     private sources: EnemyEntity[] = [];
-    private hitParticles: HitParticles;
+    private hitParticles: ParticleSystem;
     private screenShake = new ScreenShake();
     private entityGroup: THREE.Group;
     private player: Entity;
@@ -35,7 +35,7 @@ export class CombatSystem {
         this.player = player;
         this.onKill = onKill;
         this.onSpawn = onSpawn;
-        this.hitParticles = new HitParticles(entityGroup);
+        this.hitParticles = new ParticleSystem(entityGroup);
     }
 
     public clear() {

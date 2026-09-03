@@ -8,6 +8,7 @@ import { HealthBarComponent } from './components/HealthBarComponent';
 import { AttackComponent } from './components/AttackComponent';
 import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { EnemyAIComponent } from './components/EnemyAIComponent';
+import { createToonMaterial } from '../render/toon';
 
 interface EnemyLook {
     size: number;
@@ -54,7 +55,7 @@ export function getEnemyCoinReward(type: EnemyEntity['enemyType']): number {
 }
 
 const sharedGeometry = new Map<EnemyEntity['enemyType'], THREE.BufferGeometry>();
-const materialTemplate = new Map<EnemyEntity['enemyType'], THREE.MeshStandardMaterial>();
+const materialTemplate = new Map<EnemyEntity['enemyType'], THREE.MeshToonMaterial>();
 
 function getGeometry(type: EnemyEntity['enemyType']) {
     let geometry = sharedGeometry.get(type);
@@ -69,7 +70,7 @@ function getGeometry(type: EnemyEntity['enemyType']) {
 function createMaterial(type: EnemyEntity['enemyType']) {
     let template = materialTemplate.get(type);
     if (!template) {
-        template = new THREE.MeshStandardMaterial({ color: enemyLook[type].color });
+        template = createToonMaterial({ color: enemyLook[type].color });
         materialTemplate.set(type, template);
     }
     return template.clone();

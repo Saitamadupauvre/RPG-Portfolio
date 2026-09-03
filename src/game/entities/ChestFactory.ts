@@ -7,6 +7,7 @@ import { applyChestLoot } from '../../domain/chestLoot';
 import { isChestOpened, openChest } from '../../domain/openedChests';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
+import { createToonMaterial } from '../render/toon';
 
 const chestColor: Record<ChestEntity['chestTier'], number> = {
     wood: 0x8b5a2b,
@@ -24,7 +25,7 @@ export function createChest(entity: ChestEntity): Entity {
     applyTransform(group, entity);
 
     const color = chestColor[entity.chestTier];
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color });
+    const bodyMaterial = createToonMaterial({ color });
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.6), bodyMaterial);
     body.position.y = 0.225;
     body.castShadow = true;
@@ -34,7 +35,7 @@ export function createChest(entity: ChestEntity): Entity {
     const hinge = new THREE.Group();
     hinge.position.set(0, 0.45, -0.3);
 
-    const lidMaterial = new THREE.MeshStandardMaterial({ color });
+    const lidMaterial = createToonMaterial({ color });
     const lid = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.6), lidMaterial);
     lid.position.set(0, 0.075, 0.3);
     lid.castShadow = true;

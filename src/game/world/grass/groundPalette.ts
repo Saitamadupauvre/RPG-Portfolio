@@ -6,10 +6,10 @@ import * as THREE from 'three';
  * blade's root is tinted with exactly the patch of ground it grows out of —
  * that shared lookup is what makes the two read as one surface.
  */
-export const PATCH_A = 0x63b23c;
-export const PATCH_B = 0x9ad84f;
-export const PATCH_C = 0x3d9440;
-export const PATCH_ACCENT = 0xd6e86a;
+export const PATCH_A = 0x66ab48;
+export const PATCH_B = 0x96cf5c;
+export const PATCH_C = 0x3d8a52;
+export const PATCH_ACCENT = 0xd3e07a;
 
 export type PatchUniforms = {
     uPatchA: { value: THREE.Color };

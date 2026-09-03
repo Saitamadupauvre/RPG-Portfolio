@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
+import type { EmissiveMaterial } from '../../render/toon';
 
 const PULSE_SPEED = 2.5;
 const PULSE_MIN = 0.35;
@@ -8,11 +9,11 @@ const PULSE_MAX = 1;
 export class GlowComponent implements Component {
     public readonly name = 'glow';
 
-    private material: THREE.MeshStandardMaterial;
+    private material: EmissiveMaterial;
     private elapsed = 0;
     private active = true;
 
-    constructor(material: THREE.MeshStandardMaterial, color: number) {
+    constructor(material: EmissiveMaterial, color: number) {
         this.material = material;
         this.material.emissive = new THREE.Color(color);
     }

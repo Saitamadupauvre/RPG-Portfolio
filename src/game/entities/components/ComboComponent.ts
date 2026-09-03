@@ -36,6 +36,18 @@ export class ComboComponent implements Component {
         this.resetWindow = resetWindow;
     }
 
+    /** 0..1 progress through the current windup, or null when no swing is charging. */
+    public get windupProgress(): number | null {
+        if (!this.pending) return null;
+        const total = this.pending.move.windup ?? DEFAULT_WINDUP;
+        return total <= 0 ? 1 : 1 - Math.max(0, this.pending.timer) / total;
+    }
+
+    /** Index of the move currently charging or last fired — lets the animator mirror alternating swings. */
+    public get moveIndex(): number {
+        return (this.index - 1 + this.moves.length) % this.moves.length;
+    }
+
     public get canTrigger(): boolean {
         return this.recoveryTimer <= 0 && !this.pending && !this.attack.isAttacking;
     }

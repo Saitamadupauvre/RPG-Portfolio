@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CLOUD_FRAGMENT_PARS, cloudUniforms, toonLightingGLSL } from '../../render/cloudShadows';
 import { BLADE_HEIGHT } from './bladeGeometry';
 import { createPatchUniforms, PATCH_GLSL, type PatchUniforms } from './groundPalette';
 
@@ -53,6 +54,7 @@ varying float vGrassTint;
 varying vec2 vGrassRootXZ;
 varying vec3 vGrassNormal;
 ${PATCH_GLSL}
+${CLOUD_FRAGMENT_PARS}
 `;
 
 // Runs right after <begin_vertex> has filled `transformed`, and before
@@ -151,13 +153,14 @@ export function createGrassMaterial(uniforms: GrassUniforms) {
     });
 
     material.onBeforeCompile = (shader) => {
-        Object.assign(shader.uniforms, uniforms);
+        Object.assign(shader.uniforms, uniforms, cloudUniforms);
         shader.vertexShader = shader.vertexShader
             .replace('#include <common>', `#include <common>\n${GRASS_VERTEX_PARS}`)
             .replace('#include <begin_vertex>', GRASS_BEND);
         shader.fragmentShader = shader.fragmentShader
             .replace('#include <common>', `#include <common>\n${GRASS_FRAGMENT_PARS}`)
             .replace('#include <normal_fragment_begin>', GRASS_NORMAL)
+            .replace('#include <lights_fragment_end>', toonLightingGLSL('vGrassRootXZ'))
             .replace('#include <color_fragment>', GRASS_COLOR);
     };
 

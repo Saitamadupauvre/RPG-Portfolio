@@ -17,6 +17,7 @@ import { InteractionSystem } from "../InteractionSystem";
 import { findFreePoint, rebuildNavGrid } from "./navigation";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { createGroundMaterial } from "./grass/groundMaterial";
+import { updateCloudShadows } from "../render/cloudShadows";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 const GROUND_SIZE = 50;
@@ -120,9 +121,10 @@ export class World {
         const camera = this.experience.camera;
         const state = stateMachine.getState();
 
-        // Before the early return, so wind keeps blowing while paused, dead or
-        // in the editor rather than freezing mid-sway.
+        // Before the early return, so wind keeps blowing and clouds keep drifting
+        // while paused, dead or in the editor rather than freezing mid-sway.
         this.updateGrass(camera);
+        updateCloudShadows(dt);
 
         if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
 

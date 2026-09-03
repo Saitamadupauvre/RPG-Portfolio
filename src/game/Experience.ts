@@ -22,7 +22,7 @@ export class Experience {
 
         this.scene = new THREE.Scene();
 
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
         this.camera.position.z = 5;
 
         this.renderer = new THREE.WebGLRenderer({
@@ -38,7 +38,7 @@ export class Experience {
         // look washed out. Neutral rolls highlights off while keeping
         // saturation, unlike ACESFilmic which deliberately desaturates them.
         this.renderer.toneMapping = THREE.NeutralToneMapping;
-        this.renderer.toneMappingExposure = 1.1;
+        this.renderer.toneMappingExposure = 1.12;
 
         this.timer = new THREE.Timer();
 

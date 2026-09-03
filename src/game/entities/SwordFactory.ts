@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createToonMaterial } from '../render/toon';
 
 export const SWORD_LENGTH = 0.9;
 const HILT_LENGTH = 0.18;
@@ -14,7 +15,7 @@ export function createSwordMesh(): THREE.Group {
 
     const hilt = new THREE.Mesh(
         new THREE.CylinderGeometry(HILT_RADIUS, HILT_RADIUS, HILT_LENGTH, 8),
-        new THREE.MeshStandardMaterial({ color: 0x3a2a1a }),
+        createToonMaterial({ color: 0x5a3a1e }),
     );
     hilt.rotation.x = Math.PI / 2;
     hilt.position.z = HILT_LENGTH / 2;
@@ -22,7 +23,7 @@ export function createSwordMesh(): THREE.Group {
 
     const guard = new THREE.Mesh(
         new THREE.BoxGeometry(GUARD_WIDTH, GUARD_HEIGHT, 0.04),
-        new THREE.MeshStandardMaterial({ color: 0xbbbbbb, metalness: 0.6, roughness: 0.4 }),
+        createToonMaterial({ color: 0xe8c65a }),
     );
     guard.position.z = HILT_LENGTH;
     sword.add(guard);
@@ -30,7 +31,7 @@ export function createSwordMesh(): THREE.Group {
     const bladeLength = SWORD_LENGTH - HILT_LENGTH;
     const blade = new THREE.Mesh(
         new THREE.BoxGeometry(BLADE_WIDTH, BLADE_THICKNESS, bladeLength),
-        new THREE.MeshStandardMaterial({ color: 0xd8d8e0, metalness: 0.8, roughness: 0.25 }),
+        createToonMaterial({ color: 0xeef2ff }),
     );
     blade.position.z = HILT_LENGTH + bladeLength / 2;
     sword.add(blade);

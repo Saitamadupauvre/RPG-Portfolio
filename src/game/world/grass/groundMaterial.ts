@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CLOUD_FRAGMENT_PARS, cloudUniforms, toonLightingGLSL } from '../../render/cloudShadows';
 import { createPatchUniforms, PATCH_GLSL } from './groundPalette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
@@ -13,6 +14,7 @@ vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz;
 const GROUND_FRAGMENT_PARS = /* glsl */ `
 varying vec2 vGroundXZ;
 ${PATCH_GLSL}
+${CLOUD_FRAGMENT_PARS}
 `;
 
 const GROUND_COLOR = /* glsl */ `
@@ -34,12 +36,13 @@ export function createGroundMaterial(): THREE.MeshLambertMaterial {
     const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
 
     material.onBeforeCompile = (shader) => {
-        Object.assign(shader.uniforms, uniforms);
+        Object.assign(shader.uniforms, uniforms, cloudUniforms);
         shader.vertexShader = shader.vertexShader
             .replace('#include <common>', `#include <common>\n${GROUND_VERTEX_PARS}`)
             .replace('#include <begin_vertex>', GROUND_WORLDPOS);
         shader.fragmentShader = shader.fragmentShader
             .replace('#include <common>', `#include <common>\n${GROUND_FRAGMENT_PARS}`)
+            .replace('#include <lights_fragment_end>', toonLightingGLSL('vGroundXZ'))
             .replace('#include <color_fragment>', GROUND_COLOR);
     };
 

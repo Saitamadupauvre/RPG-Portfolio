@@ -15,6 +15,9 @@ export interface AttackHooks {
     onAttackEnd?: () => void;
 }
 
+/** Draw the swing hitbox as a translucent box. Debug only - the sword trail is the real feedback. */
+const SHOW_HITBOX = false;
+
 const DEFAULTS: Required<AttackHitboxOptions> = {
     size: new THREE.Vector3(0.6, 0.6, 0.6),
     color: 0xff0000,
@@ -47,6 +50,12 @@ export class AttackComponent implements Component {
 
     public get isAttacking(): boolean {
         return this.hitbox !== null;
+    }
+
+    /** 0..1 progress through the active swing, or null when idle. Drives the arm animation. */
+    public get swingProgress(): number | null {
+        if (!this.hitbox) return null;
+        return Math.min(1, this.elapsed / this.activeOptions.duration);
     }
 
     public get damage(): number {
@@ -83,6 +92,9 @@ export class AttackComponent implements Component {
         });
 
         this.hitbox = new THREE.Mesh(geometry, material);
+        // Kept in the scene graph even when hidden: Box3.setFromObject reads geometry, not visibility,
+        // so hit detection is unaffected and toggling SHOW_HITBOX needs no other change.
+        this.hitbox.visible = SHOW_HITBOX;
         this.hitbox.position.copy(this.mesh.position).addScaledVector(direction, this.activeOptions.distance);
         this.group.add(this.hitbox);
         this.elapsed = 0;

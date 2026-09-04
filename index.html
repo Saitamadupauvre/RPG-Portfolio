@@ -36,15 +36,21 @@
     </div>
     <div id="loot-toast" class="pixel-panel pixel-text"></div>
     <div id="editor-panel" class="pixel-panel">
-      <h3 class="pixel-text">Editor (F2)</h3>
+      <h3 class="pixel-text">Editor (F1)</h3>
       <div id="editor-modes" class="editor-row"></div>
+      <div id="editor-tiles" class="editor-row"></div>
+      <div id="editor-grid-size" class="editor-row"></div>
+      <p id="editor-tile-status" class="editor-hint"></p>
       <div id="editor-palette" class="editor-row"></div>
-      <pre id="editor-inspector">Nothing selected</pre>
+      <div id="editor-inspector"></div>
       <div class="editor-row">
         <span id="editor-count" class="pixel-text">0 entities</span>
+        <button class="btn editor-btn" id="btn-editor-copy">Copy JSON</button>
+        <button class="btn editor-btn" id="btn-editor-copy-terrain">Copy tiles</button>
         <button class="btn editor-btn" id="btn-editor-export">Export JSON</button>
+        <button class="btn editor-btn" id="btn-editor-reset">Reset</button>
       </div>
-      <p class="editor-hint">click ground to place · click entity to select · W/E/R gizmo · Ctrl+D duplicate · Del remove</p>
+      <p class="editor-hint">F1 toggle · Edit tiles: click a tile, shift-click to add, drag the arrow to change level (1 level = walkable step, 2+ = cliff) · click ground to place · click palette again to unarm · click entity to select · W/E/R gizmo · hold Shift for free (unsnapped) placement · Ctrl+D duplicate · X or Del remove</p>
     </div>
     <div id="interact-prompt" class="pixel-panel"></div>
     <div class="modal" id="book">

@@ -22,11 +22,18 @@ export type AppEvents = {
     upgradeBoardRequested: [];
     pauseChanged: [paused: boolean];
 
-    editorPlaceKindChanged: [kind: MapEntity['kind'], variant: string];
+    editorPlaceKindChanged: [kind: MapEntity['kind'] | null, variant: string];
     editorGizmoChanged: [mode: 'translate' | 'rotate' | 'scale'];
     editorExportRequested: [];
+    editorCopyRequested: [];
+    editorResetRequested: [];
+    editorEntityEdited: [entity: MapEntity];
     editorSelectionChanged: [entity: MapEntity | null];
     editorLayoutChanged: [count: number];
+    editorTileModeChanged: [enabled: boolean];
+    editorTileGridResized: [cols: number, rows: number];
+    editorTileSelectionChanged: [count: number, level: number | null];
+    editorTerrainCopyRequested: [];
 };
 
 export const events = new EventEmitter<AppEvents>();

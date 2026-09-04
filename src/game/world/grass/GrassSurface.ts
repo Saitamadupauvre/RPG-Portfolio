@@ -11,6 +11,11 @@ export type GrassSurfaceOptions = {
     chunkSize?: number;
     /** Chunks further than this from the camera are hidden. */
     maxDistance?: number;
+    /**
+     * Density multiplier for a sampled surface normal. Returning 0 rejects the
+     * blade outright — how cliff faces are kept bare.
+     */
+    acceptNormal?: (normal: THREE.Vector3) => number;
 };
 
 /** Draw a `ratio` slice of a chunk's blades once it is `distance` units away. */
@@ -134,6 +139,10 @@ export class GrassSurface {
             _ac.subVectors(_c, _a);
             _normal.crossVectors(_ab, _ac).normalize();
 
+            // Rejection sampling, after the normal is known: a fractional value
+            // thins a region instead of cutting it off on a hard chunk edge.
+            if (options.acceptNormal && Math.random() >= options.acceptNormal(_normal)) continue;
+
             _qAlign.setFromUnitVectors(UP, _normal);
             _qYaw.setFromAxisAngle(UP, Math.random() * Math.PI * 2);
             _leanAxis.set(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).normalize();
@@ -185,6 +194,30 @@ export class GrassSurface {
 
             this.chunks.push({ mesh, sphere, target, capacity: matrices.length });
         }
+    }
+
+    /**
+     * Drops every chunk grown on `target`. The blade geometries are clones (one
+     * per chunk, because aTint is an instanced attribute), so they are this
+     * surface's to dispose — the shared material and blade template are not.
+     * Without this, resculpting terrain would leak a full blade set per stroke:
+     * GPU buffers have no garbage collector.
+     */
+    public detach(target: THREE.Object3D) {
+        const kept: Chunk[] = [];
+
+        for (const chunk of this.chunks) {
+            if (chunk.target !== target) {
+                kept.push(chunk);
+                continue;
+            }
+
+            target.remove(chunk.mesh);
+            chunk.mesh.dispose();
+            chunk.mesh.geometry.dispose();
+        }
+
+        this.chunks = kept;
     }
 
     public update(elapsed: number, camera: THREE.Camera, colliders: GrassCollider[]) {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Experience } from "../Experience";
+import { getTileGrid } from './terrainField';
 
 const SKY_COLOR = 0x9adcf2;
 /** Bounce light colour. Saturated grass green, so shadowed sides read as colour, never grey. */
@@ -11,6 +12,8 @@ const SUN_COLOR = 0xfff0c2;
  * blue-tinted (the way cartoon shadows are painted) instead of muddy.
  */
 const FILL_COLOR = 0x8fb8dd;
+/** Slack around the terrain so tall cliffs near the edge still cast. */
+const SHADOW_MARGIN = 10;
 
 export class Environment {
     private experience: Experience;
@@ -40,12 +43,17 @@ export class Environment {
         // is a hard edge, and a weak shadow next to a hard edge reads as a bug.
         this.sun.shadow.intensity = 0.5;
         this.sun.shadow.mapSize.set(2048, 2048);
+        // Sized from the terrain rather than hardcoded: the ortho frustum has to
+        // contain everything that casts, and the terrain is resizable in the
+        // editor. Anything outside it silently stops casting shadows.
+        const { cols, tileSize } = getTileGrid().map;
+        const reach = (cols * tileSize) / 2 + SHADOW_MARGIN;
         this.sun.shadow.camera.near = 1;
-        this.sun.shadow.camera.far = 50;
-        this.sun.shadow.camera.left = -20;
-        this.sun.shadow.camera.right = 20;
-        this.sun.shadow.camera.top = 20;
-        this.sun.shadow.camera.bottom = -20;
+        this.sun.shadow.camera.far = reach * 3;
+        this.sun.shadow.camera.left = -reach;
+        this.sun.shadow.camera.right = reach;
+        this.sun.shadow.camera.top = reach;
+        this.sun.shadow.camera.bottom = -reach;
         // normalBias offsets the lookup along the surface normal, which clears
         // shadow acne on curved meshes without the peter-panning a large
         // constant bias causes.
@@ -59,4 +67,6 @@ export class Environment {
         this.experience.scene.add(this.sun);
         this.experience.scene.add(this.fill);
     }
+
 }
+

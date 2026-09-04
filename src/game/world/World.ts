@@ -16,11 +16,13 @@ import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
 import { findFreePoint, rebuildNavGrid } from "./navigation";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
-import { createGroundMaterial } from "./grass/groundMaterial";
-import { updateCloudShadows } from "../render/cloudShadows";
+import { Terrain } from "./Terrain";
+import { tileMap } from "../../data/tileMap";
+import { groundHeight, snapToGround } from "./terrainField";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
-const GROUND_SIZE = 50;
+/** Keeps the camera from burying itself in a hill or cliff behind the player. */
+const CAMERA_CLEARANCE = 2;
 
 const RESPAWN_DELAY_MS = 1200;
 
@@ -34,6 +36,7 @@ export class World {
     private paused = false;
     private grass = new GrassSurface();
     private grassColliders: GrassCollider[] = [];
+    public terrain: Terrain;
     public player: Entity;
 
     constructor(experience: Experience) {
@@ -43,13 +46,8 @@ export class World {
         this.experience.scene.add(this.entityGroup);
         this.entityGroup.visible = this.isGameVisible(stateMachine.getState());
 
-        const groundGeometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
-        const groundMaterial = createGroundMaterial();
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        this.entityGroup.add(ground);
-        this.grass.attach(ground, { density: 90, chunkSize: 4 });
+        this.terrain = new Terrain(tileMap, this.grass);
+        this.entityGroup.add(this.terrain.mesh);
 
         this.player = createPlayer(CAMERA_OFFSET, this.entityGroup);
         this.player.mesh.castShadow = true;
@@ -121,10 +119,9 @@ export class World {
         const camera = this.experience.camera;
         const state = stateMachine.getState();
 
-        // Before the early return, so wind keeps blowing and clouds keep drifting
-        // while paused, dead or in the editor rather than freezing mid-sway.
+        // Before the early return, so wind keeps blowing while paused, dead or in
+        // the editor rather than freezing mid-sway.
         this.updateGrass(camera);
-        updateCloudShadows(dt);
 
         if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
 
@@ -134,12 +131,28 @@ export class World {
 
         this.player.update(dt);
         this.collision.resolve([...this.entities, this.player]);
+        this.seatOnTerrain();
         this.interaction.update(this.entities, this.player.mesh.position);
 
         this.followPlayer(camera);
         this.combat.update(dt, camera);
 
         if (this.player.getComponent('health')?.isDead()) this.die(camera);
+    }
+
+    /**
+     * Rides every mover on the terrain surface. Done centrally, after movement
+     * and collision have settled x/z, rather than inside each component: a hard
+     * snap is exact, cannot fall through the world, and needs no gravity — and
+     * one loop here beats threading a ground offset through movement, dash,
+     * pathfinding and the AI.
+     */
+    private seatOnTerrain() {
+        for (const entity of this.entities) {
+            snapToGround(entity.mesh, entity.groundOffset);
+        }
+
+        snapToGround(this.player.mesh, this.player.groundOffset);
     }
 
     private updateGrass(camera: THREE.PerspectiveCamera) {
@@ -164,6 +177,13 @@ export class World {
 
     private followPlayer(camera: THREE.PerspectiveCamera) {
         camera.position.copy(this.player.mesh.position).add(CAMERA_OFFSET);
+        // The offset alone would sink the camera into rising ground behind the
+        // player; lifting it to clear the terrain under it is cheaper than a
+        // raycast and enough for a fixed isometric view.
+        camera.position.y = Math.max(
+            camera.position.y,
+            groundHeight(camera.position.x, camera.position.z) + CAMERA_CLEARANCE,
+        );
         camera.lookAt(this.player.mesh.position);
         camera.updateMatrixWorld();
     }
@@ -201,6 +221,7 @@ export class World {
 
         this.player.mesh.position.x = spawnX;
         this.player.mesh.position.z = spawnZ;
+        snapToGround(this.player.mesh, this.player.groundOffset);
 
         this.followPlayer(camera);
     }

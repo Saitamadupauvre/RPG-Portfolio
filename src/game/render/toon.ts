@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { applyCloudShadows } from './cloudShadows';
 
 /**
  * Anything the hit flash (or any tint effect) is allowed to drive. Written as a
@@ -73,8 +72,6 @@ export function createToonMaterial(options: ToonMaterialOptions): THREE.MeshToon
         opacity: options.opacity ?? 1,
         gradientMap: getToonGradient(),
     });
-
-    applyCloudShadows(material, 'toon-cloud');
 
     return material;
 }

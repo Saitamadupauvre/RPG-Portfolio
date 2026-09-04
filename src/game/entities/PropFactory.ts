@@ -12,7 +12,8 @@ export function createProp(entity: PropEntity): Entity {
     const material = createToonMaterial({ color: entity.collidable ? 0x7c6f64 : 0xa89984 });
     const mesh = new THREE.Mesh(geometry, material);
 
-    applyTransform(mesh, entity);
+    // Box geometry is centred on its origin, so it stands half its height up.
+    applyTransform(mesh, entity, height / 2);
 
     return new Entity(entity.id, mesh);
 }

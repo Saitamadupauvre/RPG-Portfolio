@@ -115,6 +115,7 @@ export class EnemyPool {
     }
 
     public acquire(source: EnemyEntity): Entity {
+        const look = enemyLook[source.enemyType];
         const position = new THREE.Vector3(...source.position);
         const pool = this.free.get(source.enemyType);
         const entity = pool?.pop() ?? this.createEnemy(source.enemyType, source.id, position);
@@ -124,9 +125,12 @@ export class EnemyPool {
         const health = entity.getComponent('health');
         if (health) health.hp = health.maxHp;
         entity.getComponent('healthBar')?.reset();
-        entity.getComponent('enemyAI')?.setOrigin(position);
-
-        applyTransform(entity.mesh, source);
+        // Boxes are centred on their origin, so an enemy stands half its size up.
+        entity.groundOffset = look.size / 2;
+        applyTransform(entity.mesh, source, entity.groundOffset);
+        // Origin is read after the transform so the AI returns to the point on
+        // the terrain the enemy actually stands on, not the layout's flat Y.
+        entity.getComponent('enemyAI')?.setOrigin(entity.mesh.position.clone());
         entity.mesh.visible = true;
 
         return entity;

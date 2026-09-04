@@ -8,6 +8,11 @@ export class Entity {
     public readonly mesh: THREE.Object3D;
 
     public readonly collisionRadius?: number;
+    /**
+     * Distance from the mesh origin to the entity's feet. Whatever seats the
+     * entity on the terrain adds this to the ground height.
+     */
+    public groundOffset = 0;
     /** Static bodies push others out but are never pushed themselves. */
     public readonly isStatic: boolean;
     private components = new Map<ComponentKey, Component>();

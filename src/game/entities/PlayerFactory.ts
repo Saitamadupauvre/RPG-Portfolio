@@ -84,7 +84,12 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
         })
         .catch((error) => console.error('[player] model failed to load, keeping placeholder', error));
 
-    return new Entity('player', root, PLAYER_RADIUS)
+    const entity = new Entity('player', root, PLAYER_RADIUS);
+    // The capsule's origin is its centre, so the root rides half a body above
+    // the ground it stands on.
+    entity.groundOffset = PLAYER_HEIGHT / 2;
+
+    return entity
         .addComponent('movement', movement)
         .addComponent('dash', dash)
         .addComponent('attack', attack)

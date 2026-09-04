@@ -48,7 +48,10 @@ export class Experience {
         if (import.meta.env.DEV) {
             this.editor = new EditorSystem(this);
             window.addEventListener('keydown', (event) => {
-                if (event.code === 'F2') this.toggleEditor();
+                if (event.code !== 'F1') return;
+                // Browsers open their help window on F1 unless we claim the key.
+                event.preventDefault();
+                this.toggleEditor();
             });
         }
 

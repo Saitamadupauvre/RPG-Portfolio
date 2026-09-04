@@ -1,4 +1,4 @@
-import { type NavGrid, colToWorld, rowToWorld, isBlocked, worldToCol, worldToRow } from './NavGrid';
+import { type NavGrid, canTraverse, colToWorld, rowToWorld, isBlocked, worldToCol, worldToRow } from './NavGrid';
 
 interface Node {
     col: number;
@@ -38,10 +38,15 @@ export function findPath(grid: NavGrid, start: [number, number], end: [number, n
         for (const [dc, dr] of NEIGHBORS) {
             const col = current.col + dc;
             const row = current.row + dr;
-            if (isBlocked(grid, col, row)) continue;
+            if (!canTraverse(grid, current.col, current.row, col, row)) continue;
             if (closed.has(key(col, row))) continue;
 
-            if (dc !== 0 && dr !== 0 && (isBlocked(grid, current.col + dc, current.row) || isBlocked(grid, current.col, current.row + dr))) continue;
+            // A diagonal may not cut a corner: both orthogonal steps that make it
+            // up have to be walkable too, or a path slips through a cliff seam.
+            if (dc !== 0 && dr !== 0 && (
+                !canTraverse(grid, current.col, current.row, current.col + dc, current.row) ||
+                !canTraverse(grid, current.col, current.row, current.col, current.row + dr)
+            )) continue;
 
             const stepCost = dc !== 0 && dr !== 0 ? Math.SQRT2 : 1;
             const g = current.g + stepCost;

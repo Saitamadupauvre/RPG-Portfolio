@@ -1,5 +1,6 @@
 import { mapLayout } from '../../data/mapLayout';
 import type { MapEntity } from '../../data/MapEntity';
+import { getTileGrid } from './terrainField';
 import {
     buildNavGrid,
     colToWorld,
@@ -17,8 +18,9 @@ function isBlocking(entity: MapEntity): boolean {
     return entity.kind === 'statue' || entity.kind === 'bonfire';
 }
 
-const GROUND_SIZE = 50;
 const CELL_SIZE = 0.5;
+
+
 
 let cached: NavGrid | null = null;
 
@@ -72,6 +74,25 @@ function build(layout: MapEntity[]): NavGrid {
             ] as [number, number],
         }));
 
-    const half = GROUND_SIZE / 2;
-    return buildNavGrid(obstacles, { minX: -half, maxX: half, minZ: -half, maxZ: half }, CELL_SIZE);
+    const tiles = getTileGrid();
+    const halfX = (tiles.map.cols * tiles.map.tileSize) / 2;
+    const halfZ = (tiles.map.rows * tiles.map.tileSize) / 2;
+
+    const grid = buildNavGrid(
+        obstacles,
+        { minX: -halfX, maxX: halfX, minZ: -halfZ, maxZ: halfZ },
+        CELL_SIZE,
+    );
+
+    // Cliffs are a property of the *step* between two places, not of either
+    // place: standing at the top edge of a drop is fine, walking off it is not.
+    // A boolean per cell cannot say that, so traversal is a predicate instead.
+    grid.canTraverse = (fromX, fromZ, toX, toZ) => tiles.canStep(
+        tiles.colAt(fromX),
+        tiles.rowAt(fromZ),
+        tiles.colAt(toX),
+        tiles.rowAt(toZ),
+    );
+
+    return grid;
 }

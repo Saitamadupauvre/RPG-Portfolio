@@ -93,6 +93,11 @@ export class EditorSystem {
         events.on('editorEntityEdited', (edited) => this.applyEdit(edited));
         events.on('editorTerrainCopyRequested', () => copyTiles(this.tiles));
         events.on('editorTileModeChanged', (enabled) => this.setTileMode(enabled));
+        events.on('editorWaterLevelChanged', (level) => {
+            this.tiles = { ...this.tiles, waterLevel: level };
+            this.experience.world.water.setLevel(level);
+            saveWorkingTiles(this.tiles);
+        });
         events.on('editorTileGridResized', (cols, rows) => {
             this.tiles = resizeTileMap(this.tiles, cols, rows);
             this.tileSelection.clear();
@@ -101,7 +106,7 @@ export class EditorSystem {
 
         this.tileSelection = new TileSelection(scene);
         rebuildTileGrid(this.tiles);
-        this.experience.world.terrain.rebuild(this.tiles);
+        this.experience.world.rebuildTerrain(this.tiles);
         this.experience.world.loadLayout(this.layout);
     }
 
@@ -218,7 +223,7 @@ export class EditorSystem {
     private rebuildTerrain() {
         const grid = rebuildTileGrid(this.tiles);
         this.refreshGridHelper();
-        this.experience.world.terrain.rebuild(this.tiles);
+        this.experience.world.rebuildTerrain(this.tiles);
         this.tileSelection.refresh(grid);
         saveWorkingTiles(this.tiles);
         // Cliff steps are read from the tile grid by the nav grid, so the layout

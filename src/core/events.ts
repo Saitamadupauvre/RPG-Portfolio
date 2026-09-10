@@ -32,6 +32,7 @@ export type AppEvents = {
     editorLayoutChanged: [count: number];
     editorTileModeChanged: [enabled: boolean];
     editorTileGridResized: [cols: number, rows: number];
+    editorWaterLevelChanged: [level: number];
     editorTileSelectionChanged: [count: number, level: number | null];
     editorTerrainCopyRequested: [];
 };

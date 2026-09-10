@@ -85,6 +85,9 @@ export function initEditorView() {
         rows = value;
         pushGridSize();
     }));
+    gridSizeEl.appendChild(numberField('water', tileMap.waterLevel ?? 0, (value) => {
+        events.emit('editorWaterLevelChanged', value);
+    }, false));
 
     for (const entry of palette) {
         const button = document.createElement('button');
@@ -151,10 +154,22 @@ export function initEditorView() {
     });
 }
 
-function numberField(label: string, value: number, onChange: (value: number) => void): HTMLElement {
+/**
+ * `whole` covers grid sizes, which are counts and cannot be zero or fractional.
+ * The water level is neither — it is a world Y that is usually negative — so it
+ * opts out rather than being silently rounded up to 1.
+ */
+function numberField(
+    label: string,
+    value: number,
+    onChange: (value: number) => void,
+    whole = true,
+): HTMLElement {
     const field = input('number', String(value), (raw) => {
-        const parsed = Math.round(Number(raw));
-        if (Number.isFinite(parsed) && parsed > 0) onChange(parsed);
+        const parsed = whole ? Math.round(Number(raw)) : Number(raw);
+        if (!Number.isFinite(parsed)) return;
+        if (whole && parsed <= 0) return;
+        onChange(parsed);
     });
     field.classList.add('editor-number');
 

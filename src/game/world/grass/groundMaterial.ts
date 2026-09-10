@@ -19,6 +19,7 @@ const GROUND_FRAGMENT_PARS = /* glsl */ `
 varying vec2 vGroundXZ;
 varying float vFlatness;
 uniform vec3 uCliffColor;
+uniform vec3 uCliffColorDark;
 uniform float uCliffStart;
 uniform float uCliffEnd;
 ${PATCH_GLSL}
@@ -33,7 +34,9 @@ ${PATCH_GLSL}
 const GROUND_COLOR = /* glsl */ `
 #include <color_fragment>
 float cliff = 1.0 - smoothstep(uCliffStart, uCliffEnd, vFlatness);
-diffuseColor.rgb = mix(grassGroundColor(vGroundXZ), uCliffColor, cliff);
+float rockNoise = grassNoise(vGroundXZ * 0.4);
+vec3 rockColor = mix(uCliffColorDark, uCliffColor, smoothstep(0.35, 0.65, rockNoise));
+diffuseColor.rgb = mix(grassGroundColor(vGroundXZ), rockColor, cliff);
 `;
 
 /**
@@ -48,12 +51,14 @@ diffuseColor.rgb = mix(grassGroundColor(vGroundXZ), uCliffColor, cliff);
 /** Cosine of the slope where rock starts taking over, and where it fully has. */
 const CLIFF_END = Math.cos((30 * Math.PI) / 180);
 const CLIFF_START = Math.cos((48 * Math.PI) / 180);
-const CLIFF_COLOR = 0x7d7469;
+const CLIFF_COLOR = 0xb8622f;
+const CLIFF_COLOR_DARK = 0x8a4322;
 
 export function createGroundMaterial(): THREE.MeshLambertMaterial {
     const uniforms = {
         ...createPatchUniforms(),
         uCliffColor: { value: new THREE.Color(CLIFF_COLOR) },
+        uCliffColorDark: { value: new THREE.Color(CLIFF_COLOR_DARK) },
         uCliffStart: { value: CLIFF_START },
         uCliffEnd: { value: CLIFF_END },
     };

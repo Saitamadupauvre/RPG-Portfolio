@@ -16,6 +16,13 @@ export type TileMap = {
     levelHeight: number;
     /** Integer level per tile, row-major from the -X/-Z corner. */
     levels: number[];
+    /**
+     * World Y the sea surface sits at. Part of the tile data rather than the
+     * renderer because it is a level-design choice: it decides which sculpted
+     * dips are lakes and how far the island rises out of the ocean. Optional so
+     * a map exported before it existed still parses.
+     */
+    waterLevel?: number;
 };
 
 const COLS = 60;
@@ -27,6 +34,9 @@ export const tileMap: TileMap = {
     tileSize: 2,
     levelHeight: 1,
     levels: new Array<number>(COLS * ROWS).fill(0),
+    // Just under the default flat floor, so an unsculpted map is dry land and
+    // only tiles dug below zero fill with water.
+    waterLevel: -0.5,
 };
 
 /**

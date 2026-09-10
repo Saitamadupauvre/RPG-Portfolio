@@ -17,7 +17,8 @@ import { InteractionSystem } from "../InteractionSystem";
 import { findFreePoint, rebuildNavGrid } from "./navigation";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { Terrain } from "./Terrain";
-import { tileMap } from "../../data/tileMap";
+import { Water } from "./water/Water";
+import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
@@ -37,6 +38,7 @@ export class World {
     private grass = new GrassSurface();
     private grassColliders: GrassCollider[] = [];
     public terrain: Terrain;
+    public water: Water;
     public player: Entity;
 
     constructor(experience: Experience) {
@@ -48,6 +50,11 @@ export class World {
 
         this.terrain = new Terrain(tileMap, this.grass);
         this.entityGroup.add(this.terrain.mesh);
+
+        // In the entity group rather than the scene, so it hides with the rest of
+        // the world when the game is not the visible state.
+        this.water = new Water(tileMap.waterLevel ?? 0);
+        this.entityGroup.add(this.water.mesh);
 
         this.player = createPlayer(CAMERA_OFFSET, this.entityGroup);
         this.player.mesh.castShadow = true;
@@ -107,6 +114,17 @@ export class World {
         }
     }
 
+    /**
+     * The single entry point for a terrain change. Terrain and water are two
+     * views of the same heightfield, so letting a caller rebuild one without the
+     * other leaves the coastline drawn against the previous shape.
+     */
+    public rebuildTerrain(map: TileMap) {
+        this.terrain.rebuild(map);
+        this.water.setLevel(map.waterLevel ?? this.water.getLevel());
+        this.water.onTerrainChanged();
+    }
+
     public getEntities(): Entity[] {
         return this.entities;
     }
@@ -122,6 +140,9 @@ export class World {
         // Before the early return, so wind keeps blowing while paused, dead or in
         // the editor rather than freezing mid-sway.
         this.updateGrass(camera);
+        // Same reasoning: the sea should keep moving while paused, dead or being
+        // sculpted, instead of freezing mid-swell.
+        this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
 
         if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
 

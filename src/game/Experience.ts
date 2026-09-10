@@ -3,6 +3,7 @@ import { World } from './world/World';
 import { PlayerAttackInteraction } from './PlayerAttackInteraction';
 import { EditorSystem } from './editor/EditorSystem';
 import { stateMachine } from '../core/StateMachine';
+import { WaterDepthPrepass } from './world/water/depthPrepass';
 
 export class Experience {
     private static instance: Experience;
@@ -16,6 +17,8 @@ export class Experience {
     public world: World;
 
     private editor: EditorSystem | null = null;
+    private waterDepthPrepass: WaterDepthPrepass;
+    private drawingSize = new THREE.Vector2();
 
     private constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -41,6 +44,9 @@ export class Experience {
         this.renderer.toneMappingExposure = 1.12;
 
         this.timer = new THREE.Timer();
+
+        this.renderer.getDrawingBufferSize(this.drawingSize);
+        this.waterDepthPrepass = new WaterDepthPrepass(this.drawingSize.x, this.drawingSize.y);
 
         this.world = new World(this);
         new PlayerAttackInteraction(this);
@@ -87,6 +93,9 @@ export class Experience {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        this.renderer.getDrawingBufferSize(this.drawingSize);
+        this.waterDepthPrepass.setSize(this.drawingSize.x, this.drawingSize.y);
     }
 
     private tick() {
@@ -94,6 +103,14 @@ export class Experience {
 
         if (this.world) this.world.update(this.timer.getDelta());
         this.editor?.update();
+
+        // The water shader reads back what is actually behind it, so its shore
+        // and foam hug the rendered geometry exactly - this has to happen before
+        // the real render, with the water itself hidden, or it would read its
+        // own depth back.
+        this.waterDepthPrepass.render(this.renderer, this.scene, this.camera, this.world.water.mesh);
+        this.renderer.getDrawingBufferSize(this.drawingSize);
+        this.world.water.setSceneDepth(this.waterDepthPrepass.depthTexture, this.camera, this.drawingSize.x, this.drawingSize.y);
 
         this.renderer.render(this.scene, this.camera);
 

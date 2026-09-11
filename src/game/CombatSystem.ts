@@ -3,6 +3,7 @@ import type { Entity } from './entities/Entity';
 import type { EnemyEntity } from '../data/MapEntity';
 import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
+import { defeatBoss } from '../domain/defeatedBosses';
 import { applyTransform } from './entities/applyTransform';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
@@ -128,6 +129,7 @@ export class CombatSystem {
         this.entityGroup.remove(entity.mesh);
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
         enemyPool.release(entity, source.enemyType);
+        if (source.enemyType === 'boss') defeatBoss(source.id);
         addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
     }

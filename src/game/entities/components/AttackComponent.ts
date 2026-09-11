@@ -15,9 +15,6 @@ export interface AttackHooks {
     onAttackEnd?: () => void;
 }
 
-/** Draw the swing hitbox as a translucent box. Debug only - the sword trail is the real feedback. */
-const SHOW_HITBOX = false;
-
 const DEFAULTS: Required<AttackHitboxOptions> = {
     size: new THREE.Vector3(0.6, 0.6, 0.6),
     color: 0xff0000,
@@ -31,30 +28,31 @@ export class AttackComponent implements Component {
     public readonly name = 'attack';
 
     private mesh: THREE.Object3D;
-    private group: THREE.Object3D;
     private options: Required<AttackHitboxOptions>;
     private hooks: AttackHooks;
 
-    private hitbox: THREE.Mesh | null = null;
+    private isAttackingState = false;
+    private cachedHitbox = new THREE.Box3();
+    private center = new THREE.Vector3();
+    private faceDirection = new THREE.Vector3();
     private elapsed = 0;
     private hitIds = new Set<string>();
     private activeOptions: Required<AttackHitboxOptions>;
 
-    constructor(mesh: THREE.Object3D, group: THREE.Object3D, options: AttackHitboxOptions = {}, hooks: AttackHooks = {}) {
+    constructor(mesh: THREE.Object3D, _group: THREE.Object3D, options: AttackHitboxOptions = {}, hooks: AttackHooks = {}) {
         this.mesh = mesh;
-        this.group = group;
         this.options = { ...DEFAULTS, ...options };
         this.activeOptions = this.options;
         this.hooks = hooks;
     }
 
     public get isAttacking(): boolean {
-        return this.hitbox !== null;
+        return this.isAttackingState;
     }
 
     /** 0..1 progress through the active swing, or null when idle. Drives the arm animation. */
     public get swingProgress(): number | null {
-        if (!this.hitbox) return null;
+        if (!this.isAttackingState) return null;
         return Math.min(1, this.elapsed / this.activeOptions.duration);
     }
 
@@ -68,15 +66,15 @@ export class AttackComponent implements Component {
     }
 
     public face(aimPoint: THREE.Vector3): THREE.Vector3 | null {
-        const direction = new THREE.Vector3().subVectors(aimPoint, this.mesh.position).setY(0);
-        if (direction.lengthSq() === 0) return null;
-        direction.normalize();
-        this.mesh.rotation.y = Math.atan2(direction.x, direction.z);
-        return direction;
+        this.faceDirection.subVectors(aimPoint, this.mesh.position).setY(0);
+        if (this.faceDirection.lengthSq() === 0) return null;
+        this.faceDirection.normalize();
+        this.mesh.rotation.y = Math.atan2(this.faceDirection.x, this.faceDirection.z);
+        return this.faceDirection;
     }
 
     public trigger(aimPoint: THREE.Vector3, overrides: AttackHitboxOptions = {}) {
-        if (this.hitbox) return;
+        if (this.isAttackingState) return;
 
         const direction = this.face(aimPoint);
         if (!direction) return;
@@ -84,26 +82,17 @@ export class AttackComponent implements Component {
         this.activeOptions = { ...this.options, ...overrides };
         this.hooks.onAttackStart?.();
 
-        const geometry = new THREE.BoxGeometry(this.activeOptions.size.x, this.activeOptions.size.y, this.activeOptions.size.z);
-        const material = new THREE.MeshBasicMaterial({
-            color: this.activeOptions.color,
-            transparent: true,
-            opacity: this.activeOptions.opacity,
-        });
+        this.center.copy(this.mesh.position).addScaledVector(direction, this.activeOptions.distance);
+        this.cachedHitbox.setFromCenterAndSize(this.center, this.activeOptions.size);
 
-        this.hitbox = new THREE.Mesh(geometry, material);
-        // Kept in the scene graph even when hidden: Box3.setFromObject reads geometry, not visibility,
-        // so hit detection is unaffected and toggling SHOW_HITBOX needs no other change.
-        this.hitbox.visible = SHOW_HITBOX;
-        this.hitbox.position.copy(this.mesh.position).addScaledVector(direction, this.activeOptions.distance);
-        this.group.add(this.hitbox);
+        this.isAttackingState = true;
         this.elapsed = 0;
         this.hitIds.clear();
     }
 
     public getHitbox(): THREE.Box3 | null {
-        if (!this.hitbox) return null;
-        return new THREE.Box3().setFromObject(this.hitbox);
+        if (!this.isAttackingState) return null;
+        return this.cachedHitbox;
     }
 
     public registerHit(id: string): boolean {
@@ -113,15 +102,12 @@ export class AttackComponent implements Component {
     }
 
     public update(dt: number) {
-        if (!this.hitbox) return;
+        if (!this.isAttackingState) return;
 
         this.elapsed += dt;
         if (this.elapsed < this.activeOptions.duration) return;
 
-        this.group.remove(this.hitbox);
-        this.hitbox.geometry.dispose();
-        (this.hitbox.material as THREE.Material).dispose();
-        this.hitbox = null;
+        this.isAttackingState = false;
         this.hooks.onAttackEnd?.();
     }
 }

@@ -49,6 +49,15 @@ export class CombatSystem {
         this.sources.push(source);
     }
 
+    /** Drops a despawned enemy: its source leaves too, so a rest cannot revive it. */
+    public removeEnemy(entity: Entity) {
+        const index = this.enemies.findIndex((e) => e.entity === entity);
+        if (index === -1) return;
+
+        const [removed] = this.enemies.splice(index, 1);
+        this.sources = this.sources.filter((source) => source !== removed.source);
+    }
+
     public resetEnemies() {
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;

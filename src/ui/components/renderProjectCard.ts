@@ -33,6 +33,30 @@ export function renderProjectCard(project: Project, cardStyle: CardStyle, locked
         }
     }
 
+    const links = document.createElement('div');
+    links.className = 'project-card-links';
+    if (!locked) {
+        if (project.links.demo) {
+            const demoLink = document.createElement('a');
+            demoLink.className = 'btn project-link-btn';
+            demoLink.href = project.links.demo;
+            demoLink.target = '_blank';
+            demoLink.rel = 'noopener noreferrer';
+            demoLink.textContent = 'Live Demo ↗';
+            links.appendChild(demoLink);
+        }
+        if (project.links.repo) {
+            const repoLink = document.createElement('a');
+            repoLink.className = 'btn project-link-btn';
+            repoLink.href = project.links.repo;
+            repoLink.target = '_blank';
+            repoLink.rel = 'noopener noreferrer';
+            repoLink.textContent = 'GitHub ↗';
+            links.appendChild(repoLink);
+        }
+    }
+
     card.append(badge, title, description, tags);
+    if (links.children.length > 0) card.appendChild(links);
     return card;
 }

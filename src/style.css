@@ -226,6 +226,19 @@ body {
   opacity: 0.7;
 }
 
+.project-card-links {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.project-link-btn {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  text-decoration: none;
+  display: inline-block;
+}
+
 .book-content {
   width: min(90vw, 900px);
   max-height: 80vh;

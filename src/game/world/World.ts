@@ -151,7 +151,8 @@ export class World {
         }
 
         this.player.update(dt);
-        this.collision.resolve([...this.entities, this.player]);
+        const allBodies = this.entities.concat(this.player);
+        this.collision.resolve(allBodies);
         this.seatOnTerrain();
         this.interaction.update(this.entities, this.player.mesh.position);
 

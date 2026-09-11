@@ -77,8 +77,8 @@ function reconstruct(grid: NavGrid, end: Node): [number, number][] {
     const path: [number, number][] = [];
     let node: Node | null = end;
     while (node) {
-        path.unshift([colToWorld(grid, node.col), rowToWorld(grid, node.row)]);
+        path.push([colToWorld(grid, node.col), rowToWorld(grid, node.row)]);
         node = node.parent;
     }
-    return path;
+    return path.reverse();
 }

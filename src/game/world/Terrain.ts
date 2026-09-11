@@ -2,18 +2,31 @@ import * as THREE from 'three';
 import type { TileMap } from '../../data/tileMap';
 import { createTileGrid, type TileGrid } from '../../domain/terrain/TileGrid';
 import { createGroundMaterial } from './grass/groundMaterial';
-import type { GrassSurface } from './grass/GrassSurface';
-import { getTileGrid, rebuildTileGrid } from './terrainField';
+import type { GrassBounds, GrassSurface } from './grass/GrassSurface';
+import { rebuildTileGrid } from './terrainField';
 
 const GRASS_DENSITY = 90;
 const GRASS_CHUNK_SIZE = 4;
 /**
- * Ceiling on total blades. Density alone is per square unit, so a bigger map
- * would silently multiply the blade count — a 120-unit grid at full density is
- * over a million instances to build and keep in memory. Distance culling saves
- * the draw calls, not the construction, so the cap has to be applied up front.
+ * Ceiling on blades held at once. Density alone is per square unit, so an area
+ * this is not divided against would silently multiply the blade count. Distance
+ * culling saves the draw calls, not the construction, so the cap is applied up
+ * front — but only against the streamed ring below, never the whole map.
  */
 const GRASS_BUDGET = 260_000;
+/** Side of one streamed grass patch, in world units. */
+const GRASS_PATCH_SIZE = 8;
+/** How far from the player grass exists at all. Also the surface's cull distance. */
+const GRASS_VIEW_RADIUS = 40;
+/** Patch ring that covers that radius in every direction. */
+const GRASS_PATCH_RADIUS = Math.ceil(GRASS_VIEW_RADIUS / GRASS_PATCH_SIZE);
+/**
+ * Area of the grown ring — a constant. Dividing the budget by this instead of
+ * by the map area is the whole point: grow the map and the density does not
+ * move, because the grass that exists is always the same ring around the player.
+ */
+const GRASS_RING_AREA = ((GRASS_PATCH_RADIUS * 2 + 1) * GRASS_PATCH_SIZE) ** 2;
+const GRASS_PATCH_DENSITY = Math.min(GRASS_DENSITY, GRASS_BUDGET / GRASS_RING_AREA);
 /** Grass stops growing on anything steeper than this — cliff faces stay bare rock. */
 const MAX_GRASS_SLOPE = Math.cos((45 * Math.PI) / 180);
 
@@ -34,6 +47,15 @@ export class Terrain {
     private material = createGroundMaterial();
     private grass: GrassSurface;
     private topPositions: number[] = [];
+    /**
+     * Sampling geometry, kept between patches: a streamed ring grows a hundred
+     * patches off the same tops, and rebuilding this buffer for each one is the
+     * most expensive thing in a regrow.
+     */
+    private topsGeometry: THREE.BufferGeometry | null = null;
+    /** Grown patch keys, `${col},${row}` in patch space. */
+    private grassPatches = new Set<string>();
+    private lastGrassKey: string | null = null;
 
     constructor(map: TileMap, grass: GrassSurface) {
         this.grass = grass;
@@ -44,39 +66,92 @@ export class Terrain {
         // A cliff has to drop a shadow onto the ground at its foot, or a two-level
         // wall reads as a flat painted stripe.
         this.mesh.castShadow = true;
-
-        this.growGrass();
     }
 
     /** Rebuilds after tile levels change: geometry, tile grid and grass all follow. */
     public rebuild(map: TileMap) {
         const grid = rebuildTileGrid(map);
 
-        this.grass.detach(this.mesh);
+        this.clearGrass();
         this.mesh.geometry.dispose();
         const { geometry, topPositions } = buildGeometry(grid);
         this.mesh.geometry = geometry;
         this.topPositions = topPositions;
-        this.growGrass();
     }
 
-    private growGrass() {
-        const grid = getTileGrid();
-        const area = grid.map.cols * grid.map.rows * grid.map.tileSize ** 2;
+    /**
+     * Grows and drops grass patches around [x, z]. Like the entity streamer, the
+     * common frame is one compare: patches only change on a border crossing.
+     */
+    public updateGrass(x: number, z: number) {
+        const col = Math.floor(x / GRASS_PATCH_SIZE);
+        const row = Math.floor(z / GRASS_PATCH_SIZE);
+        const key = `${col},${row}`;
+        if (key === this.lastGrassKey) return;
+        this.lastGrassKey = key;
 
+        const wanted = new Set<string>();
+        for (let r = row - GRASS_PATCH_RADIUS; r <= row + GRASS_PATCH_RADIUS; r++) {
+            for (let c = col - GRASS_PATCH_RADIUS; c <= col + GRASS_PATCH_RADIUS; c++) {
+                wanted.add(`${c},${r}`);
+            }
+        }
+
+        for (const grown of this.grassPatches) {
+            if (wanted.has(grown)) continue;
+
+            this.grass.detach(this.mesh, grown);
+            this.grassPatches.delete(grown);
+        }
+
+        for (const patch of wanted) {
+            if (this.grassPatches.has(patch)) continue;
+
+            this.growPatch(patch);
+            this.grassPatches.add(patch);
+        }
+    }
+
+    private clearGrass() {
+        this.grass.detach(this.mesh);
+        this.topsGeometry?.dispose();
+        this.topsGeometry = null;
+        this.grassPatches.clear();
+        // Forces the next updateGrass to regrow rather than see an unchanged key.
+        this.lastGrassKey = null;
+    }
+
+    private patchBounds(key: string): GrassBounds {
+        const [col, row] = key.split(',').map(Number);
+
+        return {
+            minX: col * GRASS_PATCH_SIZE,
+            maxX: (col + 1) * GRASS_PATCH_SIZE,
+            minZ: row * GRASS_PATCH_SIZE,
+            maxZ: (row + 1) * GRASS_PATCH_SIZE,
+        };
+    }
+
+    private growPatch(key: string) {
         // Grass is sampled off a tops-only geometry, not the render geometry:
         // the cliff walls and their talus skirts include near-flat facets
         // (the base bulge, the mound) that would otherwise pass the slope
         // filter below and plant floating blades on the rock. Swapping the
         // geometry only for the sampling call keeps the render mesh untouched.
-        const topsGeometry = new THREE.BufferGeometry();
-        topsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(this.topPositions, 3));
+        if (!this.topsGeometry) {
+            this.topsGeometry = new THREE.BufferGeometry();
+            this.topsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(this.topPositions, 3));
+        }
+
         const renderGeometry = this.mesh.geometry;
-        this.mesh.geometry = topsGeometry;
+        this.mesh.geometry = this.topsGeometry;
 
         this.grass.attach(this.mesh, {
-            density: Math.min(GRASS_DENSITY, GRASS_BUDGET / area),
+            density: GRASS_PATCH_DENSITY,
             chunkSize: GRASS_CHUNK_SIZE,
+            maxDistance: GRASS_VIEW_RADIUS,
+            bounds: this.patchBounds(key),
+            key,
             // Rejects blades whose triangle points sideways — belt-and-braces
             // now that walls are excluded up front, and still needed for any
             // steep-but-not-cliff tile-top geometry in the future.
@@ -84,11 +159,10 @@ export class Terrain {
         });
 
         this.mesh.geometry = renderGeometry;
-        topsGeometry.dispose();
     }
 
     public dispose() {
-        this.grass.detach(this.mesh);
+        this.clearGrass();
         this.mesh.geometry.dispose();
         this.material.dispose();
     }

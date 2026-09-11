@@ -32,7 +32,7 @@ const RESPAWN_DELAY_MS = 1200;
 
 export class World {
     private experience: Experience;
-    /** Live entities per loaded chunk â€” the authority on what exists. */
+    /** Live entities per loaded chunk — the authority on what exists. */
     private loaded = new Map<ChunkKey, Entity[]>();
     /**
      * Flat view of `loaded`, rebuilt only when the chunk set changes. Every
@@ -268,6 +268,9 @@ export class World {
             this.grassColliders.push({ position: this.player.mesh.position, radius: this.player.collisionRadius });
         }
 
+        // Grass exists only in a ring around the player, so the ring has to
+        // follow them before the surface is asked to draw it.
+        this.terrain.updateGrass(this.player.mesh.position.x, this.player.mesh.position.z);
         this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);
     }
 

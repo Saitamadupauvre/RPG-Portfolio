@@ -183,10 +183,14 @@ export class World {
         camera.updateMatrixWorld();
 
         this.grassColliders.length = 0;
-        for (const entity of [...this.entities, this.player]) {
-            // collisionRadius is optional on Entity; props without one flatten nothing.
-            if (entity.collisionRadius === undefined) continue;
+        for (const entity of this.entities) {
+            // Only dynamic moving entities (enemies, player) part the grass as they walk.
+            // Static props, walls, and structures are excluded to avoid stretching grass around wide obstacles.
+            if (entity.collisionRadius === undefined || entity.isStatic) continue;
             this.grassColliders.push({ position: entity.mesh.position, radius: entity.collisionRadius });
+        }
+        if (this.player.collisionRadius !== undefined) {
+            this.grassColliders.push({ position: this.player.mesh.position, radius: this.player.collisionRadius });
         }
 
         this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);

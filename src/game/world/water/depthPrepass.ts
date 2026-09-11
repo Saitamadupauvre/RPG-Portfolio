@@ -27,6 +27,13 @@ export class WaterDepthPrepass {
         const wasVisible = water.visible;
         water.visible = false;
 
+        // Rendered with each mesh's own material rather than a cheap
+        // `scene.overrideMaterial = MeshDepthMaterial`. The grass patches its
+        // vertex shader to bend blades (see grassMaterial.ts), and an override
+        // material does not run that displacement — grass would write depth at
+        // its undisplaced positions and the shore foam would read the wrong
+        // distance. `customDepthMaterial` is no escape hatch either: three only
+        // consults it during shadow passes, not for `overrideMaterial`.
         const previousTarget = renderer.getRenderTarget();
         renderer.setRenderTarget(this.target);
         renderer.render(scene, camera);

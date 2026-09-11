@@ -121,6 +121,7 @@ export class EnemyPool {
         const entity = pool?.pop() ?? this.createEnemy(source.enemyType, source.id, position);
 
         entity.id = source.id;
+        entity.setDisposer(() => this.release(entity, source.enemyType));
 
         const health = entity.getComponent('health');
         if (health) health.hp = health.maxHp;

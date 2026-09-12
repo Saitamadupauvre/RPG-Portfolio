@@ -1,0 +1,195 @@
+name: Project board
+
+# Moves issues / PRs across the "RPG Portfolio" project board:
+#   issue opened            -> Backlog
+#   issue assigned          -> Ready
+#   branch "<issue#>-..."   -> In Progress   (GitHub's "Create a branch" naming)
+#   PR opened               -> In Review     (PR + issues it closes)
+#   PR merged into dev      -> On Dev        (+ close linked issues)
+#   PR merged into main     -> On Main       (everything currently On Dev)
+
+on:
+  issues:
+    types: [opened, reopened, assigned]
+  create:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+env:
+  PROJECT_OWNER: Saitamadupauvre
+  PROJECT_NUMBER: 1
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    # `create` also fires for tags; only care about branches
+    if: github.event_name != 'create' || github.event.ref_type == 'branch'
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const owner = process.env.PROJECT_OWNER;
+            const number = Number(process.env.PROJECT_NUMBER);
+            const { repo } = context;
+
+            // --- project + Status field lookup -----------------------------
+            const projectQuery = await github.graphql(`
+              query($owner: String!, $number: Int!) {
+                user(login: $owner) {
+                  projectV2(number: $number) {
+                    id
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField { id options { id name } }
+                    }
+                  }
+                }
+              }`, { owner, number });
+            const project = projectQuery.user.projectV2;
+            const statusField = project.field;
+            const optionId = (name) => {
+              const opt = statusField.options.find((o) => o.name === name);
+              if (!opt) throw new Error(`Status option "${name}" not found`);
+              return opt.id;
+            };
+
+            // --- helpers ---------------------------------------------------
+            // Add content (issue/PR node id) to project, return item id (idempotent)
+            async function addToProject(contentId) {
+              const res = await github.graphql(`
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                    item { id }
+                  }
+                }`, { projectId: project.id, contentId });
+              return res.addProjectV2ItemById.item.id;
+            }
+
+            async function setStatus(itemId, name) {
+              await github.graphql(`
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }`, { projectId: project.id, itemId, fieldId: statusField.id, optionId: optionId(name) });
+              core.info(`-> ${name}`);
+            }
+
+            async function moveContent(contentId, name) {
+              const itemId = await addToProject(contentId);
+              await setStatus(itemId, name);
+            }
+
+            async function issueNodeId(issueNumber) {
+              const res = await github.graphql(`
+                query($owner: String!, $repo: String!, $n: Int!) {
+                  repository(owner: $owner, name: $repo) { issue(number: $n) { id } }
+                }`, { owner: repo.owner, repo: repo.repo, n: issueNumber });
+              return res.repository.issue.id;
+            }
+
+            // Issues a PR will close ("closes #N" or linked in the sidebar)
+            async function linkedIssues(prNumber) {
+              const res = await github.graphql(`
+                query($owner: String!, $repo: String!, $n: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $n) {
+                      closingIssuesReferences(first: 50) { nodes { id number } }
+                    }
+                  }
+                }`, { owner: repo.owner, repo: repo.repo, n: prNumber });
+              return res.repository.pullRequest.closingIssuesReferences.nodes;
+            }
+
+            // Every project item whose Status equals `name`
+            async function itemsWithStatus(name) {
+              const found = [];
+              let cursor = null;
+              do {
+                const res = await github.graphql(`
+                  query($projectId: ID!, $cursor: String) {
+                    node(id: $projectId) {
+                      ... on ProjectV2 {
+                        items(first: 100, after: $cursor) {
+                          pageInfo { hasNextPage endCursor }
+                          nodes {
+                            id
+                            fieldValueByName(name: "Status") {
+                              ... on ProjectV2ItemFieldSingleSelectValue { name }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }`, { projectId: project.id, cursor });
+                const page = res.node.items;
+                found.push(...page.nodes.filter((n) => n.fieldValueByName?.name === name));
+                cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+              } while (cursor);
+              return found;
+            }
+
+            // --- event dispatch --------------------------------------------
+            const { eventName, payload } = context;
+
+            if (eventName === 'issues') {
+              const issue = payload.issue;
+              if (payload.action === 'assigned') {
+                await moveContent(issue.node_id, 'Ready');
+              } else {
+                // opened / reopened: keep Ready if already assigned, else Backlog
+                await moveContent(issue.node_id, issue.assignees.length ? 'Ready' : 'Backlog');
+              }
+              return;
+            }
+
+            if (eventName === 'create') {
+              // Branch created from an issue is named "<issue#>-<slug>"
+              const match = /^(\d+)-/.exec(payload.ref);
+              if (!match) { core.info(`Branch "${payload.ref}" has no issue number, skipping`); return; }
+              const id = await issueNodeId(Number(match[1]));
+              await moveContent(id, 'In Progress');
+              return;
+            }
+
+            if (eventName === 'pull_request') {
+              const pr = payload.pull_request;
+
+              if (payload.action !== 'closed') {
+                if (pr.draft) return;
+                await moveContent(pr.node_id, 'In Review');
+                for (const issue of await linkedIssues(pr.number)) {
+                  await moveContent(issue.id, 'In Review');
+                }
+                return;
+              }
+
+              if (!pr.merged) return;
+
+              if (pr.base.ref === 'dev') {
+                await moveContent(pr.node_id, 'On Dev');
+                for (const issue of await linkedIssues(pr.number)) {
+                  await moveContent(issue.id, 'On Dev');
+                  // GitHub only auto-closes on merge into the default branch
+                  await github.rest.issues.update({
+                    owner: repo.owner, repo: repo.repo,
+                    issue_number: issue.number, state: 'closed', state_reason: 'completed',
+                  });
+                }
+                return;
+              }
+
+              if (pr.base.ref === 'main') {
+                await moveContent(pr.node_id, 'On Main');
+                for (const item of await itemsWithStatus('On Dev')) {
+                  await setStatus(item.id, 'On Main');
+                }
+              }
+            }

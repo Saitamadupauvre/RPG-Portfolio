@@ -6,6 +6,11 @@ import { createPatchUniforms, PATCH_GLSL, type PatchUniforms } from './groundPal
 /** Compile-time loop bound: GLSL needs a constant, so the array size is fixed. */
 export const MAX_COLLIDERS = 16;
 
+/** Collider radius, in world units, past which the sideways grass shove stops growing. */
+const MAX_PUSH_RADIUS = 0.8;
+/** Fraction of that radius a blade at the collider's centre is shoved outward. */
+const PUSH_STRENGTH = 0.8;
+
 /** Tip colour: deep blue-green, so blades read as darker strokes over the ground. */
 export const GRASS_TIP_COLOR = 0x1d7350;
 
@@ -104,8 +109,12 @@ for (int i = 0; i < ${MAX_COLLIDERS}; i++) {
 
     float grassPush = 1.0 - grassDist / grassCollider.w;
     vec2 grassDir = grassDist > 0.0001 ? grassAway / grassDist : vec2(1.0, 0.0);
+    // Sideways shove scales with the collider, but clamped: a wide body would
+    // otherwise fling blades metres outward and visibly stretch the field
+    // around itself instead of parting it.
+    float grassShove = min(grassCollider.w, ${MAX_PUSH_RADIUS.toFixed(2)}) * ${PUSH_STRENGTH.toFixed(2)};
 
-    grassDisp.xz += grassDir * grassPush * grassCollider.w * 0.8 * grassW;
+    grassDisp.xz += grassDir * grassPush * grassShove * grassW;
     grassDisp.y -= grassPush * uBladeHeight * 0.9 * grassW;
 }
 

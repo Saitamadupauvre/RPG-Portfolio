@@ -68,11 +68,13 @@ export class PathfindingComponent implements Component {
         this.waypointIndex = 0;
     }
 
+    private scratchToWaypoint = new THREE.Vector3();
+
     private followPath(dt: number) {
         if (this.waypointIndex >= this.path.length) return;
 
         const waypoint = this.path[this.waypointIndex];
-        const toWaypoint = new THREE.Vector3().subVectors(waypoint, this.mesh.position).setY(0);
+        const toWaypoint = this.scratchToWaypoint.subVectors(waypoint, this.mesh.position).setY(0);
         const distance = toWaypoint.length();
 
         if (distance < WAYPOINT_RADIUS) {

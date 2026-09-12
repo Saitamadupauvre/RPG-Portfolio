@@ -3,6 +3,7 @@ import type { Entity } from './entities/Entity';
 import type { EnemyEntity } from '../data/MapEntity';
 import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
+import { defeatBoss } from '../domain/defeatedBosses';
 import { applyTransform } from './entities/applyTransform';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
@@ -46,6 +47,15 @@ export class CombatSystem {
     public addEnemy(entity: Entity, source: EnemyEntity) {
         this.enemies.push({ entity, source });
         this.sources.push(source);
+    }
+
+    /** Drops a despawned enemy: its source leaves too, so a rest cannot revive it. */
+    public removeEnemy(entity: Entity) {
+        const index = this.enemies.findIndex((e) => e.entity === entity);
+        if (index === -1) return;
+
+        const [removed] = this.enemies.splice(index, 1);
+        this.sources = this.sources.filter((source) => source !== removed.source);
     }
 
     public resetEnemies() {
@@ -128,6 +138,7 @@ export class CombatSystem {
         this.entityGroup.remove(entity.mesh);
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
         enemyPool.release(entity, source.enemyType);
+        if (source.enemyType === 'boss') defeatBoss(source.id);
         addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
     }

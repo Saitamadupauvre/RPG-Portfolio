@@ -4,6 +4,9 @@ import { createGrassMaterial, createGrassUniforms, MAX_COLLIDERS, type GrassUnif
 
 export type GrassCollider = { position: THREE.Vector3; radius: number };
 
+/** Axis-aligned XZ region, in the target's local space. */
+export type GrassBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+
 export type GrassSurfaceOptions = {
     /** Blades per square world unit of surface area. */
     density?: number;
@@ -16,6 +19,14 @@ export type GrassSurfaceOptions = {
      * blade outright — how cliff faces are kept bare.
      */
     acceptNormal?: (normal: THREE.Vector3) => number;
+    /**
+     * Grow blades only on triangles centred inside this region. Filtering at the
+     * area table — not by rejecting samples afterwards — is what makes a patch
+     * cost its own area instead of the whole mesh's.
+     */
+    bounds?: GrassBounds;
+    /** Patch label, so `detach` can drop this attach's chunks and leave the rest. */
+    key?: string;
 };
 
 /** Draw a `ratio` slice of a chunk's blades once it is `distance` units away. */
@@ -40,6 +51,7 @@ type Chunk = {
     /** Bounding sphere in the target's local space. */
     sphere: THREE.Sphere;
     target: THREE.Object3D;
+    key?: string;
     /** Instances the chunk holds; mesh.count is the LOD slice of it. */
     capacity: number;
 };
@@ -122,7 +134,7 @@ export class GrassSurface {
         const chunkSize = options.chunkSize ?? 5;
         if (options.maxDistance !== undefined) this.maxDistance = options.maxDistance;
 
-        const { areas, total } = this.buildAreaTable(target.geometry);
+        const { areas, triangles, total } = this.buildAreaTable(target.geometry, options.bounds);
         if (total <= 0) return;
 
         const bladeCount = Math.round(density * total);
@@ -131,7 +143,8 @@ export class GrassSurface {
         const buckets = new Map<string, Bucket>();
 
         for (let i = 0; i < bladeCount; i++) {
-            const triangle = this.pickTriangle(areas, total);
+            const picked = this.pickTriangle(areas, total);
+            const triangle = triangles ? triangles[picked] : picked;
             this.readTriangle(target.geometry, triangle);
             this.samplePoint();
 
@@ -192,7 +205,7 @@ export class GrassSurface {
             box.getBoundingSphere(sphere);
             sphere.radius += BLADE_HEIGHT * 1.5;
 
-            this.chunks.push({ mesh, sphere, target, capacity: matrices.length });
+            this.chunks.push({ mesh, sphere, target, key: options.key, capacity: matrices.length });
         }
     }
 
@@ -203,11 +216,11 @@ export class GrassSurface {
      * Without this, resculpting terrain would leak a full blade set per stroke:
      * GPU buffers have no garbage collector.
      */
-    public detach(target: THREE.Object3D) {
+    public detach(target: THREE.Object3D, key?: string) {
         const kept: Chunk[] = [];
 
         for (const chunk of this.chunks) {
-            if (chunk.target !== target) {
+            if (chunk.target !== target || (key !== undefined && chunk.key !== key)) {
                 kept.push(chunk);
                 continue;
             }
@@ -283,20 +296,38 @@ export class GrassSurface {
      * receive proportionally more blades — a plain "pick a random triangle"
      * would clump grass wherever the mesh happens to be finely tessellated.
      */
-    private buildAreaTable(geometry: THREE.BufferGeometry) {
+    private buildAreaTable(geometry: THREE.BufferGeometry, bounds?: GrassBounds) {
         const triangleCount = Math.floor((geometry.index?.count ?? geometry.attributes.position.count) / 3);
-        const areas = new Float64Array(triangleCount);
+        const areas: number[] = [];
+        // Only built when bounds are given: without them the table index *is* the
+        // triangle index, and an identity array would be pure overhead.
+        const triangles: number[] | null = bounds ? [] : null;
         let total = 0;
 
         for (let i = 0; i < triangleCount; i++) {
             this.readTriangle(geometry, i);
+
+            if (bounds && !this.centroidInside(bounds)) continue;
+
             _ab.subVectors(_b, _a);
             _ac.subVectors(_c, _a);
             total += _ab.cross(_ac).length() * 0.5;
-            areas[i] = total;
+            areas.push(total);
+            triangles?.push(i);
         }
 
-        return { areas, total };
+        return { areas: Float64Array.from(areas), triangles, total };
+    }
+
+    /**
+     * Centroid, not overlap: a triangle straddling a patch edge belongs to
+     * exactly one patch, so neighbouring patches never double-plant a seam.
+     */
+    private centroidInside(bounds: GrassBounds): boolean {
+        const x = (_a.x + _b.x + _c.x) / 3;
+        const z = (_a.z + _b.z + _c.z) / 3;
+
+        return x >= bounds.minX && x < bounds.maxX && z >= bounds.minZ && z < bounds.maxZ;
     }
 
     private pickTriangle(areas: Float64Array, total: number) {

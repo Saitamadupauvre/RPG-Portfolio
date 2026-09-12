@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { slideMove } from '../movement';
+import { getMovementBindings } from '../../input/keyboardLayout';
 
 export class MovementComponent implements Component {
     public readonly name = 'movement';
@@ -14,6 +15,8 @@ export class MovementComponent implements Component {
     private locked = false;
     private frozen = false;
     private turnSpeed: number;
+    /** Scratch vector: getInputDirection runs every frame, so it must not allocate. */
+    private moveDirection = new THREE.Vector3();
 
     constructor(mesh: THREE.Object3D, cameraOffset: THREE.Vector3, speed: number, turnSpeed = Math.PI * 10) {
         this.mesh = mesh;
@@ -53,14 +56,24 @@ export class MovementComponent implements Component {
         this.frozen = frozen;
     }
 
-    public getInputDirection(): THREE.Vector3 | null {
-        const move = new THREE.Vector3();
-        if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) move.add(this.forward);
-        if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) move.sub(this.forward);
-        if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) move.add(this.right);
-        if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) move.sub(this.right);
+    private isDown(codes: readonly string[]): boolean {
+        return codes.some((code) => this.keys.has(code));
+    }
 
-        return move.lengthSq() > 0 ? move.normalize() : null;
+    /**
+     * Returns a shared vector, not a fresh one — copy it if you need to keep it.
+     * The next call overwrites it.
+     */
+    public getInputDirection(): THREE.Vector3 | null {
+        const bindings = getMovementBindings();
+
+        this.moveDirection.set(0, 0, 0);
+        if (this.isDown(bindings.forward)) this.moveDirection.add(this.forward);
+        if (this.isDown(bindings.back)) this.moveDirection.sub(this.forward);
+        if (this.isDown(bindings.right)) this.moveDirection.add(this.right);
+        if (this.isDown(bindings.left)) this.moveDirection.sub(this.right);
+
+        return this.moveDirection.lengthSq() > 0 ? this.moveDirection.normalize() : null;
     }
 
     public isMoving(): boolean {

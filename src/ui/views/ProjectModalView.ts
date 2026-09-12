@@ -8,11 +8,22 @@ export function initProjectModalView() {
     const closeBtn = document.getElementById('btn-close-modal');
     if (!modal || !body || !closeBtn) return;
 
-    const close = () => modal.classList.remove('open');
+    const setOpen = (open: boolean) => {
+        modal.classList.toggle('open', open);
+        events.emit('pauseChanged', open);
+    };
+
+    const close = () => setOpen(false);
     closeBtn.addEventListener('click', close);
+
+    window.addEventListener('keydown', (event) => {
+        if (event.code === 'Escape' && modal.classList.contains('open')) {
+            close();
+        }
+    });
 
     events.on('projectDiscovered', (project) => {
         body.replaceChildren(renderProjectCard(project, projectToUICardStyle(project)));
-        modal.classList.add('open');
+        setOpen(true);
     });
 }

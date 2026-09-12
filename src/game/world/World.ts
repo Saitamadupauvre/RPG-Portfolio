@@ -15,6 +15,9 @@ import { CombatSystem } from "../CombatSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
 import { findFreePoint, rebuildNavGrid } from "./navigation";
+import { ChunkStreamer } from "./ChunkStreamer";
+import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
+import { isBossDefeated } from "../../domain/defeatedBosses";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { Terrain } from "./Terrain";
 import { Water } from "./water/Water";
@@ -29,7 +32,20 @@ const RESPAWN_DELAY_MS = 1200;
 
 export class World {
     private experience: Experience;
+    /** Live entities per loaded chunk — the authority on what exists. */
+    private loaded = new Map<ChunkKey, Entity[]>();
+    /**
+     * Flat view of `loaded`, rebuilt only when the chunk set changes. Every
+     * per-frame loop reads this, so flattening the Map each frame would trade
+     * the cost we just saved right back.
+     */
     private entities: Entity[] = [];
+    private streamer: ChunkStreamer;
+    /**
+     * The chunk an entity was spawned into. Enemies wander, so their live
+     * position is not a reliable way back to their bucket.
+     */
+    private chunkOf = new WeakMap<Entity, ChunkKey>();
     public entityGroup = new THREE.Group();
     private combat: CombatSystem;
     private collision = new EntityCollisionSystem();
@@ -67,11 +83,20 @@ export class World {
             this.entityGroup,
             this.player,
             (entity) => {
+                // CombatSystem already detached the mesh and pooled the entity;
+                // the chunk must forget it too or the next despawn releases it twice.
+                this.forgetEntity(entity);
                 this.entities = this.entities.filter((e) => e !== entity);
             },
             (entity) => {
+                this.trackEntity(entity, this.chunkKeyOf(entity));
                 this.entities.push(entity);
             },
+        );
+
+        this.streamer = new ChunkStreamer(
+            (mapEntity, key) => this.spawnEntity(mapEntity, key),
+            (key) => this.despawnChunk(key),
         );
 
         events.on('stateChange', (newState) => {
@@ -96,22 +121,71 @@ export class World {
     }
 
     public loadLayout(layout: MapEntity[]) {
-        for (const entity of this.entities) {
+        for (const key of [...this.loaded.keys()]) {
+            this.despawnChunk(key);
+        }
+
+        this.combat.clear();
+        this.streamer.clear();
+        // Built from the *whole* layout, not the loaded chunks: a flat boolean
+        // array costs nothing per frame, and an enemy pathing towards a wall in
+        // an unloaded chunk still gets the right answer.
+        rebuildNavGrid(layout);
+        this.streamer.setLayout(layout);
+
+        this.streamFor(this.player.mesh.position);
+    }
+
+    /** Loads/unloads the chunks around a position and refreshes the flat view. */
+    private streamFor(position: THREE.Vector3): boolean {
+        const changed = this.streamer.update(position.x, position.z);
+        if (changed) this.entities = [...this.loaded.values()].flat();
+
+        return changed;
+    }
+
+    private spawnEntity(mapEntity: MapEntity, key: ChunkKey) {
+        // Regular enemies are meant to come back when their chunk reloads; a
+        // boss is a one-time fight, so a recorded kill keeps it from respawning.
+        if (mapEntity.kind === 'enemy' && mapEntity.enemyType === 'boss' && isBossDefeated(mapEntity.id)) return;
+
+        const entity = createMapEntity(mapEntity);
+        this.trackEntity(entity, key);
+        this.entityGroup.add(entity.mesh);
+
+        if (mapEntity.kind === 'enemy') this.combat.addEnemy(entity, mapEntity);
+    }
+
+    private despawnChunk(key: ChunkKey) {
+        for (const entity of this.loaded.get(key) ?? []) {
             this.entityGroup.remove(entity.mesh);
+            this.combat.removeEnemy(entity);
+            // Pooled enemies go back to the pool through their disposer; anything
+            // else frees its geometry and materials here.
             entity.dispose();
         }
 
-        this.entities = [];
-        this.combat.clear();
-        rebuildNavGrid(layout);
+        this.loaded.delete(key);
+    }
 
-        for (const mapEntity of layout) {
-            const entity = createMapEntity(mapEntity);
-            this.entities.push(entity);
-            this.entityGroup.add(entity.mesh);
+    private trackEntity(entity: Entity, key: ChunkKey) {
+        this.chunkOf.set(entity, key);
+        const bucket = this.loaded.get(key);
 
-            if (mapEntity.kind === 'enemy') this.combat.addEnemy(entity, mapEntity);
-        }
+        if (bucket) bucket.push(entity);
+        else this.loaded.set(key, [entity]);
+    }
+
+    private forgetEntity(entity: Entity) {
+        const key = this.chunkOf.get(entity);
+        const bucket = key === undefined ? undefined : this.loaded.get(key);
+        const index = bucket?.indexOf(entity) ?? -1;
+
+        if (bucket && index !== -1) bucket.splice(index, 1);
+    }
+
+    private chunkKeyOf(entity: Entity): ChunkKey {
+        return chunkKeyAt(entity.mesh.position.x, entity.mesh.position.z);
     }
 
     /**
@@ -151,7 +225,9 @@ export class World {
         }
 
         this.player.update(dt);
-        this.collision.resolve([...this.entities, this.player]);
+        this.streamFor(this.player.mesh.position);
+        const allBodies = this.entities.concat(this.player);
+        this.collision.resolve(allBodies);
         this.seatOnTerrain();
         this.interaction.update(this.entities, this.player.mesh.position);
 
@@ -182,12 +258,19 @@ export class World {
         camera.updateMatrixWorld();
 
         this.grassColliders.length = 0;
-        for (const entity of [...this.entities, this.player]) {
-            // collisionRadius is optional on Entity; props without one flatten nothing.
-            if (entity.collisionRadius === undefined) continue;
+        for (const entity of this.entities) {
+            // Only dynamic moving entities (enemies, player) part the grass as they walk.
+            // Static props, walls, and structures are excluded to avoid stretching grass around wide obstacles.
+            if (entity.collisionRadius === undefined || entity.isStatic) continue;
             this.grassColliders.push({ position: entity.mesh.position, radius: entity.collisionRadius });
         }
+        if (this.player.collisionRadius !== undefined) {
+            this.grassColliders.push({ position: this.player.mesh.position, radius: this.player.collisionRadius });
+        }
 
+        // Grass exists only in a ring around the player, so the ring has to
+        // follow them before the surface is asked to draw it.
+        this.terrain.updateGrass(this.player.mesh.position.x, this.player.mesh.position.z);
         this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);
     }
 
@@ -243,6 +326,9 @@ export class World {
         this.player.mesh.position.x = spawnX;
         this.player.mesh.position.z = spawnZ;
         snapToGround(this.player.mesh, this.player.groundOffset);
+        // Before the next frame reads the entity list: respawning at a distant
+        // bonfire must load its chunks, not drop the player into an empty world.
+        this.streamFor(this.player.mesh.position);
 
         this.followPlayer(camera);
     }

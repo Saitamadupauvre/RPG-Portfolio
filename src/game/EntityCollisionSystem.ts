@@ -2,12 +2,17 @@ import type { Entity } from './entities/Entity';
 import { resolveCircleOverlap } from '../domain/collision/CircleCollision';
 
 export class EntityCollisionSystem {
-    public resolve(bodies: Entity[]) {
-        const colliders = bodies.filter((entity) => entity.collisionRadius !== undefined);
+    public resolve(bodies: readonly Entity[]) {
+        const len = bodies.length;
+        for (let i = 0; i < len; i++) {
+            const a = bodies[i];
+            if (a.collisionRadius === undefined) continue;
 
-        for (let i = 0; i < colliders.length; i++) {
-            for (let j = i + 1; j < colliders.length; j++) {
-                this.resolvePair(colliders[i], colliders[j]);
+            for (let j = i + 1; j < len; j++) {
+                const b = bodies[j];
+                if (b.collisionRadius === undefined) continue;
+
+                this.resolvePair(a, b);
             }
         }
     }

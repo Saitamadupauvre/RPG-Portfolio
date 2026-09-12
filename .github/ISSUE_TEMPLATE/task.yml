@@ -1,0 +1,97 @@
+name: Task
+description: Feature, refactor or chore. Anything that is not a bug.
+title: "[type]: short summary"
+labels: []
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: Mirrors the conventional-commit type the PR will use.
+      options:
+        - feat
+        - refactor
+        - chore
+        - docs
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Main `src/` layer touched (pick the highest one if several).
+      options:
+        - core
+        - data
+        - domain
+        - game
+        - ui
+        - infra
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - critical (blocks everything)
+        - P1 - high (next up)
+        - P2 - medium (planned)
+        - P3 - low (nice to have)
+      default: 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this exists. Current behaviour, what is wrong or missing, where it hurts.
+      placeholder: |
+        `World.ts` currently owns combat resolution as well as the entity registry.
+        Every new combat feature grows this file and couples scene management to game rules.
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Expected end state, from the user's or the code's point of view. Not the implementation.
+      placeholder: |
+        `World` is only a registry. Combat lives in its own system that `World` calls each frame.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Files / modules expected to change, and what is explicitly out of scope.
+      placeholder: |
+        In: `src/game/world/World.ts`, new `src/game/CombatSystem.ts`
+        Out: enemy AI, hit particles
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checklist that makes the issue "done". Each line must be verifiable.
+      value: |
+        - [ ]
+        - [ ] `npx tsc --noEmit` passes
+        - [ ] Manual check in `npm run dev`
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Design tradeoffs, alternatives rejected, links, follow-ups.
+    validations:
+      required: false

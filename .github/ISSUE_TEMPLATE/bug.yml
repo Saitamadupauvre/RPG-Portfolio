@@ -1,0 +1,65 @@
+name: Bug
+description: Something behaves wrong in game mode, classic mode or the menu.
+title: "fix: short summary"
+labels: ["type: fix"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core
+        - data
+        - domain
+        - game
+        - ui
+        - infra
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - critical (crash, unplayable)
+        - P1 - high (wrong behaviour, no workaround)
+        - P2 - medium (wrong behaviour, workaround exists)
+        - P3 - low (cosmetic)
+      default: 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start game mode
+        2. Attack an enemy while walking into a wall
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happens instead. Paste console errors verbatim.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Suspected cause, related files, screenshots.
+    validations:
+      required: false

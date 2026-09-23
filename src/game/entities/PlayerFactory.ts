@@ -4,11 +4,14 @@ import { MovementComponent } from './components/MovementComponent';
 import { DashComponent } from './components/DashComponent';
 import { AttackComponent } from './components/AttackComponent';
 import { ComboComponent, type ComboMove } from './components/ComboComponent';
-import { AnimationComponent, HAND_REST } from './components/AnimationComponent';
+import { PlayerAnimationDriver } from './components/PlayerAnimationDriver';
 import { DustEmitterComponent } from './components/DustEmitterComponent';
 import { SwordTrailComponent } from './components/SwordTrailComponent';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
+import { AnimatorComponent } from '../animation/AnimatorComponent';
+import { collectRig, equip } from '../animation/Rig';
+import { playerController } from './playerAnimation';
 import { createSwordMesh } from './SwordFactory';
 import { loadModel } from './loadModel';
 import { events } from '../../core/events';
@@ -23,6 +26,9 @@ const PLAYER_HEIGHT = 1.8;
 /** Root sits at y = 0.9, so the model's feet must be half a body below its own origin. */
 const PLAYER_MODEL_ORIGIN_Y = -PLAYER_HEIGHT / 2;
 
+/** The Empty in the Blender file that marks where the sword's grip goes. */
+const WEAPON_SOCKET = 'Socket_HandR';
+
 const COMBO_MOVES: ComboMove[] = [
     { options: { damage: 12, distance: 0.9, duration: 0.18, color: 0x66ccff }, recovery: 0.18, windup: 0.12 },
     { options: { damage: 16, distance: 1.1, duration: 0.22, color: 0x3399ff }, recovery: 0.35, windup: 0.14 },
@@ -33,7 +39,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const root = new THREE.Group();
     root.position.set(0, 0.9, 0);
 
-    // visual: the animated child — every procedural pose is applied here only, never to root.
+    // visual: the model hangs here. Clips move the bones below it; the driver leans it into turns.
     const visual = new THREE.Group();
     root.add(visual);
 
@@ -46,25 +52,29 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     body.castShadow = true;
     visual.add(body);
 
-    // Hand and sword are separate objects on purpose: swapping weapons later is
-    // just replacing the sword child under the hand.
-    const handGeometry = new THREE.SphereGeometry(0.12, 12, 12);
-    const handMaterial = createToonMaterial({ color: 0xf0c894 });
-    const hand = new THREE.Mesh(handGeometry, handMaterial);
-    hand.position.copy(HAND_REST);
-    visual.add(hand);
-
+    // The sword starts in a stand-in socket at hand height and moves into the model's own
+    // socket once it loads, so a model without one (the current bean) still carries it.
     const sword = createSwordMesh();
-    hand.add(sword);
+    const standInSocket = new THREE.Object3D();
+    standInSocket.position.set(-0.45, -0.55, 0.2);
+    standInSocket.rotation.x = 0.45;
+    standInSocket.add(sword);
+    visual.add(standInSocket);
 
     const movement = new MovementComponent(root, cameraOffset, PLAYER_SPEED);
-    const attack = new AttackComponent(root, entityGroup, {}, {
-        onAttackStart: () => movement.setLocked(true),
-        onAttackEnd: () => movement.setLocked(false),
+    const attack = new AttackComponent(root, entityGroup);
+    // Attack clips are full-body, so the body plants for the whole move: no turning, no sliding.
+    const combo = new ComboComponent(attack, COMBO_MOVES, {
+        onBusyChanged: (busy) => {
+            movement.setLocked(busy);
+            if (busy) movement.freeze('attack');
+            else movement.unfreeze('attack');
+        },
     });
-    const combo = new ComboComponent(attack, COMBO_MOVES);
     const dash = new DashComponent(root, movement);
     const hitFlash = new HitFlashComponent(material);
+    // The graph runs from frame one; it gets its bones and clips when the model arrives.
+    const animator = new AnimatorComponent(playerController);
 
     const health = new HealthComponent(PLAYER_HP, (hp, maxHp) => {
         events.emit('playerHealthChanged', hp, maxHp);
@@ -73,14 +83,27 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     health.publish();
 
     loadModel(PLAYER_MODEL_URL, { height: PLAYER_HEIGHT, originY: PLAYER_MODEL_ORIGIN_Y })
-        .then(({ object, materials }) => {
+        .then(({ object, materials, animations }) => {
             visual.remove(body);
             geometry.dispose();
             material.dispose();
 
-            // Insert below the hand so the sword arm keeps rendering on top of the body.
             visual.add(object);
             hitFlash.setMaterials(materials);
+
+            if (!equip(object, WEAPON_SOCKET, sword)) {
+                console.warn(`[player] model has no "${WEAPON_SOCKET}" empty; the sword stays at the stand-in position`);
+            }
+
+            if (animations.length === 0) {
+                console.warn('[player] model has no animations; export the Actions from Blender to bring it to life');
+                return;
+            }
+            try {
+                animator.bind(collectRig(object), animations);
+            } catch (error) {
+                console.error('[player] animation setup failed, the model will stand still', error);
+            }
         })
         .catch((error) => console.error('[player] model failed to load, keeping placeholder', error));
 
@@ -89,14 +112,17 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     // the ground it stands on.
     entity.groundOffset = PLAYER_HEIGHT / 2;
 
+    // Components update in insertion order: the driver must set its parameters before the
+    // animator reads them, and the animator must pose the sword before the trail samples it.
     return entity
         .addComponent('movement', movement)
         .addComponent('dash', dash)
         .addComponent('attack', attack)
         .addComponent('combo', combo)
-        .addComponent('animation', new AnimationComponent(visual, movement, { hand, dash, attack, combo }))
+        .addComponent('animationDriver', new PlayerAnimationDriver(animator, visual, movement, { dash, attack, combo }))
+        .addComponent('animator', animator)
         .addComponent('dust', new DustEmitterComponent(root, movement, entityGroup))
-        .addComponent('swordTrail', new SwordTrailComponent(hand, attack, entityGroup))
+        .addComponent('swordTrail', new SwordTrailComponent(sword, attack, entityGroup))
         .addComponent('health', health)
         .addComponent('hitFlash', hitFlash);
 }

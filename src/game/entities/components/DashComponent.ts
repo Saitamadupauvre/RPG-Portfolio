@@ -43,7 +43,7 @@ export class DashComponent implements Component {
         this.remaining = DASH_DURATION;
         this.cooldown = DASH_COOLDOWN;
 
-        this.movement.setFrozen(true);
+        this.movement.freeze('dash');
     }
 
     public update(dt: number) {
@@ -55,12 +55,12 @@ export class DashComponent implements Component {
 
         slideMove(this.mesh, this.direction, DASH_SPEED * step);
 
-        if (!this.isDashing) this.movement.setFrozen(false);
+        if (!this.isDashing) this.movement.unfreeze('dash');
     }
 
     public cancel() {
         this.remaining = 0;
-        this.movement.setFrozen(false);
+        this.movement.unfreeze('dash');
     }
 
     public dispose() {

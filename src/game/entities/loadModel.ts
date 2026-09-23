@@ -1,16 +1,22 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { toToonMaterial, type TintableMaterial } from '../render/toon';
 
 const loader = new GLTFLoader();
 
-/** One in-flight promise per URL, so several entities sharing a model only fetch and parse it once. */
-const cache = new Map<string, Promise<THREE.Group>>();
+interface CachedModel {
+    scene: THREE.Group;
+    animations: THREE.AnimationClip[];
+}
 
-function load(url: string): Promise<THREE.Group> {
+/** One in-flight promise per URL, so several entities sharing a model only fetch and parse it once. */
+const cache = new Map<string, Promise<CachedModel>>();
+
+function load(url: string): Promise<CachedModel> {
     let pending = cache.get(url);
     if (!pending) {
-        pending = loader.loadAsync(url).then((gltf) => gltf.scene);
+        pending = loader.loadAsync(url).then((gltf) => ({ scene: gltf.scene, animations: gltf.animations }));
         cache.set(url, pending);
     }
     return pending;
@@ -29,21 +35,28 @@ export interface LoadedModel {
     object: THREE.Object3D;
     /** Per-instance toon materials — safe to tint (hit flash) without touching other instances. */
     materials: TintableMaterial[];
+    /** The clips the file carries (Blender actions), shared between instances: clips are read-only data. */
+    animations: readonly THREE.AnimationClip[];
 }
 
 /**
  * Loads a glTF, clones it per caller, normalizes its size/placement, and hands back
- * the instance's own materials. Cloning is what makes the shared cache safe.
+ * the instance's own materials and the file's clips. Cloning is what makes the shared
+ * cache safe; it goes through SkeletonUtils because a plain clone() leaves a skinned mesh
+ * pointing at the original's bones.
  */
 export async function loadModel(url: string, fit: ModelFitOptions): Promise<LoadedModel> {
-    const source = await load(url);
-    const object = source.clone(true);
+    const { scene, animations } = await load(url);
+    const object = cloneSkinned(scene);
 
     const materials: TintableMaterial[] = [];
     object.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         child.castShadow = true;
         child.receiveShadow = true;
+        // A skinned mesh's bounding sphere is computed from the bind pose and never follows the
+        // bones, so the culler would blink it out whenever the pose leaves that sphere.
+        if (child instanceof THREE.SkinnedMesh) child.frustumCulled = false;
 
         // clone() shares materials with the cached original, and glTF always brings PBR
         // materials — so convert each one to toon *and* keep it per-instance in a single
@@ -81,5 +94,5 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
 
     object.rotation.y = fit.yaw ?? 0;
 
-    return { object, materials };
+    return { object, materials, animations };
 }

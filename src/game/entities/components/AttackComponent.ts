@@ -56,6 +56,11 @@ export class AttackComponent implements Component {
         return Math.min(1, this.elapsed / this.activeOptions.duration);
     }
 
+    /** Seconds the current (or last) swing keeps its hitbox live. */
+    public get swingDuration(): number {
+        return this.activeOptions.duration;
+    }
+
     public get damage(): number {
         return this.activeOptions.damage;
     }

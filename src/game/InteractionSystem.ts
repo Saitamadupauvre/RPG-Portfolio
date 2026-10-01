@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { events } from '../core/events';
-import { stateMachine } from '../core/StateMachine';
+import { isGameplayActive } from '../core/pause';
 import type { Entity } from './entities/Entity';
 import type { InteractAction } from './entities/components/InteractableComponent';
 
@@ -12,7 +12,8 @@ export class InteractionSystem {
         window.addEventListener('keydown', (event) => {
             // Only remember keys the current target actually listens for, so
             // unrelated presses never queue up between frames.
-            if (event.repeat) return;
+            // An E pressed behind an open modal must not queue up and fire on close.
+            if (event.repeat || !isGameplayActive()) return;
             if (!this.currentActions?.some((action) => action.key === event.code)) return;
 
             this.pressedKeys.add(event.code);
@@ -20,7 +21,7 @@ export class InteractionSystem {
     }
 
     public update(entities: Entity[], playerPosition: THREE.Vector3) {
-        const target = stateMachine.getState() === 'GAME' ? this.findNearest(entities, playerPosition) : null;
+        const target = isGameplayActive() ? this.findNearest(entities, playerPosition) : null;
         const actions = target?.getComponent('interactable')?.actions ?? null;
 
         this.setPrompt(actions);

@@ -1,4 +1,5 @@
 import { events } from '../../core/events';
+import { setPaused } from '../../core/pause';
 import { buyUpgrade, getCoins, getStatViews, type StatView } from '../../domain/playerProgress';
 
 function renderRow(view: StatView, onBuy: () => void): HTMLElement {
@@ -44,16 +45,15 @@ export function initUpgradeBoardView() {
     const render = () => {
         coinsLabel.textContent = `${getCoins()} coins`;
         list.replaceChildren(
-            ...getStatViews().map((view) => renderRow(view, () => {
-                // Buying re-renders so costs, levels and affordability stay honest.
-                if (buyUpgrade(view.definition.id)) render();
-            }))
+            // A successful buy emits coinsChanged, whose listener below re-renders
+            // so costs, levels and affordability stay honest.
+            ...getStatViews().map((view) => renderRow(view, () => buyUpgrade(view.definition.id)))
         );
     };
 
     const setOpen = (open: boolean) => {
         board.classList.toggle('open', open);
-        events.emit('pauseChanged', open);
+        setPaused('upgradeBoard', open);
         if (open) render();
     };
 

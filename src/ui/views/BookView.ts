@@ -1,4 +1,5 @@
 import { events } from '../../core/events';
+import { setPaused } from '../../core/pause';
 import { stateMachine } from '../../core/StateMachine';
 import { getDiscoveryList } from '../../domain/discovery';
 import { projectToUICardStyle } from '../../domain/CardStyle';
@@ -22,7 +23,7 @@ export function initBookView() {
 
     const setOpen = (open: boolean) => {
         book.classList.toggle('open', open);
-        events.emit('pauseChanged', open);
+        setPaused('book', open);
     };
 
     const close = () => setOpen(false);

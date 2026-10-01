@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Experience } from './Experience';
-import { stateMachine } from '../core/StateMachine';
+import { isGameplayActive } from '../core/pause';
 
 export class PlayerAttackInteraction {
     private experience: Experience;
@@ -14,7 +14,7 @@ export class PlayerAttackInteraction {
     }
 
     private onAttack(event: MouseEvent) {
-        if (stateMachine.getState() !== 'GAME') return;
+        if (!isGameplayActive()) return;
 
         const player = this.experience.world.player;
         const combo = player.getComponent('combo');

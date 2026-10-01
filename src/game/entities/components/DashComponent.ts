@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
+import { isGameplayActive } from '../../../core/pause';
 import { slideMove } from '../movement';
 import type { MovementComponent } from './MovementComponent';
 
@@ -30,6 +31,9 @@ export class DashComponent implements Component {
 
     private onKeyDown = (event: KeyboardEvent) => {
         if (event.code !== DASH_KEY || event.repeat) return;
+        // Listeners are global, so a Space pressed while dead, paused or in a
+        // menu would otherwise arm a dash that fires the moment play resumes.
+        if (!isGameplayActive()) return;
         this.trigger();
     };
 

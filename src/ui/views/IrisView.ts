@@ -16,6 +16,7 @@ export function initIrisView() {
     let centerY = 0;
     let radius = 0;
     let frame = 0;
+    let holdTimer = 0;
 
     const fullRadius = () => Math.hypot(window.innerWidth, window.innerHeight);
 
@@ -29,6 +30,9 @@ export function initIrisView() {
 
     const tween = (to: number, durationMs: number, onDone?: () => void) => {
         cancelAnimationFrame(frame);
+        // A pending "reopen after the peek" from an earlier respawn must not
+        // fire in the middle of whatever animation starts now.
+        window.clearTimeout(holdTimer);
 
         const from = radius;
         const start = performance.now();
@@ -67,7 +71,7 @@ export function initIrisView() {
         centerY = y;
 
         tween(PEEK_RADIUS, PEEK_MS, () => {
-            window.setTimeout(() => {
+            holdTimer = window.setTimeout(() => {
                 tween(fullRadius(), OPEN_MS, () => iris.classList.remove('active'));
             }, PEEK_HOLD_MS);
         });

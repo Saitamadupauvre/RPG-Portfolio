@@ -81,6 +81,16 @@ export function buildNavGrid(
     return grid;
 }
 
+/**
+ * Whether a world point lies on the grid at all. `worldToCol`/`worldToRow`
+ * clamp, so a point past the edge would otherwise be read as the edge cell and
+ * look walkable — which is how the map border stopped stopping anyone.
+ */
+export function isInsideBounds(grid: NavGrid, x: number, z: number): boolean {
+    const { minX, maxX, minZ, maxZ } = grid.bounds;
+    return x >= minX && x < maxX && z >= minZ && z < maxZ;
+}
+
 export function worldToCol(grid: NavGrid, x: number): number {
     return clamp(Math.floor((x - grid.bounds.minX) / grid.cellSize), 0, grid.cols - 1);
 }

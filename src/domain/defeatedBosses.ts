@@ -1,23 +1,6 @@
-const STORAGE_KEY = 'rpg-portfolio:bosses';
+import { createPersistentSet } from './persistence';
 
-const defeated = new Set<string>(load());
-
-function load(): string[] {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const parsed: unknown = raw ? JSON.parse(raw) : null;
-        return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-    } catch {
-        return [];
-    }
-}
-
-function save() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([...defeated]));
-    } catch {
-    }
-}
+const defeated = createPersistentSet('rpg-portfolio:bosses');
 
 export function isBossDefeated(bossId: string): boolean {
     return defeated.has(bossId);
@@ -29,10 +12,8 @@ export function isBossDefeated(bossId: string): boolean {
  */
 export function defeatBoss(bossId: string) {
     defeated.add(bossId);
-    save();
 }
 
 export function resetBosses() {
     defeated.clear();
-    save();
 }

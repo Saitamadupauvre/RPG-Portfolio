@@ -1,7 +1,8 @@
 import { events } from '../core/events';
-import type { StatId } from '../data/stats';
+import type { PlayerStats, StatId } from '../data/stats';
+import { loadJson, saveJson } from './persistence';
 
-export type { StatId };
+export type { PlayerStats, StatId };
 
 export type StatDefinition = {
     id: StatId;
@@ -22,8 +23,6 @@ export type StatView = {
     cost: number | null;
     affordable: boolean;
 };
-
-export type PlayerStats = Record<StatId, number>;
 
 const STORAGE_KEY = 'rpg-portfolio:progress';
 
@@ -51,34 +50,38 @@ type ProgressState = {
 };
 
 function emptyState(): ProgressState {
-    return { coins: 0, levels: { health: 0, damage: 0, speed: 0 } };
+    const levels = {} as Record<StatId, number>;
+    for (const definition of STAT_DEFINITIONS) levels[definition.id] = 0;
+    return { coins: 0, levels };
 }
 
-function isProgressState(value: unknown): value is ProgressState {
-    if (typeof value !== 'object' || value === null) return false;
-
-    const candidate = value as Partial<ProgressState>;
-    if (typeof candidate.coins !== 'number') return false;
-    if (typeof candidate.levels !== 'object' || candidate.levels === null) return false;
-
-    return STAT_DEFINITIONS.every((definition) => typeof candidate.levels?.[definition.id] === 'number');
-}
-
+/**
+ * Merges whatever was saved onto a fresh state, field by field, instead of
+ * accepting or rejecting the save whole. A stat added in a later build is then
+ * simply missing from old saves and starts at 0 — rejecting the save would wipe
+ * the player's coins and every other level just because the shape grew.
+ */
 function load(): ProgressState {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const parsed: unknown = raw ? JSON.parse(raw) : null;
-        return isProgressState(parsed) ? parsed : emptyState();
-    } catch {
-        return emptyState();
+    const loaded = emptyState();
+    const saved = loadJson(STORAGE_KEY);
+    if (typeof saved !== 'object' || saved === null) return loaded;
+
+    const { coins, levels } = saved as { coins?: unknown; levels?: unknown };
+    if (typeof coins === 'number' && Number.isFinite(coins)) loaded.coins = Math.max(0, Math.floor(coins));
+
+    if (typeof levels === 'object' && levels !== null) {
+        for (const definition of STAT_DEFINITIONS) {
+            const level = (levels as Record<string, unknown>)[definition.id];
+            if (typeof level !== 'number' || !Number.isFinite(level)) continue;
+            loaded.levels[definition.id] = Math.min(definition.maxLevel, Math.max(0, Math.floor(level)));
+        }
     }
+
+    return loaded;
 }
 
 function save() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-    }
+    saveJson(STORAGE_KEY, state);
 }
 
 const state: ProgressState = load();
@@ -110,11 +113,9 @@ export function getStatLevel(id: StatId): number {
 
 /** Resolved stat values the game layer feeds into player components. */
 export function getPlayerStats(): PlayerStats {
-    return {
-        health: statValue(definitionById.get('health')!, state.levels.health),
-        damage: statValue(definitionById.get('damage')!, state.levels.damage),
-        speed: statValue(definitionById.get('speed')!, state.levels.speed),
-    };
+    const stats = {} as PlayerStats;
+    for (const definition of STAT_DEFINITIONS) stats[definition.id] = statValue(definition, state.levels[definition.id]);
+    return stats;
 }
 
 /** One row per stat, everything the upgrade board needs to render. */

@@ -18,13 +18,13 @@ const TRAIL_CONFIG = {
 export class SwordTrailComponent implements Component {
     public readonly name = 'swordTrail';
 
-    private hand: THREE.Object3D;
+    private sword: THREE.Object3D;
     private attack: AttackComponent;
     private particles: ParticleSystem;
     private scratch = new THREE.Vector3();
 
-    constructor(hand: THREE.Object3D, attack: AttackComponent, parent: THREE.Object3D) {
-        this.hand = hand;
+    constructor(sword: THREE.Object3D, attack: AttackComponent, parent: THREE.Object3D) {
+        this.sword = sword;
         this.attack = attack;
         this.particles = new ParticleSystem(parent, TRAIL_CONFIG);
     }
@@ -34,7 +34,7 @@ export class SwordTrailComponent implements Component {
 
         if (!this.attack.isAttacking) return;
 
-        getSwordTipWorldPosition(this.hand, this.scratch);
+        getSwordTipWorldPosition(this.sword, this.scratch);
         this.particles.spawnBurst(this.scratch, 1);
     }
 }

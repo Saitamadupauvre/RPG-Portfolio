@@ -23,65 +23,106 @@ const DEFAULTS: Required<ParticleSystemConfig> = {
 };
 
 interface Particle {
-    mesh: THREE.Mesh;
+    position: THREE.Vector3;
     velocity: THREE.Vector3;
     life: number;
     active: boolean;
 }
 
-/** Pooled box-particle emitter. One reusable engine for hit sparks, dust, and weapon trails. */
+const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
+const _matrix = new THREE.Matrix4();
+
+/**
+ * Pooled box-particle emitter. One reusable engine for hit sparks, dust, and weapon trails.
+ *
+ * All particles of a system are instances of one InstancedMesh: one draw call
+ * however many are alive, where a Mesh + material per particle cost one each.
+ * Instances cannot have their own material opacity, so the fade is a
+ * per-instance `aAlpha` attribute patched into the basic material's shader.
+ */
 export class ParticleSystem {
     private particles: Particle[] = [];
     private config: Required<ParticleSystemConfig>;
+    private mesh: THREE.InstancedMesh;
+    private alpha: THREE.InstancedBufferAttribute;
 
     constructor(parent: THREE.Object3D, config: ParticleSystemConfig = {}) {
         this.config = { ...DEFAULTS, ...config };
-        const geometry = new THREE.BoxGeometry(this.config.size, this.config.size, this.config.size);
+        const { size, poolSize, color } = this.config;
 
-        for (let i = 0; i < this.config.poolSize; i++) {
-            const material = new THREE.MeshBasicMaterial({ color: this.config.color, transparent: true });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.visible = false;
-            parent.add(mesh);
-            this.particles.push({ mesh, velocity: new THREE.Vector3(), life: 0, active: false });
+        const geometry = new THREE.BoxGeometry(size, size, size);
+        this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(poolSize), 1);
+        this.alpha.setUsage(THREE.DynamicDrawUsage);
+        geometry.setAttribute('aAlpha', this.alpha);
+
+        const material = new THREE.MeshBasicMaterial({ color, transparent: true });
+        material.onBeforeCompile = (shader) => {
+            shader.vertexShader = 'attribute float aAlpha;\nvarying float vAlpha;\n' + shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                '#include <begin_vertex>\n\tvAlpha = aAlpha;',
+            );
+            shader.fragmentShader = 'varying float vAlpha;\n' + shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                '#include <color_fragment>\n\tdiffuseColor.a *= vAlpha;',
+            );
+        };
+
+        this.mesh = new THREE.InstancedMesh(geometry, material, poolSize);
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        // Instances fly anywhere; the mesh's own bounds would cull them wrongly.
+        this.mesh.frustumCulled = false;
+        for (let i = 0; i < poolSize; i++) {
+            this.mesh.setMatrixAt(i, HIDDEN);
+            this.particles.push({ position: new THREE.Vector3(), velocity: new THREE.Vector3(), life: 0, active: false });
         }
+        parent.add(this.mesh);
     }
 
     public spawnBurst(position: THREE.Vector3, count = this.config.particlesPerBurst) {
-        for (let i = 0; i < count; i++) {
-            const particle = this.particles.find((p) => !p.active);
-            if (!particle) break;
+        let spawned = 0;
+        for (const particle of this.particles) {
+            if (spawned >= count) break;
+            if (particle.active) continue;
 
             const angle = Math.random() * Math.PI * 2;
             const speed = this.config.speed * (0.5 + Math.random() * 0.5);
 
             particle.active = true;
             particle.life = this.config.life;
-            particle.mesh.visible = true;
-            particle.mesh.position.copy(position);
+            particle.position.copy(position);
             particle.velocity.set(
                 Math.cos(angle) * speed,
                 Math.random() * this.config.verticalSpeed,
                 Math.sin(angle) * speed,
             );
-            (particle.mesh.material as THREE.MeshBasicMaterial).opacity = 1;
+            spawned++;
         }
     }
 
     public update(dt: number) {
-        for (const particle of this.particles) {
+        let changed = false;
+
+        for (let i = 0; i < this.particles.length; i++) {
+            const particle = this.particles[i];
             if (!particle.active) continue;
+            changed = true;
 
             particle.life -= dt;
             if (particle.life <= 0) {
                 particle.active = false;
-                particle.mesh.visible = false;
+                this.mesh.setMatrixAt(i, HIDDEN);
                 continue;
             }
 
             particle.velocity.y -= this.config.gravity * dt;
-            particle.mesh.position.addScaledVector(particle.velocity, dt);
-            (particle.mesh.material as THREE.MeshBasicMaterial).opacity = particle.life / this.config.life;
+            particle.position.addScaledVector(particle.velocity, dt);
+            this.mesh.setMatrixAt(i, _matrix.makeTranslation(particle.position));
+            this.alpha.setX(i, particle.life / this.config.life);
+        }
+
+        if (changed) {
+            this.mesh.instanceMatrix.needsUpdate = true;
+            this.alpha.needsUpdate = true;
         }
     }
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
+import { isGameplayActive } from '../../../core/pause';
 import { slideMove } from '../movement';
 import type { MovementComponent } from './MovementComponent';
 
@@ -30,6 +31,9 @@ export class DashComponent implements Component {
 
     private onKeyDown = (event: KeyboardEvent) => {
         if (event.code !== DASH_KEY || event.repeat) return;
+        // Listeners are global, so a Space pressed while dead, paused or in a
+        // menu would otherwise arm a dash that fires the moment play resumes.
+        if (!isGameplayActive()) return;
         this.trigger();
     };
 
@@ -43,7 +47,7 @@ export class DashComponent implements Component {
         this.remaining = DASH_DURATION;
         this.cooldown = DASH_COOLDOWN;
 
-        this.movement.setFrozen(true);
+        this.movement.freeze('dash');
     }
 
     public update(dt: number) {
@@ -55,12 +59,12 @@ export class DashComponent implements Component {
 
         slideMove(this.mesh, this.direction, DASH_SPEED * step);
 
-        if (!this.isDashing) this.movement.setFrozen(false);
+        if (!this.isDashing) this.movement.unfreeze('dash');
     }
 
     public cancel() {
         this.remaining = 0;
-        this.movement.setFrozen(false);
+        this.movement.unfreeze('dash');
     }
 
     public dispose() {

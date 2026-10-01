@@ -13,6 +13,12 @@ export class Entity {
      * entity on the terrain adds this to the ground height.
      */
     public groundOffset = 0;
+    /**
+     * Height of the body from the feet up. With `collisionRadius` it describes
+     * the hurtbox combat tests against, so attaching a health bar or a sword
+     * to the mesh never makes the body bigger to hit.
+     */
+    public bodyHeight?: number;
     /** Static bodies push others out but are never pushed themselves. */
     public readonly isStatic: boolean;
     private components = new Map<ComponentKey, Component>();

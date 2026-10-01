@@ -32,6 +32,7 @@ const RESPAWN_DELAY_MS = 1200;
 
 export class World {
     private experience: Experience;
+    private environment: Environment;
     /** Live entities per loaded chunk — the authority on what exists. */
     private loaded = new Map<ChunkKey, Entity[]>();
     /**
@@ -59,7 +60,7 @@ export class World {
 
     constructor(experience: Experience) {
         this.experience = experience;
-        new Environment(this.experience);
+        this.environment = new Environment(this.experience);
 
         this.experience.scene.add(this.entityGroup);
         this.entityGroup.visible = this.isGameVisible(stateMachine.getState());
@@ -165,6 +166,7 @@ export class World {
             entity.dispose();
         }
 
+        this.combat.forgetChunk(key);
         this.loaded.delete(key);
     }
 
@@ -217,6 +219,7 @@ export class World {
         // Same reasoning: the sea should keep moving while paused, dead or being
         // sculpted, instead of freezing mid-swell.
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
+        this.environment.followShadows(this.player.mesh.position);
 
         if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
 

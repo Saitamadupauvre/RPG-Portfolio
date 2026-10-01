@@ -4,7 +4,7 @@ import type { EnemyEntity } from '../data/MapEntity';
 import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
 import { defeatBoss } from '../domain/defeatedBosses';
-import { applyTransform } from './entities/applyTransform';
+import { chunkKeyAt, type ChunkKey } from '../domain/chunks';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
 
@@ -49,13 +49,21 @@ export class CombatSystem {
         this.sources.push(source);
     }
 
-    /** Drops a despawned enemy: its source leaves too, so a rest cannot revive it. */
+    /** Stops tracking a live enemy whose mesh is going away. */
     public removeEnemy(entity: Entity) {
-        const index = this.enemies.findIndex((e) => e.entity === entity);
-        if (index === -1) return;
+        this.enemies = this.enemies.filter((e) => e.entity !== entity);
+    }
 
-        const [removed] = this.enemies.splice(index, 1);
-        this.sources = this.sources.filter((source) => source !== removed.source);
+    /**
+     * Forgets every enemy authored in an unloading chunk, dead ones included.
+     * A killed enemy has no entity left in the chunk to remove, so dropping
+     * sources only through `removeEnemy` kept it here — and the next rest then
+     * revived it into a chunk the streamer believed unloaded, which duplicated
+     * it once the player walked back. The chunk is derived from the authored
+     * position, the same rule `bucketByChunk` uses to load it.
+     */
+    public forgetChunk(key: ChunkKey) {
+        this.sources = this.sources.filter((source) => chunkKeyAt(source.position[0], source.position[2]) !== key);
     }
 
     public resetEnemies() {
@@ -64,7 +72,7 @@ export class CombatSystem {
 
             const live = this.enemies.find((e) => e.source === source);
             if (live) {
-                this.resetEnemy(live.entity, source);
+                enemyPool.reset(live.entity, source);
             } else {
                 const entity = enemyPool.acquire(source);
                 this.entityGroup.add(entity.mesh);
@@ -72,15 +80,6 @@ export class CombatSystem {
                 this.onSpawn(entity);
             }
         }
-    }
-
-    private resetEnemy(entity: Entity, source: EnemyEntity) {
-        const health = entity.getComponent('health');
-        if (health) health.hp = health.maxHp;
-
-        entity.getComponent('healthBar')?.reset();
-        applyTransform(entity.mesh, source);
-        entity.getComponent('enemyAI')?.setOrigin(entity.mesh.position.clone());
     }
 
     public update(dt: number, camera: THREE.Camera) {
@@ -94,7 +93,7 @@ export class CombatSystem {
         const playerHealth = this.player.getComponent('health');
         if (!playerHealth) return;
 
-        const playerBox = this.scratchBoxA.setFromObject(this.player.mesh);
+        const playerBox = hurtbox(this.player, this.scratchBoxA);
 
         for (const { entity } of this.enemies) {
             const attack = entity.getComponent('attack');
@@ -119,7 +118,7 @@ export class CombatSystem {
         if (!hitbox) return;
 
         for (const { entity, source } of this.enemies) {
-            const enemyBox = this.scratchBoxB.setFromObject(entity.mesh);
+            const enemyBox = hurtbox(entity, this.scratchBoxB);
             if (!hitbox.intersectsBox(enemyBox)) continue;
             if (!attack.registerHit(entity.id)) continue;
 
@@ -142,4 +141,22 @@ export class CombatSystem {
         addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
     }
+}
+
+/**
+ * The box combat tests against: the body's own footprint and height. Measuring
+ * the mesh instead (`Box3.setFromObject`) walked the whole hierarchy every
+ * frame and counted whatever hung off it — an enemy's health bar widened its
+ * hurtbox, a swung sword stretched the player's.
+ */
+function hurtbox(entity: Entity, target: THREE.Box3): THREE.Box3 {
+    const radius = entity.collisionRadius;
+    const height = entity.bodyHeight;
+    if (radius === undefined || height === undefined) return target.setFromObject(entity.mesh);
+
+    const { x, y, z } = entity.mesh.position;
+    const feet = y - entity.groundOffset;
+    target.min.set(x - radius, feet, z - radius);
+    target.max.set(x + radius, feet + height, z + radius);
+    return target;
 }

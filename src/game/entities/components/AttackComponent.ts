@@ -39,7 +39,7 @@ export class AttackComponent implements Component {
     private hitIds = new Set<string>();
     private activeOptions: Required<AttackHitboxOptions>;
 
-    constructor(mesh: THREE.Object3D, _group: THREE.Object3D, options: AttackHitboxOptions = {}, hooks: AttackHooks = {}) {
+    constructor(mesh: THREE.Object3D, options: AttackHitboxOptions = {}, hooks: AttackHooks = {}) {
         this.mesh = mesh;
         this.options = { ...DEFAULTS, ...options };
         this.activeOptions = this.options;
@@ -56,8 +56,18 @@ export class AttackComponent implements Component {
         return Math.min(1, this.elapsed / this.activeOptions.duration);
     }
 
+    /** Seconds the current (or last) swing keeps its hitbox live. */
+    public get swingDuration(): number {
+        return this.activeOptions.duration;
+    }
+
     public get damage(): number {
         return this.activeOptions.damage;
+    }
+
+    /** Damage a swing deals when its move does not set its own. */
+    public get baseDamage(): number {
+        return this.options.damage;
     }
 
     /** Base damage of every future swing; the live swing keeps its own value. */
@@ -93,6 +103,14 @@ export class AttackComponent implements Component {
     public getHitbox(): THREE.Box3 | null {
         if (!this.isAttackingState) return null;
         return this.cachedHitbox;
+    }
+
+    /** Drops any swing in progress — a pooled enemy must not come back mid-attack. */
+    public reset() {
+        this.isAttackingState = false;
+        this.elapsed = 0;
+        this.hitIds.clear();
+        this.activeOptions = this.options;
     }
 
     public registerHit(id: string): boolean {

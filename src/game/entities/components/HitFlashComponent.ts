@@ -30,6 +30,12 @@ export class HitFlashComponent implements Component {
         for (const material of this.materials) material.color.copy(FLASH_COLOR);
     }
 
+    /** Cancels a flash in progress, so a pooled entity never comes back stuck white. */
+    public reset() {
+        this.restore();
+        this.elapsed = -1;
+    }
+
     public update(dt: number) {
         if (this.elapsed < 0) return;
 

@@ -136,17 +136,14 @@ export class Terrain {
         // Grass is sampled off a tops-only geometry, not the render geometry:
         // the cliff walls and their talus skirts include near-flat facets
         // (the base bulge, the mound) that would otherwise pass the slope
-        // filter below and plant floating blades on the rock. Swapping the
-        // geometry only for the sampling call keeps the render mesh untouched.
+        // filter below and plant floating blades on the rock.
         if (!this.topsGeometry) {
             this.topsGeometry = new THREE.BufferGeometry();
             this.topsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(this.topPositions, 3));
         }
 
-        const renderGeometry = this.mesh.geometry;
-        this.mesh.geometry = this.topsGeometry;
-
         this.grass.attach(this.mesh, {
+            sampleGeometry: this.topsGeometry,
             density: GRASS_PATCH_DENSITY,
             chunkSize: GRASS_CHUNK_SIZE,
             maxDistance: GRASS_VIEW_RADIUS,
@@ -157,8 +154,6 @@ export class Terrain {
             // steep-but-not-cliff tile-top geometry in the future.
             acceptNormal: (normal) => (normal.y >= MAX_GRASS_SLOPE ? 1 : 0),
         });
-
-        this.mesh.geometry = renderGeometry;
     }
 
     public dispose() {

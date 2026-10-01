@@ -27,6 +27,12 @@ export type GrassSurfaceOptions = {
     bounds?: GrassBounds;
     /** Patch label, so `detach` can drop this attach's chunks and leave the rest. */
     key?: string;
+    /**
+     * Geometry to scatter blades over, in the target's local space. Defaults to
+     * the target's own; set it when only part of the rendered surface should
+     * grow grass (tile tops, not cliff walls).
+     */
+    sampleGeometry?: THREE.BufferGeometry;
 };
 
 /** Draw a `ratio` slice of a chunk's blades once it is `distance` units away. */
@@ -134,7 +140,8 @@ export class GrassSurface {
         const chunkSize = options.chunkSize ?? 5;
         if (options.maxDistance !== undefined) this.maxDistance = options.maxDistance;
 
-        const { areas, triangles, total } = this.buildAreaTable(target.geometry, options.bounds);
+        const geometry = options.sampleGeometry ?? target.geometry;
+        const { areas, triangles, total } = this.buildAreaTable(geometry, options.bounds);
         if (total <= 0) return;
 
         const bladeCount = Math.round(density * total);
@@ -145,7 +152,7 @@ export class GrassSurface {
         for (let i = 0; i < bladeCount; i++) {
             const picked = this.pickTriangle(areas, total);
             const triangle = triangles ? triangles[picked] : picked;
-            this.readTriangle(target.geometry, triangle);
+            this.readTriangle(geometry, triangle);
             this.samplePoint();
 
             _ab.subVectors(_b, _a);

@@ -38,11 +38,13 @@ export function createStatue(entity: StatueEntity): Entity {
         key: 'KeyE',
         label,
         run: () => {
-            discover(entity.projectId);
             glow.setActive(false);
 
-            const shown = findProject(entity.projectId);
-            if (shown) events.emit('projectDiscovered', shown);
+            // Re-reading a statue shows the card again but is not a new discovery.
+            const discovered = discover(entity.projectId);
+            if (discovered) events.emit('projectDiscovered', discovered);
+
+            if (project) events.emit('projectShown', project);
         },
     }]);
 

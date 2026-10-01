@@ -5,6 +5,9 @@ import { EditorSystem } from './editor/EditorSystem';
 import { stateMachine } from '../core/StateMachine';
 import { WaterDepthPrepass } from './world/water/depthPrepass';
 
+/** Longest step the simulation takes in one frame, in seconds. */
+const MAX_FRAME_DELTA = 0.1;
+
 export class Experience {
     private static instance: Experience;
 
@@ -36,6 +39,10 @@ export class Experience {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // The scene is rendered twice per frame (water depth prepass, then the
+        // real pass). Each render() redraws the shadow map unless told not to,
+        // so shadows are flagged for exactly one redraw per tick instead.
+        this.renderer.shadowMap.autoUpdate = false;
         // Without tone mapping, anything the lights push past 1.0 clips channel
         // by channel and slides toward white — which is what made the greens
         // look washed out. Neutral rolls highlights off while keeping
@@ -44,6 +51,9 @@ export class Experience {
         this.renderer.toneMappingExposure = 1.12;
 
         this.timer = new THREE.Timer();
+        // Lets the timer ignore the time a hidden tab spent asleep; without it
+        // the first frame back reports the whole absence as one delta.
+        this.timer.connect(document);
 
         this.renderer.getDrawingBufferSize(this.drawingSize);
         this.waterDepthPrepass = new WaterDepthPrepass(this.drawingSize.x, this.drawingSize.y);
@@ -101,15 +111,21 @@ export class Experience {
     private tick() {
         this.timer.update();
 
-        if (this.world) this.world.update(this.timer.getDelta());
+        // Even with the tab-visibility fix, a long GC pause or a slow frame can
+        // hand over a huge delta: enemies would teleport, dashes tunnel through
+        // walls and combo timers finish in one frame. Clamping trades a moment
+        // of slow motion for the simulation never skipping past anything.
+        const dt = Math.min(this.timer.getDelta(), MAX_FRAME_DELTA);
+        this.world.update(dt);
         this.editor?.update();
+
+        this.renderer.shadowMap.needsUpdate = true;
 
         // The water shader reads back what is actually behind it, so its shore
         // and foam hug the rendered geometry exactly - this has to happen before
         // the real render, with the water itself hidden, or it would read its
         // own depth back.
         this.waterDepthPrepass.render(this.renderer, this.scene, this.camera, this.world.water.mesh);
-        this.renderer.getDrawingBufferSize(this.drawingSize);
         this.world.water.setSceneDepth(this.waterDepthPrepass.depthTexture, this.camera, this.drawingSize.x, this.drawingSize.y);
 
         this.renderer.render(this.scene, this.camera);

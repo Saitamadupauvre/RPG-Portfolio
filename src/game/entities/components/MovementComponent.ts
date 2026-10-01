@@ -13,7 +13,8 @@ export class MovementComponent implements Component {
     private speed: number;
     private facingAngle = 0;
     private locked = false;
-    private frozen = false;
+    /** Who is holding the body still right now. A set, so a dash ending mid-attack cannot unfreeze the attack. */
+    private frozenBy = new Set<string>();
     private turnSpeed: number;
     /** Scratch vector: getInputDirection runs every frame, so it must not allocate. */
     private moveDirection = new THREE.Vector3();
@@ -52,8 +53,13 @@ export class MovementComponent implements Component {
         this.locked = locked;
     }
 
-    public setFrozen(frozen: boolean) {
-        this.frozen = frozen;
+    /** Stops translation (input and facing still update) until every reason has been lifted. */
+    public freeze(reason: string) {
+        this.frozenBy.add(reason);
+    }
+
+    public unfreeze(reason: string) {
+        this.frozenBy.delete(reason);
     }
 
     private isDown(codes: readonly string[]): boolean {
@@ -85,7 +91,7 @@ export class MovementComponent implements Component {
         if (!move) return;
 
         this.facingAngle = Math.atan2(move.x, move.z);
-        if (!this.frozen) slideMove(this.mesh, move, this.speed * dt);
+        if (this.frozenBy.size === 0) slideMove(this.mesh, move, this.speed * dt);
         if (!this.locked) this.rotateTowards(this.facingAngle, dt);
     }
 

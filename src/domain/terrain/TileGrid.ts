@@ -84,15 +84,17 @@ export function createTileGrid(map: TileMap): TileGrid {
         const row = rowAt(z);
         const [c00, c10, c01, c11] = corners(col, row);
 
-        // Position inside the tile, 0..1 per axis, then a bilinear blend of its
-        // corners — the exact surface its two triangles draw, so a walker rides
-        // a ramp instead of hovering over it.
+        // Position inside the tile, 0..1 per axis.
         const tx = Math.min(1, Math.max(0, (x - (minX + col * tileSize)) / tileSize));
         const tz = Math.min(1, Math.max(0, (z - (minZ + row * tileSize)) / tileSize));
 
-        const front = c00 * (1 - tx) + c10 * tx;
-        const back = c01 * (1 - tx) + c11 * tx;
-        return front * (1 - tz) + back * tz;
+        // The renderer splits each tile along the c00 -> c11 diagonal
+        // (`Terrain.ts`), so the height is read off whichever of those two flat
+        // triangles the point is in. A bilinear blend would agree only when all
+        // four corners are coplanar; on a corner ramp it puts the centre a
+        // quarter-level away from the drawn surface and walkers sink into it.
+        if (tz > tx) return c00 + (c11 - c01) * tx + (c01 - c00) * tz;
+        return c00 + (c10 - c00) * tx + (c11 - c10) * tz;
     }
 
     return {

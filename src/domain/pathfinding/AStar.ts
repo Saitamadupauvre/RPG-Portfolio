@@ -1,3 +1,4 @@
+import { MinHeap } from './MinHeap';
 import { type NavGrid, canTraverse, colToWorld, rowToWorld, isBlocked, worldToCol, worldToRow } from './NavGrid';
 
 interface Node {
@@ -38,28 +39,35 @@ export function findPath(grid: NavGrid, start: [number, number], end: [number, n
     const [endCol, endRow] = target;
 
     const key = (col: number, row: number) => row * grid.cols + col;
-    const open = new Map<number, Node>();
+    // Lazy deletion: a cheaper route to a cell pushes a second node instead of
+    // re-ordering the heap; `bestG` says which copy is current, stale ones are
+    // skipped when popped.
+    const open = new MinHeap<Node>((node) => node.f);
+    const bestG = new Map<number, number>();
     const closed = new Set<number>();
 
-    const startNode: Node = { col: startCol, row: startRow, g: 0, f: heuristic(startCol, startRow, endCol, endRow), parent: null };
-    open.set(key(startCol, startRow), startNode);
+    open.push({ col: startCol, row: startRow, g: 0, f: heuristic(startCol, startRow, endCol, endRow), parent: null });
+    bestG.set(key(startCol, startRow), 0);
 
     let expansions = 0;
 
     while (open.size > 0) {
-        if (++expansions > MAX_EXPANSIONS) return null;
+        const current = open.pop()!;
+        const currentKey = key(current.col, current.row);
+        if (closed.has(currentKey) || current.g > (bestG.get(currentKey) ?? Infinity)) continue;
 
-        const current = lowestF(open);
+        if (++expansions > MAX_EXPANSIONS) return null;
         if (current.col === endCol && current.row === endRow) return reconstruct(grid, current);
 
-        open.delete(key(current.col, current.row));
-        closed.add(key(current.col, current.row));
+        closed.add(currentKey);
 
         for (const [dc, dr] of NEIGHBORS) {
             const col = current.col + dc;
             const row = current.row + dr;
             if (!canTraverse(grid, current.col, current.row, col, row)) continue;
-            if (closed.has(key(col, row))) continue;
+
+            const neighborKey = key(col, row);
+            if (closed.has(neighborKey)) continue;
 
             // A diagonal may not cut a corner: both orthogonal steps that make it
             // up have to be walkable too, or a path slips through a cliff seam.
@@ -70,11 +78,10 @@ export function findPath(grid: NavGrid, start: [number, number], end: [number, n
 
             const stepCost = dc !== 0 && dr !== 0 ? Math.SQRT2 : 1;
             const g = current.g + stepCost;
-            const existing = open.get(key(col, row));
+            if (g >= (bestG.get(neighborKey) ?? Infinity)) continue;
 
-            if (!existing || g < existing.g) {
-                open.set(key(col, row), { col, row, g, f: g + heuristic(col, row, endCol, endRow), parent: current });
-            }
+            bestG.set(neighborKey, g);
+            open.push({ col, row, g, f: g + heuristic(col, row, endCol, endRow), parent: current });
         }
     }
 
@@ -120,14 +127,6 @@ function heuristic(col: number, row: number, endCol: number, endRow: number): nu
     return Math.hypot(endCol - col, endRow - row);
 }
 
-function lowestF(open: Map<number, Node>): Node {
-    let best: Node | null = null;
-    for (const node of open.values()) {
-        if (!best || node.f < best.f) best = node;
-    }
-    return best as Node;
-}
-
 function reconstruct(grid: NavGrid, end: Node): [number, number][] {
     const path: [number, number][] = [];
     let node: Node | null = end;
@@ -135,5 +134,10 @@ function reconstruct(grid: NavGrid, end: Node): [number, number][] {
         path.push([colToWorld(grid, node.col), rowToWorld(grid, node.row)]);
         node = node.parent;
     }
-    return path.reverse();
+    path.reverse();
+    // The first node is the centre of the cell the walker already stands in.
+    // Keeping it sends every walker back to that centre on each repath — a
+    // visible stutter — so it is dropped whenever there is somewhere else to go.
+    if (path.length > 1) path.shift();
+    return path;
 }

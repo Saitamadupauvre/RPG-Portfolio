@@ -23,6 +23,7 @@ const handlers: LootHandlers = {
         if (!project) return null;
 
         events.emit('projectDiscovered', project);
+        events.emit('projectShown', project);
         return `Discovered ${project.title}`;
     },
     stat: (loot) => {

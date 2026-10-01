@@ -1,7 +1,7 @@
 import type { AppState } from './StateMachine';
 import type { MapEntity } from '../data/MapEntity';
 import type { Project } from '../data/Project';
-import type { PlayerStats } from '../domain/playerProgress';
+import type { PlayerStats } from '../data/stats';
 import { EventEmitter } from './EventEmitter';
 
 /** What the interact prompt shows: a key and what pressing it does. */
@@ -9,7 +9,10 @@ export type PromptAction = { key: string; label: string };
 
 export type AppEvents = {
     stateChange: [newState: AppState, oldState: AppState];
+    /** A project entered the discovered set for the first time. */
     projectDiscovered: [project: Project];
+    /** A project's card should be shown — new discovery or re-reading a statue. */
+    projectShown: [project: Project];
     interactPromptChange: [actions: readonly PromptAction[] | null];
     playerHealthChanged: [hp: number, maxHp: number];
 

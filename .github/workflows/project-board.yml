@@ -3,7 +3,9 @@ name: Project board
 # Moves issues / PRs across the "RPG Portfolio" project board:
 #   issue opened            -> Backlog
 #   issue assigned          -> Ready
-#   branch "<issue#>-..."   -> In Progress   (GitHub's "Create a branch" naming)
+#   branch linked to issue  -> In Progress   (issue sidebar "Development"; checked on
+#                                             branch creation and on every push, since
+#                                             linking an existing branch fires no event)
 #   PR opened               -> In Review     (PR + issues it closes)
 #   PR merged into dev      -> On Dev        (+ close linked issues)
 #   PR merged into main     -> On Main       (everything currently On Dev)
@@ -12,6 +14,8 @@ on:
   issues:
     types: [opened, reopened, assigned]
   create:
+  push:
+    branches-ignore: [main, dev]
   pull_request:
     types: [opened, reopened, ready_for_review, closed]
 
@@ -87,12 +91,29 @@ jobs:
               await setStatus(itemId, name);
             }
 
-            async function issueNodeId(issueNumber) {
-              const res = await github.graphql(`
-                query($owner: String!, $repo: String!, $n: Int!) {
-                  repository(owner: $owner, name: $repo) { issue(number: $n) { id } }
-                }`, { owner: repo.owner, repo: repo.repo, n: issueNumber });
-              return res.repository.issue.id;
+            // Open issues whose "Development" sidebar links this branch
+            async function issuesLinkedToBranch(branchName) {
+              const found = [];
+              let cursor = null;
+              do {
+                const res = await github.graphql(`
+                  query($owner: String!, $repo: String!, $cursor: String) {
+                    repository(owner: $owner, name: $repo) {
+                      issues(first: 100, states: OPEN, after: $cursor) {
+                        pageInfo { hasNextPage endCursor }
+                        nodes {
+                          id number
+                          linkedBranches(first: 20) { nodes { ref { name } } }
+                        }
+                      }
+                    }
+                  }`, { owner: repo.owner, repo: repo.repo, cursor });
+                const page = res.repository.issues;
+                found.push(...page.nodes.filter((issue) =>
+                  issue.linkedBranches.nodes.some((b) => b.ref?.name === branchName)));
+                cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+              } while (cursor);
+              return found;
             }
 
             // Issues a PR will close ("closes #N" or linked in the sidebar)
@@ -150,12 +171,14 @@ jobs:
               return;
             }
 
-            if (eventName === 'create') {
-              // Branch created from an issue is named "<issue#>-<slug>"
-              const match = /^(\d+)-/.exec(payload.ref);
-              if (!match) { core.info(`Branch "${payload.ref}" has no issue number, skipping`); return; }
-              const id = await issueNodeId(Number(match[1]));
-              await moveContent(id, 'In Progress');
+            if (eventName === 'create' || eventName === 'push') {
+              const branch = eventName === 'create' ? payload.ref : payload.ref.replace('refs/heads/', '');
+              const issues = await issuesLinkedToBranch(branch);
+              if (!issues.length) { core.info(`No issue links branch "${branch}"`); return; }
+              for (const issue of issues) {
+                core.info(`#${issue.number} linked to ${branch}`);
+                await moveContent(issue.id, 'In Progress');
+              }
               return;
             }
 

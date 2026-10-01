@@ -76,65 +76,84 @@ function createMaterial(type: EnemyEntity['enemyType']) {
     return template.clone();
 }
 
+/** What every enemy needs from the scene. Only exists once the World is built. */
+type EnemyPoolDeps = {
+    camera: THREE.Camera;
+    player: THREE.Object3D;
+    entityGroup: THREE.Object3D;
+};
+
+/** The box is centred on its origin, so its feet sit half its height below it. */
+function bodyHeightOf(type: EnemyEntity['enemyType']): number {
+    return enemyLook[type].size * 1.6;
+}
+
 export class EnemyPool {
     private free = new Map<EnemyEntity['enemyType'], Entity[]>();
-    private camera: THREE.Camera | null = null;
-    private player: THREE.Object3D | null = null;
-    private entityGroup: THREE.Object3D | null = null;
+    private deps: EnemyPoolDeps | null = null;
 
     public init(camera: THREE.Camera, player: THREE.Object3D, entityGroup: THREE.Object3D) {
-        this.camera = camera;
-        this.player = player;
-        this.entityGroup = entityGroup;
+        this.deps = { camera, player, entityGroup };
     }
 
-    private createEnemy(type: EnemyEntity['enemyType'], id: string, position: THREE.Vector3): Entity {
+    private createEnemy(type: EnemyEntity['enemyType'], id: string): Entity {
+        // Fail loudly: before this check, a missing init() quietly built enemies
+        // with no AI and no health bar, which looks like a gameplay bug.
+        if (!this.deps) throw new Error('enemyPool.init(camera, player, entityGroup) must run before the first enemy spawns');
+        const { camera, player } = this.deps;
+
         const geometry = getGeometry(type);
         const material = createMaterial(type);
         const mesh = new THREE.Mesh(geometry, material);
         const look = enemyLook[type];
+        const height = bodyHeightOf(type);
 
         const health = new HealthComponent(look.hp);
+        const attack = new AttackComponent(mesh);
+        const combo = new ComboComponent(attack, look.combo);
+        // Origin is a placeholder; acquire() resets the AI onto the real one.
+        const ai = new EnemyAIComponent(mesh, player, mesh.position, look.moveSpeed, look.aggroRadius, look.deaggroRadius, combo, look.attackRange);
+
         const entity = new Entity(id, mesh, look.size / 2)
             .addComponent('health', health)
-            .addComponent('hitFlash', new HitFlashComponent(material));
-
-        if (this.camera) {
-            const yOffset = (look.size * 1.6) / 2 + 0.25;
-            entity.addComponent('healthBar', new HealthBarComponent(mesh, this.camera, health, yOffset));
-        }
-
-        if (this.player && this.entityGroup) {
-            const attack = new AttackComponent(mesh, this.entityGroup);
-            const combo = new ComboComponent(attack, look.combo);
-            const ai = new EnemyAIComponent(mesh, this.player, position, look.moveSpeed, look.aggroRadius, look.deaggroRadius, combo, look.attackRange);
-            entity.addComponent('attack', attack).addComponent('enemyAI', ai);
-        }
+            .addComponent('hitFlash', new HitFlashComponent(material))
+            .addComponent('healthBar', new HealthBarComponent(mesh, camera, health, height / 2 + 0.25))
+            .addComponent('attack', attack)
+            .addComponent('enemyAI', ai);
+        entity.bodyHeight = height;
+        entity.groundOffset = height / 2;
 
         return entity;
     }
 
     public acquire(source: EnemyEntity): Entity {
-        const look = enemyLook[source.enemyType];
-        const position = new THREE.Vector3(...source.position);
         const pool = this.free.get(source.enemyType);
-        const entity = pool?.pop() ?? this.createEnemy(source.enemyType, source.id, position);
+        const entity = pool?.pop() ?? this.createEnemy(source.enemyType, source.id);
 
         entity.id = source.id;
         entity.setDisposer(() => this.release(entity, source.enemyType));
-
-        const health = entity.getComponent('health');
-        if (health) health.hp = health.maxHp;
-        entity.getComponent('healthBar')?.reset();
-        // Boxes are centred on their origin, so an enemy stands half its size up.
-        entity.groundOffset = look.size / 2;
-        applyTransform(entity.mesh, source, entity.groundOffset);
-        // Origin is read after the transform so the AI returns to the point on
-        // the terrain the enemy actually stands on, not the layout's flat Y.
-        entity.getComponent('enemyAI')?.setOrigin(entity.mesh.position.clone());
+        this.reset(entity, source);
         entity.mesh.visible = true;
 
         return entity;
+    }
+
+    /**
+     * Back to just-spawned: full health, at its authored spot, no swing,
+     * flash or aggro carried over from a previous life. Shared by a fresh
+     * acquire and by a bonfire rest resetting a live enemy.
+     */
+    public reset(entity: Entity, source: EnemyEntity) {
+        const health = entity.getComponent('health');
+        if (health) health.hp = health.maxHp;
+        entity.getComponent('healthBar')?.reset();
+        entity.getComponent('hitFlash')?.reset();
+        entity.getComponent('attack')?.reset();
+
+        applyTransform(entity.mesh, source, entity.groundOffset);
+        // Origin is read after the transform so the AI returns to the point on
+        // the terrain the enemy actually stands on, not the layout's flat Y.
+        entity.getComponent('enemyAI')?.reset(entity.mesh.position);
     }
 
     public release(entity: Entity, type: EnemyEntity['enemyType']) {

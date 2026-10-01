@@ -38,10 +38,12 @@ export class EnemyAIComponent implements Component {
         this.combo = combo;
     }
 
-    public setOrigin(origin: THREE.Vector3) {
+    /** Puts the enemy back to its just-spawned state around a (new) home point. */
+    public reset(origin: THREE.Vector3) {
         this.origin.copy(origin);
         this.detection.setOrigin(this.origin);
         this.pathfinding.clearTarget();
+        this.combo.reset();
     }
 
     public update(dt: number) {

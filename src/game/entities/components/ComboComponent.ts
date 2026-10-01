@@ -5,6 +5,13 @@ import type { AttackComponent, AttackHitboxOptions } from './AttackComponent';
 export interface ComboMove {
     options?: AttackHitboxOptions;
 
+    /**
+     * Damage as a multiple of the attacker's base damage, instead of a fixed
+     * `options.damage`. A fixed number overrides the base outright, which is
+     * how the Strength upgrade ended up changing nothing for the player.
+     */
+    damageScale?: number;
+
     recovery?: number;
 
     windup?: number;
@@ -91,6 +98,16 @@ export class ComboComponent implements Component {
         return true;
     }
 
+    /** Back to a fresh, idle chain. The next update reports the body free if it was busy. */
+    public reset() {
+        this.pending = null;
+        this.recoveryTimer = 0;
+        this.recoveryTail = 0;
+        this.index = 0;
+        this.idleTime = 0;
+        this.attack.reset();
+    }
+
     public update(dt: number) {
         if (this.recoveryTimer > 0) this.recoveryTimer -= dt;
         this.step(dt);
@@ -102,13 +119,18 @@ export class ComboComponent implements Component {
         }
     }
 
+    private optionsFor(move: ComboMove): AttackHitboxOptions {
+        if (move.damageScale === undefined) return move.options ?? {};
+        return { ...move.options, damage: this.attack.baseDamage * move.damageScale };
+    }
+
     private step(dt: number) {
         if (this.pending) {
             this.pending.timer -= dt;
             if (this.pending.timer <= 0) {
                 const { aimPoint, move } = this.pending;
                 this.pending = null;
-                this.attack.trigger(aimPoint, move.options ?? {});
+                this.attack.trigger(aimPoint, this.optionsFor(move));
                 this.recoveryTimer = move.recovery ?? 0;
                 this.recoveryTail = Math.max(0, this.recoveryTimer - this.attack.swingDuration);
             }

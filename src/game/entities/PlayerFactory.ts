@@ -16,9 +16,8 @@ import { createSwordMesh } from './SwordFactory';
 import { loadModel } from './loadModel';
 import { events } from '../../core/events';
 import { createToonMaterial } from '../render/toon';
+import { getPlayerStats } from '../../domain/playerProgress';
 
-const PLAYER_SPEED = 4;
-const PLAYER_HP = 100;
 const PLAYER_RADIUS = 0.4;
 
 const PLAYER_MODEL_URL = 'player/player.glb';
@@ -30,8 +29,9 @@ const PLAYER_MODEL_ORIGIN_Y = -PLAYER_HEIGHT / 2;
 const WEAPON_SOCKET = 'Socket_HandR';
 
 const COMBO_MOVES: ComboMove[] = [
-    { options: { damage: 12, distance: 0.9, duration: 0.18, color: 0x66ccff }, recovery: 0.18, windup: 0.12 },
-    { options: { damage: 16, distance: 1.1, duration: 0.22, color: 0x3399ff }, recovery: 0.35, windup: 0.14 },
+    // Scaled off the Strength stat (base 10): 12 and 16 damage before any upgrade.
+    { options: { distance: 0.9, duration: 0.18, color: 0x66ccff }, damageScale: 1.2, recovery: 0.18, windup: 0.12 },
+    { options: { distance: 1.1, duration: 0.22, color: 0x3399ff }, damageScale: 1.6, recovery: 0.35, windup: 0.14 },
 ];
 
 export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Group): Entity {
@@ -61,8 +61,13 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     standInSocket.add(sword);
     visual.add(standInSocket);
 
-    const movement = new MovementComponent(root, cameraOffset, PLAYER_SPEED);
-    const attack = new AttackComponent(root, entityGroup);
+    // Base values come from the progression rules, so there is one source of
+    // truth for "how fast / how tough is the player" — bindPlayerStats keeps
+    // them in sync after every upgrade.
+    const stats = getPlayerStats();
+
+    const movement = new MovementComponent(root, cameraOffset, stats.speed);
+    const attack = new AttackComponent(root);
     // Attack clips are full-body, so the body plants for the whole move: no turning, no sliding.
     const combo = new ComboComponent(attack, COMBO_MOVES, {
         onBusyChanged: (busy) => {
@@ -76,7 +81,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     // The graph runs from frame one; it gets its bones and clips when the model arrives.
     const animator = new AnimatorComponent(playerController);
 
-    const health = new HealthComponent(PLAYER_HP, (hp, maxHp) => {
+    const health = new HealthComponent(stats.health, (hp, maxHp) => {
         events.emit('playerHealthChanged', hp, maxHp);
     });
 
@@ -111,6 +116,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     // The capsule's origin is its centre, so the root rides half a body above
     // the ground it stands on.
     entity.groundOffset = PLAYER_HEIGHT / 2;
+    entity.bodyHeight = PLAYER_HEIGHT;
 
     // Components update in insertion order: the driver must set its parameters before the
     // animator reads them, and the animator must pose the sword before the trail samples it.

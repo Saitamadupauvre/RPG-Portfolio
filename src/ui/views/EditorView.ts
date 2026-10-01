@@ -32,8 +32,42 @@ const gizmoModes = [
 
 const AXES = ['x', 'y', 'z'] as const;
 
+/**
+ * The panel's markup lives here rather than in index.html: the editor is
+ * dev-only, and markup in the page would ship to production as a hidden panel.
+ */
+const PANEL_HTML = `
+    <h3 class="pixel-text">Editor (F1)</h3>
+    <div id="editor-modes" class="editor-row"></div>
+    <div id="editor-tiles" class="editor-row"></div>
+    <div id="editor-grid-size" class="editor-row"></div>
+    <p id="editor-tile-status" class="editor-hint"></p>
+    <div id="editor-palette" class="editor-row"></div>
+    <div id="editor-inspector"></div>
+    <div class="editor-row">
+      <span id="editor-count" class="pixel-text">0 entities</span>
+      <button class="btn editor-btn" id="btn-editor-copy">Copy JSON</button>
+      <button class="btn editor-btn" id="btn-editor-copy-terrain">Copy tiles</button>
+      <button class="btn editor-btn" id="btn-editor-export">Export JSON</button>
+      <button class="btn editor-btn" id="btn-editor-reset">Reset</button>
+    </div>
+    <p class="editor-hint">F1 toggle · Edit tiles: click a tile, shift-click to add, drag the arrow to change level (1 level = walkable step, 2+ = cliff) · click ground to place · click palette again to unarm · click entity to select · W/E/R gizmo · hold Shift for free (unsnapped) placement · Ctrl+D duplicate · X or Del remove</p>
+`;
+
+function mountPanel(): HTMLElement | null {
+    const container = document.getElementById('ui-container');
+    if (!container) return null;
+
+    const panel = document.createElement('div');
+    panel.id = 'editor-panel';
+    panel.className = 'pixel-panel';
+    panel.innerHTML = PANEL_HTML;
+    container.appendChild(panel);
+    return panel;
+}
+
 export function initEditorView() {
-    const panel = document.getElementById('editor-panel');
+    const panel = mountPanel();
     const paletteEl = document.getElementById('editor-palette');
     const modesEl = document.getElementById('editor-modes');
     const inspector = document.getElementById('editor-inspector');

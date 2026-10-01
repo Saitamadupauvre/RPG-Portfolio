@@ -39,6 +39,7 @@ export class EditorSystem {
     private tiles: TileMap = loadWorkingTiles();
     private tileSelection: TileSelection;
     private tileMode = false;
+    private workingCopyApplied = false;
     /** Proxy height when the current gizmo drag started, to measure travel from. */
     private dragBaseY = 0;
     private selectedId: string | null = null;
@@ -95,8 +96,9 @@ export class EditorSystem {
         events.on('editorTileModeChanged', (enabled) => this.setTileMode(enabled));
         events.on('editorWaterLevelChanged', (level) => {
             this.tiles = { ...this.tiles, waterLevel: level };
-            this.experience.world.water.setLevel(level);
-            saveWorkingTiles(this.tiles);
+            // A full terrain rebuild, not just the water mesh: the nav grid
+            // blocks underwater cells, so the shoreline it walks has moved too.
+            this.rebuildTerrain();
         });
         events.on('editorTileGridResized', (cols, rows) => {
             this.tiles = resizeTileMap(this.tiles, cols, rows);
@@ -105,12 +107,33 @@ export class EditorSystem {
         });
 
         this.tileSelection = new TileSelection(scene);
+
+        if (this.hasUnsavedWorkingCopy()) {
+            console.info('[editor] a local working copy of the map exists; it replaces the committed map the first time the editor opens (F1)');
+        }
+    }
+
+    /**
+     * The localStorage working copy only takes over once the editor is opened.
+     * Applying it at startup made `npm run dev` play a different map from the
+     * committed one the production build ships, with nothing on screen saying so.
+     */
+    private applyWorkingCopy() {
+        if (this.workingCopyApplied) return;
+        this.workingCopyApplied = true;
+
         rebuildTileGrid(this.tiles);
         this.experience.world.rebuildTerrain(this.tiles);
         this.experience.world.loadLayout(this.layout);
     }
 
+    private hasUnsavedWorkingCopy(): boolean {
+        return JSON.stringify(this.layout) !== JSON.stringify(sourceLayout())
+            || JSON.stringify(this.tiles) !== JSON.stringify(sourceTiles());
+    }
+
     public enter() {
+        this.applyWorkingCopy();
         const { camera } = this.experience;
         this.orbit.target.copy(this.experience.world.player.mesh.position);
         this.orbit.enabled = true;

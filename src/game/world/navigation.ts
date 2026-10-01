@@ -20,8 +20,6 @@ function isBlocking(entity: MapEntity): boolean {
 
 const CELL_SIZE = 0.5;
 
-
-
 let cached: NavGrid | null = null;
 
 export function getNavGrid(): NavGrid {
@@ -78,10 +76,17 @@ function build(layout: MapEntity[]): NavGrid {
     const halfX = (tiles.map.cols * tiles.map.tileSize) / 2;
     const halfZ = (tiles.map.rows * tiles.map.tileSize) / 2;
 
+    // Ground under the sea surface is lake or ocean bed: not somewhere to walk.
+    const waterLevel = tiles.map.waterLevel;
+    const isUnderwater = waterLevel === undefined
+        ? undefined
+        : (x: number, z: number) => tiles.heightAt(x, z) < waterLevel;
+
     const grid = buildNavGrid(
         obstacles,
         { minX: -halfX, maxX: halfX, minZ: -halfZ, maxZ: halfZ },
         CELL_SIZE,
+        isUnderwater,
     );
 
     // Cliffs are a property of the *step* between two places, not of either

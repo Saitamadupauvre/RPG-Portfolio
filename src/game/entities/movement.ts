@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { canTraverse, isBlocked, worldToCol, worldToRow } from '../../domain/pathfinding/NavGrid';
+import { canTraverse, isBlocked, isInsideBounds, worldToCol, worldToRow } from '../../domain/pathfinding/NavGrid';
 import { getNavGrid } from '../world/navigation';
 
 type Grid = ReturnType<typeof getNavGrid>;
@@ -8,8 +8,9 @@ function isWorldBlocked(grid: Grid, x: number, z: number): boolean {
     return isBlocked(grid, worldToCol(grid, x), worldToRow(grid, z));
 }
 
-/** Blocked destination, or a step too tall to climb — a cliff stops both. */
+/** Off the map, blocked destination, or a step too tall to climb — all three stop a walker. */
 function cannotReach(grid: Grid, fromX: number, fromZ: number, toX: number, toZ: number): boolean {
+    if (!isInsideBounds(grid, toX, toZ)) return true;
     return !canTraverse(
         grid,
         worldToCol(grid, fromX),
@@ -26,9 +27,13 @@ export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distan
     // Standing inside a blocked cell (respawn on a landmark, an obstacle added
     // by the editor) would fail every test below and pin the player forever.
     // Let them walk out instead.
+    // The escape hatch still respects the map border.
     if (isWorldBlocked(grid, x, z)) {
-        mesh.position.x += direction.x * distance;
-        mesh.position.z += direction.z * distance;
+        const nextX = x + direction.x * distance;
+        const nextZ = z + direction.z * distance;
+        if (!isInsideBounds(grid, nextX, nextZ)) return;
+        mesh.position.x = nextX;
+        mesh.position.z = nextZ;
         return;
     }
 

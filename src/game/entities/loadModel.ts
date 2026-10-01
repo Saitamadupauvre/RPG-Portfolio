@@ -16,7 +16,15 @@ const cache = new Map<string, Promise<CachedModel>>();
 function load(url: string): Promise<CachedModel> {
     let pending = cache.get(url);
     if (!pending) {
-        pending = loader.loadAsync(url).then((gltf) => ({ scene: gltf.scene, animations: gltf.animations }));
+        pending = loader.loadAsync(url).then(
+            (gltf) => ({ scene: gltf.scene, animations: gltf.animations }),
+            (error: unknown) => {
+                // A rejected promise left in the cache would fail every later
+                // request for this URL forever; dropping it lets the next one retry.
+                cache.delete(url);
+                throw error;
+            },
+        );
         cache.set(url, pending);
     }
     return pending;

@@ -511,3 +511,36 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Shown while game mode boots (Three.js chunk download + world build), on top
+   of the game state, which is already active underneath. */
+.booting #loading-screen {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+  background: var(--pixel-bg);
+  z-index: 10;
+}
+
+.progress-bar {
+  width: 240px;
+  height: 12px;
+  margin-top: 1rem;
+  border: 2px solid var(--accent-teal);
+  overflow: hidden;
+}
+
+/* Indeterminate: nothing reports real progress, so the bar sweeps instead of
+   pretending to fill. */
+#progress-fill {
+  width: 30%;
+  height: 100%;
+  background: var(--accent-teal);
+  animation: progress-sweep 1s steps(8) infinite;
+}
+
+@keyframes progress-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}

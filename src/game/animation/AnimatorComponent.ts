@@ -35,6 +35,8 @@ interface LayerRuntime {
     /** Null = no mask, the layer may write every node. */
     mask: Set<string> | null;
     weight: number;
+    /** This frame's weighted states, read once per update and shared by every binding. */
+    active: readonly ActiveState[];
 }
 
 export interface PlayOptions {
@@ -92,6 +94,7 @@ export class AnimatorComponent implements Component {
                 layer: new AnimatorLayer(layerDefinition, this.params, this.overrides, durationOf, emit),
                 mask: layerDefinition.mask ? new Set(layerDefinition.mask) : null,
                 weight: layerDefinition.weight ?? 1,
+                active: [],
             };
             this.layers.push(runtime);
             this.layerByName.set(layerDefinition.name, runtime);
@@ -206,7 +209,13 @@ export class AnimatorComponent implements Component {
     // --- frame --------------------------------------------------------------------------
 
     public update(dt: number) {
-        for (const { layer } of this.layers) layer.update(dt);
+        // activeStates() rebuilds its list on every call; asking once per layer
+        // here instead of once per bone per layer is the difference between a
+        // handful of calls a frame and a few hundred.
+        for (const runtime of this.layers) {
+            runtime.layer.update(dt);
+            runtime.active = runtime.layer.activeStates();
+        }
 
         for (const binding of this.bindings) {
             if (binding.kind === 'vector') this.writeVector(binding);
@@ -223,11 +232,11 @@ export class AnimatorComponent implements Component {
     private writeVector(binding: VectorBinding) {
         const value = this.vector.copy(binding.rest);
 
-        for (const { layer, mask, weight } of this.layers) {
+        for (const { active, mask, weight } of this.layers) {
             if (mask && !mask.has(binding.target)) continue;
 
             let accumulated = 0;
-            for (const state of layer.activeStates()) {
+            for (const state of active) {
                 const contribution = this.vectorContribution;
                 const track = this.trackFor(state, binding.key);
                 if (!state.clip) contribution.copy(value);
@@ -248,11 +257,11 @@ export class AnimatorComponent implements Component {
     private writeQuaternion(binding: QuaternionBinding) {
         const value = this.quaternion.copy(binding.rest);
 
-        for (const { layer, mask, weight } of this.layers) {
+        for (const { active, mask, weight } of this.layers) {
             if (mask && !mask.has(binding.target)) continue;
 
             let accumulated = 0;
-            for (const state of layer.activeStates()) {
+            for (const state of active) {
                 const contribution = this.quaternionContribution;
                 const track = this.trackFor(state, binding.key);
                 if (!state.clip) contribution.copy(value);

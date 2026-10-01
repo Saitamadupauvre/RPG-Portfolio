@@ -1,4 +1,5 @@
 import { events } from '../../core/events';
+import { setPaused } from '../../core/pause';
 import { projectToUICardStyle } from '../../domain/CardStyle';
 import { renderProjectCard } from '../components/renderProjectCard';
 
@@ -10,7 +11,7 @@ export function initProjectModalView() {
 
     const setOpen = (open: boolean) => {
         modal.classList.toggle('open', open);
-        events.emit('pauseChanged', open);
+        setPaused('projectModal', open);
     };
 
     const close = () => setOpen(false);
@@ -22,7 +23,7 @@ export function initProjectModalView() {
         }
     });
 
-    events.on('projectDiscovered', (project) => {
+    events.on('projectShown', (project) => {
         body.replaceChildren(renderProjectCard(project, projectToUICardStyle(project)));
         setOpen(true);
     });

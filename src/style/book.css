@@ -1,6 +1,6 @@
-/* The book: shared by game mode (B) and classic mode. Placeholder look, every
-   colour and the backdrop live in the variables below so real art can replace
-   them without touching the markup. */
+/* The book: shared by game mode (B) and classic mode. The art lives in
+   src/assets/book/ (see its README for sizes and slices); colours below cover
+   what stays drawn in CSS (text, page stacks, progress bar). */
 
 @property --progress {
   syntax: '<number>';
@@ -9,6 +9,11 @@
 }
 
 :root {
+  /* One art pixel on screen. Every sprite is drawn at this scale. */
+  --book-px: 4px;
+  /* How far the cover sticks out past the pages. */
+  --book-margin: calc(6 * var(--book-px));
+
   /* Dark veil over whatever is behind the book (the game world, or the menu). */
   --book-backdrop: rgba(5, 4, 8, 0.85);
 
@@ -76,18 +81,54 @@
   animation: book-leave 380ms cubic-bezier(0.5, 0, 0.9, 0.4) both;
 }
 
-/* Back cover: sticks out past the pages on every side. */
+/* ---------- sprites ---------- */
+
+/* 9-slice: corners keep their size, edges and middle repeat, so a small
+   sprite frames a box of any size. Elements below only pick their image. */
+.book-cover::before,
+.book-cover::after,
+.book-page,
+.book-leaf-face,
+.book-front-cover {
+  border-image-slice: 8 fill;
+  border-image-width: calc(8 * var(--book-px));
+  border-image-repeat: repeat;
+  image-rendering: pixelated;
+}
+
+.book-tab,
+.book-link {
+  border: none;
+  border-image-slice: 3 fill;
+  border-image-width: calc(3 * var(--book-px));
+  border-image-repeat: repeat;
+  image-rendering: pixelated;
+}
+
+/* Back cover: sticks out past the pages on every side, one sprite per half. */
 .book-cover {
   position: absolute;
-  inset: -22px -26px -26px -26px;
-  background:
-    linear-gradient(90deg, transparent 49.2%, var(--book-cover-dark) 49.2%, var(--book-cover-dark) 50.8%, transparent 50.8%),
-    var(--book-cover);
-  border: 4px solid var(--book-cover-dark);
-  box-shadow:
-    inset 0 0 0 4px var(--book-cover-light),
-    8px 8px 0 rgba(0, 0, 0, 0.55),
-    16px 16px 0 rgba(0, 0, 0, 0.25);
+  inset: calc(-1 * var(--book-margin));
+  filter: drop-shadow(var(--book-px) var(--book-px) 0 rgba(0, 0, 0, 0.55));
+}
+
+.book-cover::before,
+.book-cover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+.book-cover::before {
+  left: 0;
+  border-image-source: url('../assets/book/cover-left.png');
+}
+
+.book-cover::after {
+  right: 0;
+  border-image-source: url('../assets/book/cover-right.png');
 }
 
 /* Fake page edges under each page, thickness --t sideways and --ty downward
@@ -182,32 +223,29 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--book-paper-edge) transparent;
-  background: var(--book-paper);
 }
 
 .book-page-left {
   left: 0;
-  background: linear-gradient(90deg, var(--book-paper) 85%, var(--book-paper-shade));
+  border-image-source: url('../assets/book/page-left.png');
 }
 
 .book-page-right {
   left: 50%;
-  background: linear-gradient(90deg, var(--book-paper-shade), var(--book-paper) 15%);
+  border-image-source: url('../assets/book/page-right.png');
 }
 
 .book-close {
   position: absolute;
-  top: -20px;
-  right: -22px;
+  top: calc(-1 * var(--book-margin));
+  right: calc(-1 * var(--book-margin));
   z-index: 7;
-  width: 32px;
-  height: 32px;
-  font-family: var(--book-font-title);
-  font-size: 0.9rem;
-  color: var(--book-paper);
-  background: var(--book-accent);
-  border: 3px solid var(--book-cover-dark);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+  width: calc(9 * var(--book-px));
+  height: calc(9 * var(--book-px));
+  background: url('../assets/book/close.png') 0 0 / 100% 100%;
+  image-rendering: pixelated;
+  border: none;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.5));
   cursor: pointer;
 }
 
@@ -220,7 +258,7 @@
 .book-tabs {
   position: absolute;
   top: 28px;
-  right: calc(-26px - 38px);
+  right: calc(-1 * var(--book-margin) - 38px);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -230,15 +268,15 @@
 .book-tab {
   --tab-color: var(--book-cover-light);
   writing-mode: vertical-rl;
-  padding: 0.8rem 0.35rem 0.8rem 0.55rem;
+  padding: calc(4 * var(--book-px)) calc(3 * var(--book-px));
   font-family: var(--book-font);
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--book-paper);
-  background: var(--tab-color);
-  border: 3px solid var(--book-cover-dark);
-  border-left: none;
+  /* tab.png has a transparent middle: this colour shows through it. */
+  background-color: var(--tab-color);
+  border-image-source: url('../assets/book/tab.png');
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transform: translateX(-8px);
@@ -427,12 +465,11 @@
 }
 
 .book-link {
-  padding: 0.35rem 0.8rem;
+  padding: calc(3 * var(--book-px)) calc(4 * var(--book-px));
   font-family: var(--book-font);
   font-weight: 600;
   color: var(--book-paper);
-  background: var(--book-accent);
-  border: 3px solid var(--book-cover-dark);
+  border-image-source: url('../assets/book/button.png');
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
   text-decoration: none;
 }
@@ -451,9 +488,8 @@
 }
 
 .book-entry-locked .book-lock {
-  transform: scale(2.5);
-  transform-origin: left center;
-  margin: 0.6rem 0 0.4rem;
+  --lock-px: var(--book-px);
+  margin: 0.4rem 0;
 }
 
 .book-progress {
@@ -473,26 +509,24 @@
   font-size: 0.9rem;
 }
 
-/* Pixel padlock drawn with two boxes: shackle (::before) over the body. */
+/* Half scale in a TOC line, where a full-scale lock would be taller than the text. */
 .book-lock {
-  position: relative;
+  --lock-px: calc(var(--book-px) / 2);
   flex: none;
   display: inline-block;
-  width: 10px;
-  height: 8px;
-  margin-top: 5px;
-  background: currentColor;
+  width: calc(7 * var(--lock-px));
+  height: calc(9 * var(--lock-px));
+  background: url('../assets/book/lock.png') 0 0 / 100% 100%;
+  image-rendering: pixelated;
 }
 
-.book-lock::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  bottom: 8px;
-  width: 2px;
-  height: 3px;
-  border: 2px solid currentColor;
-  border-bottom: none;
+.book-toc-item.locked .book-lock {
+  opacity: 0.7;
+}
+
+/* Dark lock on the dark selection bar: flip it light. */
+.book-toc-item.active .book-lock {
+  filter: invert(0.9);
 }
 
 .book-back {
@@ -526,43 +560,31 @@
   padding: 2rem 2rem 1.5rem;
   overflow: hidden;
   backface-visibility: hidden;
-  background:
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(122, 90, 54, 0.12) 27px 28px),
-    var(--book-paper);
-  border: 1px solid var(--book-paper-edge);
 }
 
-/* Spine shadow on each face, same as the real pages. */
+/* A turning leaf is a real page: right-hand sprite on the front, left-hand on the back. */
 .book-leaf-front {
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 18%),
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(122, 90, 54, 0.12) 27px 28px),
-    var(--book-paper);
+  border-image-source: url('../assets/book/page-right.png');
 }
 
 .book-leaf-back {
   transform: rotateY(180deg);
-  background:
-    linear-gradient(270deg, rgba(0, 0, 0, 0.12), transparent 18%),
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(122, 90, 54, 0.12) 27px 28px),
-    var(--book-paper);
+  border-image-source: url('../assets/book/page-left.png');
 }
 
 /* ---------- front cover (opens once the book has landed) ---------- */
 
 .book-front-cover {
   position: absolute;
-  top: -22px;
-  bottom: -26px;
+  top: calc(-1 * var(--book-margin));
+  bottom: calc(-1 * var(--book-margin));
   left: 50%;
-  right: -26px;
+  right: calc(-1 * var(--book-margin));
   z-index: 6;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--book-cover);
-  border: 4px solid var(--book-cover-dark);
-  box-shadow: inset 0 0 0 4px var(--book-cover-light), inset 0 0 0 10px var(--book-cover), inset 0 0 0 13px var(--book-cover-dark);
+  border-image-source: url('../assets/book/cover-front.png');
   transform-origin: left center;
   backface-visibility: hidden;
   pointer-events: none;
@@ -597,7 +619,8 @@
 
 @keyframes book-cover-unclip {
   from { clip-path: inset(0 0 0 50%); }
-  to { clip-path: inset(0); }
+  /* `none`, not inset(0): an inset clip would also cut the drop shadow. */
+  to { clip-path: none; }
 }
 
 @keyframes book-left-show {
@@ -638,15 +661,24 @@
 /* ---------- mobile: one page at a time ---------- */
 
 @media (max-width: 700px) {
+  :root {
+    --book-px: 3px;
+    --book-margin: calc(4 * var(--book-px));
+  }
+
   .book {
     width: calc(100vw - 32px - 24px);
     height: min(78vh, 640px);
     margin-top: 2.5rem;
   }
 
-  .book-cover {
-    inset: -12px;
-    background: var(--book-cover);
+  /* One page, bound on the left: only the right half of the cover, full width. */
+  .book-cover::before {
+    display: none;
+  }
+
+  .book-cover::after {
+    width: 100%;
   }
 
   .book-stack-left {
@@ -662,7 +694,10 @@
     left: 0;
     width: 100%;
     padding: 1.4rem 1.2rem 1rem;
-    background: var(--book-paper);
+  }
+
+  .book-page-left {
+    border-image-source: url('../assets/book/page-right.png');
   }
 
   .book-page-right,
@@ -675,7 +710,7 @@
   }
 
   .book-tabs {
-    top: calc(-12px - 34px);
+    top: calc(-1 * var(--book-margin) - 34px);
     right: auto;
     left: 0;
     flex-direction: row;
@@ -687,19 +722,12 @@
     writing-mode: horizontal-tb;
     padding: 0.4rem 0.6rem;
     font-size: 0.75rem;
-    border: 3px solid var(--book-cover-dark);
-    border-bottom: none;
     transform: translateY(6px);
   }
 
   .book-tab:hover,
   .book-tab.active {
     transform: translateY(0);
-  }
-
-  .book-close {
-    top: -12px;
-    right: -12px;
   }
 
   .book-back {
@@ -720,7 +748,7 @@
   }
 
   .book-front-cover {
-    inset: -12px;
+    left: calc(-1 * var(--book-margin));
   }
 
   .book-page-title {

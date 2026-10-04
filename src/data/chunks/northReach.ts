@@ -10,7 +10,7 @@ export const northReach: MapEntity[] = [
         loot: [
             { kind: 'coins', amount: 120 },
             { kind: 'stat', statId: 'speed' },
-            { kind: 'project', projectId: 'project-three' },
+            { kind: 'project', projectId: 'raytracer' },
         ],
     },
 ];

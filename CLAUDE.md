@@ -30,9 +30,9 @@ Layered, event-driven — each layer only knows about the layer below it via typ
 
 - `src/core/` — framework-agnostic infra, no Three.js/DOM knowledge. Imports nothing from other layers (type imports from `data/` only).
   - `EventEmitter.ts` — generic typed pub/sub (`EventEmitter<Events>`), has `on`/`off`/`once`/`emit`.
-  - `events.ts` — `AppEvents` type map + one shared `events` singleton. Add new cross-layer events here. `projectDiscovered` = first-time discovery (book refresh); `projectShown` = open the project card (modal).
+  - `events.ts` — `AppEvents` type map + one shared `events` singleton. Add new cross-layer events here. `projectDiscovered` = first-time discovery (book refresh); `projectShown` = open the book on that project's page; `levelUpRequested` = open the book on the Level page; `levelUpAvailableChanged` = player in/out of bonfire range (stats buyable only then).
   - `StateMachine.ts` — tracks `AppState` (`LOADING | MENU | GAME | CLASSIC | DEAD | EDITOR`) and emits `stateChange`. Does **not** touch the DOM.
-  - `pause.ts` — `setPaused(reason, paused)`: pause is a *set of reasons* (book, upgradeBoard, projectModal), emits `pauseChanged` only when the aggregate flips. `isGameplayActive()` = state `GAME` and nothing paused; every global gameplay input listener checks it.
+  - `pause.ts` — `setPaused(reason, paused)`: pause is a *set of reasons* (only `book` today), emits `pauseChanged` only when the aggregate flips. `isGameplayActive()` = state `GAME` and nothing paused; every global gameplay input listener checks it.
 - `src/data/` — pure content, no game-mechanics or rendering knowledge, never imports from `domain`/`game`/`ui`.
   - `Project.ts` / `projects.ts` — `Project` type + hardcoded `Project[]`. Pure content: no placement, no region, no discovery info. Single source of truth for classic mode, the in-game book, and statue→project resolution.
   - `MapEntity.ts` — tagged union (`kind: 'enemy' | 'chest' | 'item' | 'prop' | 'statue' | 'bonfire'`) + `ChestLoot` union. Placement lives here, never in `projects.ts`; a `projectId` on a map entity is the *sole* coupling point between world and project data.
@@ -78,14 +78,14 @@ Layered, event-driven — each layer only knows about the layer below it via typ
   - `editor/` — dev-only map editor (`EditorSystem`, `editorLayout` localStorage working copy, `TileSelection`, `entityDefaults`). The working copy replaces the committed map only once the editor is first opened.
 - `src/ui/` — DOM/HTML layer, reacts to `core/events.ts`, no Three.js imports.
   - `UIStateView.ts` — `stateChange` → `state-<name>` class on `#ui-container` and `body`.
-  - `views/` — `MenuView`, `ClassicView`, `ProjectModalView`, `BookView` (B), `HudView`, `UpgradeBoardView`, `InteractPromptView`, `IrisView` (death transition), `EditorView` (dev only; builds its own panel markup, not in `index.html`).
-  - `components/renderProjectCard.ts` — pure `(project, cardStyle, locked?) => HTMLElement`. Reused by every surface showing a project.
+  - `views/` — `MenuView`, `BookView` (B; also classic mode, project discovery and bonfire level-up), `HudView` (HP, coins, loot toast), `InteractPromptView`, `IrisView` (death transition), `EditorView` (dev only; builds its own panel markup, not in `index.html`). Every other interface lives inside the book.
+  - `components/` — book rendering: `renderBookToc`, `renderBookEntry`, `renderLevelPage` (player + stats), `pageFlip`, `formatDate`.
 - `src/main.ts` — wiring only: init UI views, go straight to `MENU`, lazy-import `Experience` on first `GAME` entry behind the loading screen (`body.booting`).
 
 ## Locked-in vision (decided with Alban, not yet all built)
 
 - **Project discovery = statues.** Each statue carries a `projectId`, glows while undiscovered, and is collected by pressing **`E`** in range. The statue mesh does **not** disappear on collect — only the glow does.
-- **Book UI**: in-game book lists **all** projects; uncollected ones show as locked placeholders. For now the book renders the same card content as classic mode (reuse `renderProjectCard`), just a different frame.
+- **Book UI**: one book for game and classic mode. In game mode it lists **all** projects (uncollected ones locked) and is the only interface besides the menu, HP bar, coins, interact prompt, loot toast and death screen: discovering a project opens the book on its page, and the bonfire's level-up opens the Level section. Stats can only be bought while standing at a bonfire.
 - **Death & bonfires** (Dark Souls model): hand-placed `bonfire` map entities. Death respawns the player at the last rested bonfire; resting refills HP and **resets all enemies except bosses**.
 - **No region system.** The map is handcrafted; project data stays pure content with no placement/region fields.
 - **Camera**: fixed isometric offset for now. Contextual zoom later for big bosses/rooms.
@@ -97,7 +97,7 @@ Layered, event-driven — each layer only knows about the layer below it via typ
 ### Build order agreed
 
 1. Statue entity + proximity/`E` interaction system (delete the dead raycast `ItemInteraction`), emitting a discovery event.
-2. Book UI (all projects, locked placeholders, reuses `renderProjectCard`).
+2. Book UI (all projects, locked placeholders).
 3. Player death + HP HUD + bonfire checkpoints (respawn, HP refill, non-boss enemy reset).
 4. Chunk system → editor mode → grass material redo → real pixel-art pass.
 

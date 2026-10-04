@@ -1,3 +1,5 @@
+import type { CalendarDate } from './CalendarDate';
+
 export type ProjectRarity = 'common' | 'rare' | 'epic' | 'legendary';
 
 export interface Project {
@@ -10,4 +12,6 @@ export interface Project {
         demo?: string;
     };
     rarity: ProjectRarity;
+    date?: CalendarDate;
+    media?: string[];
 }

@@ -119,7 +119,7 @@ export function renderBookToc(section: BookSection, context: TocContext): HTMLEl
             }
             list.appendChild(yearGroup);
         }
-    } else {
+    } else if (section.id !== 'level') {
         for (const page of section.pages) {
             list.appendChild(renderItem(entryKey('page', page.id), page.title, { locked: false }, context));
         }

@@ -2,16 +2,20 @@ import { events } from '../../core/events';
 import { setPaused } from '../../core/pause';
 import { stateMachine, type AppState } from '../../core/StateMachine';
 import {
+    entryKey,
     flattenBook,
     getBook,
+    LEVEL_KEY,
     type BookEntry,
     type BookMode,
     type BookSection,
     type SectionId,
 } from '../../domain/book';
+import { buyUpgrade } from '../../domain/playerProgress';
 import { flipPages, type FlipDirection, type PageFlip } from '../components/pageFlip';
 import { renderBookEntry } from '../components/renderBookEntry';
 import { renderBookTabs, renderBookToc } from '../components/renderBookToc';
+import { renderPlayerPage, renderStatsPage } from '../components/renderLevelPage';
 
 const TOGGLE_KEY = 'KeyB';
 /** Cap on leaves turned at once: past this, more paper reads as noise. */
@@ -38,6 +42,7 @@ export function initBookView() {
     const toc = requireElement('book-toc');
     const entryHost = requireElement('book-entry');
     const flipper = requireElement('book-flipper');
+    const backButton = requireElement('btn-book-back');
 
     let mode: BookMode = 'game';
     let sections: BookSection[] = [];
@@ -49,6 +54,8 @@ export function initBookView() {
     let showingEntry = false;
     let flip: PageFlip | null = null;
     const openGroups = new Set<string>();
+    /** Set by the game: the player stands at a bonfire. */
+    let canLevelUp = false;
 
     const isOpen = () => overlay.classList.contains('open');
     const isClosing = () => overlay.classList.contains('closing');
@@ -64,27 +71,39 @@ export function initBookView() {
         activeSection = entries[current]?.sectionId ?? sections[0]?.id ?? 'projects';
     };
 
+    const buy: typeof buyUpgrade = (id) => canLevelUp && buyUpgrade(id);
+
+    /** Left page: the section's contents, or the player on the Level spread. */
+    const renderLeft = (section: BookSection) => {
+        if (section.id === 'level') return renderPlayerPage();
+        return renderBookToc(section, {
+            indexOf: (key) => indexByKey.get(key) ?? -1,
+            current,
+            openGroups,
+            onSelect: (index) => goTo(index, true),
+        });
+    };
+
+    const renderRight = (entry: BookEntry | undefined) => {
+        if (entry?.kind === 'level') return renderStatsPage({ canLevelUp, onBuy: buy });
+        return renderBookEntry(entry);
+    };
+
     const render = () => {
         const section = sections.find((s) => s.id === activeSection) ?? sections[0];
         if (!section) return;
 
         tabs.replaceChildren(...renderBookTabs(sections, section.id, selectSection));
-        toc.replaceChildren(
-            renderBookToc(section, {
-                indexOf: (key) => indexByKey.get(key) ?? -1,
-                current,
-                openGroups,
-                onSelect: (index) => goTo(index, true),
-            }),
-        );
+        toc.replaceChildren(renderLeft(section));
 
         const entry = entries[current];
-        entryHost.replaceChildren(renderBookEntry(entry?.sectionId === section.id ? entry : undefined));
+        entryHost.replaceChildren(renderRight(entry?.sectionId === section.id ? entry : undefined));
 
         // Drives the thickness of the two page stacks: the further in, the thicker the left one.
         const progress = entries.length > 1 ? current / (entries.length - 1) : 0;
         book.style.setProperty('--progress', String(progress));
         book.classList.toggle('show-entry', showingEntry);
+        backButton.textContent = section.id === 'level' ? '← Player' : '← Contents';
     };
 
     /** The page on a given side of the spine; on mobile there is only the one on screen. */
@@ -136,7 +155,8 @@ export function initBookView() {
     function selectSection(id: SectionId) {
         const first = entries.findIndex((entry) => entry.sectionId === id);
         if (first !== -1) {
-            goTo(first, false);
+            // Level has no contents to pick from: on mobile, go straight to the stats.
+            goTo(first, id === 'level');
             return;
         }
         // Empty section: nothing to read, just show its (empty) contents page.
@@ -149,7 +169,8 @@ export function initBookView() {
         });
     }
 
-    const open = (nextMode: BookMode) => {
+    /** Opens the book, on the entry `key` when given, else where the reader left it. */
+    const open = (nextMode: BookMode, key?: string) => {
         if (isClosing()) {
             finishClose();
             // Force a style flush so re-adding `open` restarts the entrance animation.
@@ -157,6 +178,15 @@ export function initBookView() {
         }
         load(nextMode);
         showingEntry = false;
+
+        const index = key === undefined ? undefined : indexByKey.get(key);
+        const target = index === undefined ? undefined : entries[index];
+        if (index !== undefined && target) {
+            current = index;
+            activeSection = target.sectionId;
+            showingEntry = true;
+        }
+
         render();
         overlay.classList.add('open');
         setPaused('book', true);
@@ -184,7 +214,7 @@ export function initBookView() {
     });
 
     requireElement('btn-close-book').addEventListener('click', close);
-    requireElement('btn-book-back').addEventListener('click', () => goTo(current, false));
+    backButton.addEventListener('click', () => goTo(current, false));
 
     window.addEventListener('keydown', (event) => {
         if (event.code === 'Escape' && isOpen()) {
@@ -204,9 +234,35 @@ export function initBookView() {
         else if (isOpen() && state !== MODE_STATE[mode]) close();
     });
 
+    /** Game mode only: open the book on `key`, or turn to it if the book is already open. */
+    const showEntry = (key: string) => {
+        if (stateMachine.getState() !== 'GAME') return;
+
+        if (!isOpen() || isClosing()) {
+            open('game', key);
+            return;
+        }
+        const index = indexByKey.get(key);
+        if (index !== undefined) goTo(index, true);
+    };
+
     events.on('projectDiscovered', () => {
         if (!isOpen()) return;
         load(mode);
         render();
     });
+
+    events.on('projectShown', (project) => showEntry(entryKey('project', project.id)));
+    events.on('levelUpRequested', () => showEntry(LEVEL_KEY));
+
+    // Anything the Level spread shows: redraw it in place when it changes.
+    const refreshLevel = () => {
+        if (isOpen() && activeSection === 'level') render();
+    };
+    events.on('levelUpAvailableChanged', (available) => {
+        canLevelUp = available;
+        refreshLevel();
+    });
+    events.on('coinsChanged', refreshLevel);
+    events.on('playerStatsChanged', refreshLevel);
 }

@@ -11,7 +11,7 @@ export type AppEvents = {
     stateChange: [newState: AppState, oldState: AppState];
     /** A project entered the discovered set for the first time. */
     projectDiscovered: [project: Project];
-    /** A project's card should be shown — new discovery or re-reading a statue. */
+    /** Open the book on this project's page: new discovery or re-reading a statue. */
     projectShown: [project: Project];
     interactPromptChange: [actions: readonly PromptAction[] | null];
     playerHealthChanged: [hp: number, maxHp: number];
@@ -22,7 +22,10 @@ export type AppEvents = {
     coinsChanged: [coins: number];
     chestOpened: [messages: string[]];
     playerStatsChanged: [stats: PlayerStats];
-    upgradeBoardRequested: [];
+    /** Open the book on the Level page (bonfire's level-up action). */
+    levelUpRequested: [];
+    /** Whether the player stands at a bonfire, the only place stats can be bought. */
+    levelUpAvailableChanged: [available: boolean];
     pauseChanged: [paused: boolean];
 
     editorPlaceKindChanged: [kind: MapEntity['kind'] | null, variant: string];

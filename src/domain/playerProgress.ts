@@ -118,7 +118,7 @@ export function getPlayerStats(): PlayerStats {
     return stats;
 }
 
-/** One row per stat, everything the upgrade board needs to render. */
+/** One row per stat, everything the book's Level page needs to render. */
 export function getStatViews(): StatView[] {
     return STAT_DEFINITIONS.map((definition) => {
         const level = state.levels[definition.id];

@@ -22,7 +22,9 @@ type PageSectionId = BookPage['section'];
 export type BookSection =
     | { id: 'projects'; label: string; entries: ProjectEntry[] }
     | { id: 'timeline'; label: string; years: TimelineYear[] }
-    | { id: PageSectionId; label: string; pages: BookPage[] };
+    | { id: PageSectionId; label: string; pages: BookPage[] }
+    /** The player and their stats: one spread, drawn from `playerProgress` at render time. */
+    | { id: 'level'; label: string };
 
 export type SectionId = BookSection['id'];
 
@@ -33,7 +35,7 @@ export const SECTIONS: readonly SectionDefinition[] = [
     { id: 'timeline', label: 'Timeline', gameOnly: false },
     { id: 'about', label: 'About', gameOnly: false },
     { id: 'tutorial', label: 'Tutorial', gameOnly: true },
-    { id: 'bestiary', label: 'Bestiary', gameOnly: true },
+    { id: 'level', label: 'Level', gameOnly: true },
 ];
 
 export function validateBook() {
@@ -99,7 +101,7 @@ const builders: SectionBuilders = {
     }),
     about: pageSection('about'),
     tutorial: pageSection('tutorial'),
-    bestiary: pageSection('bestiary'),
+    level: (label) => ({ id: 'level', label }),
 };
 
 export function getBook(mode: BookMode): BookSection[] {
@@ -114,9 +116,13 @@ export function getBook(mode: BookMode): BookSection[] {
 export type BookEntry =
     | { kind: 'project'; key: string; sectionId: 'projects'; project: Project; lock: Lock }
     | { kind: 'timeline'; key: string; sectionId: 'timeline'; event: TimelineEvent; lock: Lock }
-    | { kind: 'page'; key: string; sectionId: PageSectionId; page: BookPage };
+    | { kind: 'page'; key: string; sectionId: PageSectionId; page: BookPage }
+    | { kind: 'level'; key: string; sectionId: 'level' };
 
 export const entryKey = (kind: BookEntry['kind'], id: string) => `${kind}:${id}`;
+
+/** The Level section's only entry. */
+export const LEVEL_KEY = entryKey('level', 'player');
 
 /** Every entry of every section, in the order the pages sit in the book. */
 export function flattenBook(sections: BookSection[]): BookEntry[] {
@@ -142,6 +148,9 @@ export function flattenBook(sections: BookSection[]): BookEntry[] {
                     })),
                 ),
             );
+        }
+        if (section.id === 'level') {
+            return [{ kind: 'level', key: LEVEL_KEY, sectionId: 'level' }];
         }
         return section.pages.map((page) => ({
             kind: 'page',

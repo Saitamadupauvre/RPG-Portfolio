@@ -89,8 +89,11 @@ function renderTimeline(entry: BookEntry & { kind: 'timeline' }): HTMLElement[] 
     return parts;
 }
 
+/** An entry this module draws; the Level page needs live stats and lives in renderLevelPage. */
+export type TextEntry = Exclude<BookEntry, { kind: 'level' }>;
+
 /** Content of the right-hand page. `undefined` = an empty section. */
-export function renderBookEntry(entry: BookEntry | undefined): HTMLElement {
+export function renderBookEntry(entry: TextEntry | undefined): HTMLElement {
     const page = el('article', 'book-entry');
 
     if (!entry) {

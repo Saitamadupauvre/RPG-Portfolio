@@ -38,6 +38,7 @@ length), and keep the middle plain.
 |---|---|---|
 | `close.png` | 9×9 | Close button, top-right corner of the book. |
 | `lock.png` | 7×9 | Padlock. Full scale on a locked page, half scale in the contents list. |
+| `player.png` | 32×40 | The player, on the left page of the Level section. Transparent background. |
 
 ## Still drawn in CSS
 

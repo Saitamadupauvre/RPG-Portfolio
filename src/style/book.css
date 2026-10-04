@@ -297,7 +297,7 @@
 .book-tab-timeline { --tab-color: #2f6a5a; }
 .book-tab-about { --tab-color: #3c4f8f; }
 .book-tab-tutorial { --tab-color: #8a6a1c; }
-.book-tab-bestiary { --tab-color: #5b2f6e; }
+.book-tab-level { --tab-color: #5b2f6e; }
 
 /* ---------- left page: contents ---------- */
 
@@ -527,6 +527,104 @@
 /* Dark lock on the dark selection bar: flip it light. */
 .book-toc-item.active .book-lock {
   filter: invert(0.9);
+}
+
+/* ---------- level spread ---------- */
+
+.book-player-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.book-player-page .book-page-title {
+  align-self: stretch;
+}
+
+/* player.png is 32x40 art pixels. */
+.book-player {
+  flex: none;
+  width: calc(32 * var(--book-px));
+  height: calc(40 * var(--book-px));
+  margin: auto 0;
+  background: url('../assets/book/player.png') 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+
+.book-player-coins {
+  font-family: var(--book-font-title);
+  font-size: 0.8rem;
+  color: #8a6a1c;
+}
+
+.book-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.book-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.35rem 1rem;
+}
+
+.book-stat-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.book-stat-name {
+  font-family: var(--book-font-title);
+  font-size: 0.8rem;
+  color: var(--book-ink);
+}
+
+.book-stat-level {
+  color: var(--book-accent);
+}
+
+.book-stat-pips {
+  display: flex;
+  gap: 3px;
+}
+
+.book-stat-pip {
+  width: calc(3 * var(--book-px));
+  height: calc(3 * var(--book-px));
+  border: 2px solid var(--book-ink);
+  background: var(--book-paper-shade);
+}
+
+.book-stat-pip.filled {
+  background: var(--book-accent);
+}
+
+.book-stat-value {
+  grid-column: 1;
+  color: var(--book-ink-soft);
+}
+
+.book-stat-buy {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  cursor: pointer;
+}
+
+.book-stat-buy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.book-stat-hint {
+  font-style: italic;
+  color: var(--book-ink-soft);
 }
 
 .book-back {

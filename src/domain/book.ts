@@ -109,3 +109,45 @@ export function getBook(mode: BookMode): BookSection[] {
         builders[section.id](section.label, found),
     );
 }
+
+/** One readable page of the book, in reading order. `key` is unique across kinds. */
+export type BookEntry =
+    | { kind: 'project'; key: string; sectionId: 'projects'; project: Project; lock: Lock }
+    | { kind: 'timeline'; key: string; sectionId: 'timeline'; event: TimelineEvent; lock: Lock }
+    | { kind: 'page'; key: string; sectionId: PageSectionId; page: BookPage };
+
+export const entryKey = (kind: BookEntry['kind'], id: string) => `${kind}:${id}`;
+
+/** Every entry of every section, in the order the pages sit in the book. */
+export function flattenBook(sections: BookSection[]): BookEntry[] {
+    return sections.flatMap((section): BookEntry[] => {
+        if (section.id === 'projects') {
+            return section.entries.map(({ project, lock }) => ({
+                kind: 'project',
+                key: entryKey('project', project.id),
+                sectionId: 'projects',
+                project,
+                lock,
+            }));
+        }
+        if (section.id === 'timeline') {
+            return section.years.flatMap((year) =>
+                year.months.flatMap((month) =>
+                    month.events.map(({ event, lock }) => ({
+                        kind: 'timeline' as const,
+                        key: entryKey('timeline', event.id),
+                        sectionId: 'timeline' as const,
+                        event,
+                        lock,
+                    })),
+                ),
+            );
+        }
+        return section.pages.map((page) => ({
+            kind: 'page',
+            key: entryKey('page', page.id),
+            sectionId: section.id,
+            page,
+        }));
+    });
+}

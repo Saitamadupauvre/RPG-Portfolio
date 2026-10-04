@@ -1,0 +1,698 @@
+/* The book: shared by game mode (B) and classic mode. Placeholder look, every
+   colour and the backdrop live in the variables below so real art can replace
+   them without touching the markup. */
+
+@property --progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+:root {
+  /* Backdrop. To use an image: --book-backdrop-image: url('/img/book-bg.png');
+     the tint stays on top of it so the book keeps its contrast. */
+  --book-backdrop-color: #07060a;
+  --book-backdrop-tint: rgba(5, 4, 8, 0.9);
+  --book-backdrop-image: none;
+
+  --book-paper: #f1e2ae;
+  --book-paper-shade: #d9c487;
+  --book-paper-edge: #c9b274;
+  --book-ink: #3b2614;
+  --book-ink-soft: #7a5a36;
+
+  --book-cover: #9a5426;
+  --book-cover-dark: #5e2f12;
+  --book-cover-light: #c0743a;
+
+  --book-accent: #a3311f;
+
+  --book-font: var(--pixel-font);
+  --book-font-title: var(--pixel-font-display);
+}
+
+/* ---------- overlay ---------- */
+
+.book-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.book-overlay.open {
+  display: flex;
+  pointer-events: auto;
+}
+
+.book-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--book-backdrop-color);
+  background-image:
+    linear-gradient(var(--book-backdrop-tint), var(--book-backdrop-tint)),
+    var(--book-backdrop-image);
+  background-size: cover;
+  background-position: center;
+  image-rendering: pixelated;
+  animation: book-backdrop-in 400ms ease-out both;
+}
+
+/* In game mode the world stays faintly visible behind the backdrop. */
+.state-game .book-backdrop {
+  background-color: transparent;
+}
+
+.book-overlay.closing .book-backdrop {
+  animation: book-backdrop-out 380ms ease-in both;
+}
+
+/* ---------- book frame ---------- */
+
+.book {
+  --stack-left: calc(3px + var(--progress) * 14px);
+  --stack-right: calc(3px + (1 - var(--progress)) * 14px);
+
+  position: relative;
+  width: min(86vw, 980px);
+  height: min(76vh, 640px);
+  color: var(--book-ink);
+  font-family: var(--book-font);
+  -webkit-font-smoothing: none;
+  transition: --progress 600ms ease;
+  animation: book-enter 750ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
+}
+
+.book-overlay.closing .book {
+  animation: book-leave 380ms cubic-bezier(0.5, 0, 0.9, 0.4) both;
+}
+
+/* Back cover: sticks out past the pages on every side. */
+.book-cover {
+  position: absolute;
+  inset: -22px -26px -26px -26px;
+  background:
+    linear-gradient(90deg, transparent 49.2%, var(--book-cover-dark) 49.2%, var(--book-cover-dark) 50.8%, transparent 50.8%),
+    var(--book-cover);
+  border: 4px solid var(--book-cover-dark);
+  box-shadow:
+    inset 0 0 0 4px var(--book-cover-light),
+    8px 8px 0 rgba(0, 0, 0, 0.55),
+    16px 16px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* Fake page edges under each page. Their thickness follows --progress. */
+.book-stack {
+  position: absolute;
+  top: 6px;
+  bottom: calc(-1 * max(var(--stack-left), var(--stack-right)));
+  width: 50%;
+  background:
+    repeating-linear-gradient(0deg, var(--book-paper-edge) 0 2px, var(--book-paper-shade) 2px 4px);
+  border: 2px solid var(--book-cover-dark);
+}
+
+.book-stack-left {
+  left: calc(-1 * var(--stack-left));
+  bottom: calc(-1 * var(--stack-left));
+  background:
+    repeating-linear-gradient(90deg, var(--book-paper-edge) 0 2px, var(--book-paper-shade) 2px 4px);
+}
+
+.book-stack-right {
+  right: calc(-1 * var(--stack-right));
+  bottom: calc(-1 * var(--stack-right));
+  background:
+    repeating-linear-gradient(90deg, var(--book-paper-shade) 0 2px, var(--book-paper-edge) 2px 4px);
+}
+
+.book-page {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  padding: 2rem 2rem 1.5rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--book-paper-edge) transparent;
+  background: var(--book-paper);
+}
+
+.book-page-left {
+  left: 0;
+  background: linear-gradient(90deg, var(--book-paper) 85%, var(--book-paper-shade));
+}
+
+.book-page-right {
+  left: 50%;
+  background: linear-gradient(90deg, var(--book-paper-shade), var(--book-paper) 15%);
+}
+
+.book-close {
+  position: absolute;
+  top: -20px;
+  right: -22px;
+  z-index: 7;
+  width: 32px;
+  height: 32px;
+  font-family: var(--book-font-title);
+  font-size: 0.9rem;
+  color: var(--book-paper);
+  background: var(--book-accent);
+  border: 3px solid var(--book-cover-dark);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.book-close:hover {
+  filter: brightness(1.15);
+}
+
+/* ---------- tabs ---------- */
+
+.book-tabs {
+  position: absolute;
+  top: 28px;
+  right: calc(-26px - 38px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: -1;
+}
+
+.book-tab {
+  --tab-color: var(--book-cover-light);
+  writing-mode: vertical-rl;
+  padding: 0.8rem 0.35rem 0.8rem 0.55rem;
+  font-family: var(--book-font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--book-paper);
+  background: var(--tab-color);
+  border: 3px solid var(--book-cover-dark);
+  border-left: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transform: translateX(-8px);
+  transition: transform 120ms steps(3);
+}
+
+.book-tab:hover,
+.book-tab.active {
+  transform: translateX(0);
+}
+
+.book-tab.active {
+  color: #fff8de;
+  filter: brightness(1.15);
+}
+
+.book-tab-projects { --tab-color: #a3311f; }
+.book-tab-timeline { --tab-color: #2f6a5a; }
+.book-tab-about { --tab-color: #3c4f8f; }
+.book-tab-tutorial { --tab-color: #8a6a1c; }
+.book-tab-bestiary { --tab-color: #5b2f6e; }
+
+/* ---------- left page: contents ---------- */
+
+.book-page-title {
+  font-family: var(--book-font-title);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--book-accent);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1rem;
+  border-bottom: 3px double var(--book-ink-soft);
+}
+
+.book-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.book-toc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  font-family: var(--book-font);
+  font-size: 1rem;
+  text-align: left;
+  color: var(--book-ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.book-toc-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dotted leader, like a printed table of contents. */
+.book-toc-label::after {
+  content: ' ..........................................................';
+  color: var(--book-ink-soft);
+  opacity: 0.5;
+}
+
+.book-toc-item:hover {
+  background: rgba(122, 90, 54, 0.15);
+}
+
+.book-toc-item.active {
+  color: var(--book-paper);
+  background: var(--book-ink);
+}
+
+.book-toc-item.active .book-toc-label::after {
+  color: var(--book-paper);
+}
+
+.book-toc-item.locked {
+  color: var(--book-ink-soft);
+}
+
+.book-toc-item.active.locked {
+  color: var(--book-paper-shade);
+}
+
+.book-toc-progress {
+  font-size: 0.8rem;
+}
+
+.book-toc-group > summary {
+  padding: 0.3rem 0.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.book-toc-group > summary::before {
+  content: '+ ';
+  color: var(--book-accent);
+}
+
+.book-toc-group[open] > summary::before {
+  content: '- ';
+}
+
+.book-toc-group .book-toc-group {
+  padding-left: 1rem;
+}
+
+.book-toc-group .book-toc-item {
+  padding-left: 1.5rem;
+}
+
+.book-empty {
+  color: var(--book-ink-soft);
+  font-style: italic;
+}
+
+/* ---------- right page: entry ---------- */
+
+.book-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.book-entry-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px double var(--book-ink-soft);
+}
+
+.book-entry-kicker {
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--book-ink-soft);
+}
+
+.book-entry-header.rarity-rare .book-entry-kicker { color: #2a62a8; }
+.book-entry-header.rarity-epic .book-entry-kicker { color: #7a32b0; }
+.book-entry-header.rarity-legendary .book-entry-kicker { color: #a8740f; }
+
+.book-entry-title {
+  font-family: var(--book-font-title);
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: var(--book-ink);
+}
+
+.book-entry-date {
+  font-size: 0.9rem;
+  color: var(--book-accent);
+}
+
+.book-entry-body {
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+}
+
+.book-tag {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.85rem;
+  border: 2px solid var(--book-ink-soft);
+}
+
+.book-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.book-link {
+  padding: 0.35rem 0.8rem;
+  font-family: var(--book-font);
+  font-weight: 600;
+  color: var(--book-paper);
+  background: var(--book-accent);
+  border: 3px solid var(--book-cover-dark);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+  text-decoration: none;
+}
+
+.book-link:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.book-entry-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+  color: var(--book-ink-soft);
+}
+
+.book-entry-locked .book-lock {
+  transform: scale(2.5);
+  transform-origin: left center;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.book-progress {
+  width: 100%;
+  max-width: 260px;
+  height: 14px;
+  border: 3px solid var(--book-ink);
+  background: var(--book-paper-shade);
+}
+
+.book-progress-fill {
+  height: 100%;
+  background: var(--book-accent);
+}
+
+.book-progress-label {
+  font-size: 0.9rem;
+}
+
+/* Pixel padlock drawn with two boxes: shackle (::before) over the body. */
+.book-lock {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 8px;
+  margin-top: 5px;
+  background: currentColor;
+}
+
+.book-lock::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 8px;
+  width: 2px;
+  height: 3px;
+  border: 2px solid currentColor;
+  border-bottom: none;
+}
+
+.book-back {
+  display: none;
+}
+
+/* ---------- page flip ---------- */
+
+.book-flipper {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  perspective: 2400px;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.book-leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 50%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+}
+
+.book-leaf-face {
+  position: absolute;
+  inset: 0;
+  padding: 2rem 2rem 1.5rem;
+  overflow: hidden;
+  backface-visibility: hidden;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(122, 90, 54, 0.12) 27px 28px),
+    var(--book-paper);
+  border: 1px solid var(--book-paper-edge);
+}
+
+/* Spine shadow on each face, same as the real pages. */
+.book-leaf-front {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 18%),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(122, 90, 54, 0.12) 27px 28px),
+    var(--book-paper);
+}
+
+.book-leaf-back {
+  transform: rotateY(180deg);
+  background:
+    linear-gradient(270deg, rgba(0, 0, 0, 0.12), transparent 18%),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(122, 90, 54, 0.12) 27px 28px),
+    var(--book-paper);
+}
+
+/* ---------- front cover (opens once the book has landed) ---------- */
+
+.book-front-cover {
+  position: absolute;
+  top: -22px;
+  bottom: -26px;
+  left: 50%;
+  right: -26px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--book-cover);
+  border: 4px solid var(--book-cover-dark);
+  box-shadow: inset 0 0 0 4px var(--book-cover-light), inset 0 0 0 10px var(--book-cover), inset 0 0 0 13px var(--book-cover-dark);
+  transform-origin: left center;
+  backface-visibility: hidden;
+  pointer-events: none;
+  animation: book-cover-open 700ms linear 650ms both;
+}
+
+.book-front-cover span {
+  font-family: var(--book-font-title);
+  font-size: 1.1rem;
+  color: #f3c46a;
+  text-shadow: 3px 3px 0 var(--book-cover-dark);
+  letter-spacing: 0.1em;
+}
+
+.book-overlay.closing .book-front-cover {
+  animation: none;
+  visibility: hidden;
+}
+
+/* While the book rises it is closed: only the front cover's half exists. The left
+   half appears when the cover stands upright (see book-cover-open). */
+.book-cover {
+  animation: book-cover-unclip 1ms linear 1000ms both;
+}
+
+.book-page-left,
+.book-stack-left {
+  animation: book-left-show 1ms linear 1000ms both;
+}
+
+/* ---------- keyframes ---------- */
+
+@keyframes book-cover-unclip {
+  from { clip-path: inset(0 0 0 50%); }
+  to { clip-path: inset(0); }
+}
+
+@keyframes book-left-show {
+  from { visibility: hidden; }
+  to { visibility: visible; }
+}
+
+@keyframes book-enter {
+  0% { transform: translateY(105vh) rotate(-14deg); }
+  70% { transform: translateY(-1.5%) rotate(1.2deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+@keyframes book-leave {
+  from { transform: translateY(0) rotate(0); }
+  to { transform: translateY(105vh) rotate(10deg); }
+}
+
+@keyframes book-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes book-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Upright (-90deg) exactly at 50%, so the left-half reveal below can be timed
+   on it: 650ms delay + 350ms. Easing is set per segment. */
+@keyframes book-cover-open {
+  0% { transform: perspective(2400px) rotateY(0deg); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  50% { transform: perspective(2400px) rotateY(-90deg); animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1); }
+  99% { transform: perspective(2400px) rotateY(-180deg); visibility: visible; }
+  100% { transform: perspective(2400px) rotateY(-180deg); visibility: hidden; }
+}
+
+/* ---------- mobile: one page at a time ---------- */
+
+@media (max-width: 700px) {
+  .book {
+    width: calc(100vw - 32px - 24px);
+    height: min(78vh, 640px);
+    margin-top: 2.5rem;
+  }
+
+  .book-cover {
+    inset: -12px;
+    background: var(--book-cover);
+  }
+
+  .book-stack-left {
+    display: none;
+  }
+
+  .book-stack-right {
+    width: 100%;
+  }
+
+  .book-page {
+    left: 0;
+    width: 100%;
+    padding: 1.4rem 1.2rem 1rem;
+    background: var(--book-paper);
+  }
+
+  .book-page-right,
+  .book.show-entry .book-page-left {
+    visibility: hidden;
+  }
+
+  .book.show-entry .book-page-right {
+    visibility: visible;
+  }
+
+  .book-tabs {
+    top: calc(-12px - 34px);
+    right: auto;
+    left: 0;
+    flex-direction: row;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .book-tab {
+    writing-mode: horizontal-tb;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    border: 3px solid var(--book-cover-dark);
+    border-bottom: none;
+    transform: translateY(6px);
+  }
+
+  .book-tab:hover,
+  .book-tab.active {
+    transform: translateY(0);
+  }
+
+  .book-close {
+    top: -12px;
+    right: -12px;
+  }
+
+  .book-back {
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.2rem 0.5rem;
+    font-family: var(--book-font);
+    font-size: 0.9rem;
+    color: var(--book-ink);
+    background: none;
+    border: 2px solid var(--book-ink-soft);
+    cursor: pointer;
+  }
+
+  .book-leaf {
+    left: 0;
+    width: 100%;
+  }
+
+  .book-front-cover {
+    inset: -12px;
+  }
+
+  .book-page-title {
+    font-size: 0.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book,
+  .book-backdrop,
+  .book-cover,
+  .book-page-left,
+  .book-stack-left {
+    animation: none !important;
+  }
+
+  .book-front-cover {
+    display: none;
+  }
+}

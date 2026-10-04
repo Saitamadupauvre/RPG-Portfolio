@@ -63,8 +63,7 @@ body {
 }
 
 .state-loading #loading-screen,
-.state-menu #menu-screen,
-.state-classic #classic-screen {
+.state-menu #menu-screen {
   visibility: visible;
   transition-delay: 0s;
 }
@@ -131,13 +130,6 @@ body {
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(230, 184, 58, 0.7);
 }
 
-.state-classic #classic-screen {
-  opacity: 1;
-  pointer-events: auto;
-  overflow-y: auto;
-  padding: 2rem;
-}
-
 .modal {
   position: fixed;
   inset: 0;
@@ -169,13 +161,6 @@ body {
   color: #eee;
   font-size: 1.2rem;
   cursor: pointer;
-}
-
-#classic-project-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
 }
 
 .project-card {
@@ -237,20 +222,6 @@ body {
   padding: 0.3rem 0.6rem;
   text-decoration: none;
   display: inline-block;
-}
-
-.book-content {
-  width: min(90vw, 900px);
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-#book-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
 }
 
 .project-card.locked {

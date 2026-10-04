@@ -3,7 +3,6 @@ import { events } from './core/events';
 import { validateBook } from './domain/book';
 import { initUIStateView } from './ui/UIStateView';
 import { initMenuView } from './ui/views/MenuView';
-import { initClassicView } from './ui/views/ClassicView';
 import { initProjectModalView } from './ui/views/ProjectModalView';
 import { initInteractPromptView } from './ui/views/InteractPromptView';
 import { initBookView } from './ui/views/BookView';
@@ -16,7 +15,6 @@ validateBook();
 
 initUIStateView();
 initMenuView();
-initClassicView();
 initProjectModalView();
 initInteractPromptView();
 initBookView();

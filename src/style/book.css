@@ -9,11 +9,8 @@
 }
 
 :root {
-  /* Backdrop. To use an image: --book-backdrop-image: url('/img/book-bg.png');
-     the tint stays on top of it so the book keeps its contrast. */
-  --book-backdrop-color: #07060a;
-  --book-backdrop-tint: rgba(5, 4, 8, 0.9);
-  --book-backdrop-image: none;
+  /* Dark veil over whatever is behind the book (the game world, or the menu). */
+  --book-backdrop: rgba(5, 4, 8, 0.85);
 
   --book-paper: #f1e2ae;
   --book-paper-shade: #d9c487;
@@ -51,19 +48,8 @@
 .book-backdrop {
   position: absolute;
   inset: 0;
-  background-color: var(--book-backdrop-color);
-  background-image:
-    linear-gradient(var(--book-backdrop-tint), var(--book-backdrop-tint)),
-    var(--book-backdrop-image);
-  background-size: cover;
-  background-position: center;
-  image-rendering: pixelated;
+  background: var(--book-backdrop);
   animation: book-backdrop-in 400ms ease-out both;
-}
-
-/* In game mode the world stays faintly visible behind the backdrop. */
-.state-game .book-backdrop {
-  background-color: transparent;
 }
 
 .book-overlay.closing .book-backdrop {

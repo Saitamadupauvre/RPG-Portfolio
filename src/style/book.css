@@ -104,29 +104,87 @@
     16px 16px 0 rgba(0, 0, 0, 0.25);
 }
 
-/* Fake page edges under each page. Their thickness follows --progress. */
+/* Fake page edges under each page, thickness --t sideways and --ty downward
+   (both follow --progress). The box starts at the spine and grows outward by
+   --t and down by --ty, so the stack stays
+   bound to the spine. Two strips draw it: the outer side (vertical page lines)
+   and the bottom (horizontal page lines), mitered where they meet.
+
+        spine            page corner
+          |-------------------|\
+          |                   | \   side strip
+          |       page        |  |
+          |                   |  |
+          |___________________|  |
+          |___________________ \ |  bottom strip
+                                \|                                        */
 .book-stack {
+  --page-lines: var(--book-paper-edge) 0 2px, var(--book-paper-shade) 2px 4px;
+  /* The bottom edge is seen at a flatter angle than the side: thinner. */
+  --ty: calc(var(--t) * 0.5);
+
   position: absolute;
-  top: 6px;
-  bottom: calc(-1 * max(var(--stack-left), var(--stack-right)));
-  width: 50%;
-  background:
-    repeating-linear-gradient(0deg, var(--book-paper-edge) 0 2px, var(--book-paper-shade) 2px 4px);
-  border: 2px solid var(--book-cover-dark);
+  top: 0;
+  width: calc(50% + var(--t));
+  height: calc(100% + var(--ty));
 }
 
-.book-stack-left {
-  left: calc(-1 * var(--stack-left));
-  bottom: calc(-1 * var(--stack-left));
+.book-stack::before,
+.book-stack::after {
+  content: '';
+  position: absolute;
+}
+
+/* Side strip: from the page's outer edge to the stack's outer edge. */
+.book-stack::before {
+  top: 0;
+  bottom: 0;
+  width: var(--t);
+}
+
+/* Bottom strip: from the spine to the stack's outer corner. */
+.book-stack::after {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--ty);
   background:
-    repeating-linear-gradient(90deg, var(--book-paper-edge) 0 2px, var(--book-paper-shade) 2px 4px);
+    linear-gradient(transparent calc(100% - 2px), var(--book-cover-dark) 0),
+    repeating-linear-gradient(180deg, var(--page-lines));
 }
 
 .book-stack-right {
-  right: calc(-1 * var(--stack-right));
-  bottom: calc(-1 * var(--stack-right));
+  --t: var(--stack-right);
+  left: 50%;
+}
+
+.book-stack-right::before {
+  right: 0;
   background:
-    repeating-linear-gradient(90deg, var(--book-paper-shade) 0 2px, var(--book-paper-edge) 2px 4px);
+    linear-gradient(90deg, transparent calc(100% - 2px), var(--book-cover-dark) 0),
+    repeating-linear-gradient(90deg, var(--page-lines));
+  clip-path: polygon(0 0, 100% var(--ty), 100% 100%, 0 calc(100% - var(--ty)));
+}
+
+.book-stack-right::after {
+  clip-path: polygon(0 0, calc(100% - var(--t)) 0, 100% 100%, 0 100%);
+}
+
+.book-stack-left {
+  --t: var(--stack-left);
+  right: 50%;
+}
+
+.book-stack-left::before {
+  left: 0;
+  background:
+    linear-gradient(270deg, transparent calc(100% - 2px), var(--book-cover-dark) 0),
+    repeating-linear-gradient(270deg, var(--page-lines));
+  clip-path: polygon(100% 0, 0 var(--ty), 0 100%, 100% calc(100% - var(--ty)));
+}
+
+.book-stack-left::after {
+  clip-path: polygon(var(--t) 0, 100% 0, 100% 100%, 0 100%);
 }
 
 .book-page {
@@ -610,7 +668,8 @@
   }
 
   .book-stack-right {
-    width: 100%;
+    left: 0;
+    width: calc(100% + var(--t));
   }
 
   .book-page {

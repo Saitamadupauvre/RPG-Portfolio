@@ -1,5 +1,6 @@
 :root {
-  --pixel-font: 'Courier New', Courier, monospace;
+  --pixel-font: 'Pixelify Sans', 'Courier New', monospace;
+  --pixel-font-display: 'Press Start 2P', var(--pixel-font);
   --rarity-common: #888888;
   --rarity-rare: #3a8ee6;
   --rarity-epic: #a24fe6;

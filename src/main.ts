@@ -3,12 +3,9 @@ import { events } from './core/events';
 import { validateBook } from './domain/book';
 import { initUIStateView } from './ui/UIStateView';
 import { initMenuView } from './ui/views/MenuView';
-import { initClassicView } from './ui/views/ClassicView';
-import { initProjectModalView } from './ui/views/ProjectModalView';
 import { initInteractPromptView } from './ui/views/InteractPromptView';
 import { initBookView } from './ui/views/BookView';
 import { initHudView } from './ui/views/HudView';
-import { initUpgradeBoardView } from './ui/views/UpgradeBoardView';
 import { initIrisView } from './ui/views/IrisView';
 import { initEditorView } from './ui/views/EditorView';
 
@@ -16,12 +13,9 @@ validateBook();
 
 initUIStateView();
 initMenuView();
-initClassicView();
-initProjectModalView();
 initInteractPromptView();
 initBookView();
 initHudView();
-initUpgradeBoardView();
 initIrisView();
 if (import.meta.env.DEV) initEditorView();
 

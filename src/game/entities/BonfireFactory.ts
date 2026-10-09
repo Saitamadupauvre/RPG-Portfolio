@@ -40,10 +40,10 @@ export function createBonfire(entity: BonfireEntity): Entity {
         },
         {
             key: 'KeyF',
-            label: 'Level up board',
-            run: () => events.emit('upgradeBoardRequested'),
+            label: 'Level up',
+            run: () => events.emit('levelUpRequested'),
         },
-    ]);
+    ], { allowsLevelUp: true });
 
     return new Entity(entity.id, group, COLLISION_RADIUS, true)
         .addComponent('glow', glow)

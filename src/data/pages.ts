@@ -5,5 +5,4 @@ export const pages: BookPage[] = [
     { id: 'skills', section: 'about', title: 'Skills', body: 'Placeholder body.' },
     { id: 'contact', section: 'about', title: 'Contact', body: 'Placeholder body.' },
     { id: 'controls', section: 'tutorial', title: 'Controls', body: 'Placeholder body.' },
-    { id: 'grunt', section: 'bestiary', title: 'Grunt', body: 'Placeholder body.' },
 ];

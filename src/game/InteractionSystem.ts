@@ -6,6 +6,7 @@ import type { InteractAction } from './entities/components/InteractableComponent
 
 export class InteractionSystem {
     private currentActions: readonly InteractAction[] | null = null;
+    private levelUpAvailable = false;
     private pressedKeys = new Set<string>();
 
     constructor() {
@@ -25,6 +26,7 @@ export class InteractionSystem {
         const actions = target?.getComponent('interactable')?.actions ?? null;
 
         this.setPrompt(actions);
+        this.setLevelUpAvailable(target?.getComponent('interactable')?.allowsLevelUp ?? false);
 
         for (const key of this.pressedKeys) {
             target?.getComponent('interactable')?.interact(key);
@@ -51,6 +53,17 @@ export class InteractionSystem {
         }
 
         return nearest;
+    }
+
+    /**
+     * Not called while paused (World skips the update), so the value read when the
+     * book opens is the one from the last gameplay frame: still at the bonfire.
+     */
+    private setLevelUpAvailable(available: boolean) {
+        if (available === this.levelUpAvailable) return;
+
+        this.levelUpAvailable = available;
+        events.emit('levelUpAvailableChanged', available);
     }
 
     private setPrompt(actions: readonly InteractAction[] | null) {

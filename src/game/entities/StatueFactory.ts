@@ -12,7 +12,7 @@ import { PALETTE } from '../render/palette';
 
 const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
-const STATUE_COLLISION_RADIUS = 0.5;
+export const STATUE_COLLISION_RADIUS = 0.5;
 
 export function createStatue(entity: StatueEntity): Entity {
     const group = new THREE.Group();

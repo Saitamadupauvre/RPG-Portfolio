@@ -18,7 +18,7 @@ const chestColor: Record<ChestEntity['chestTier'], number> = {
 
 const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
-const COLLISION_RADIUS = 0.5;
+export const CHEST_COLLISION_RADIUS = 0.5;
 const LID_OPEN_ANGLE = -Math.PI / 2.4;
 
 export function createChest(entity: ChestEntity): Entity {
@@ -66,7 +66,7 @@ export function createChest(entity: ChestEntity): Entity {
 
     if (alreadyOpened) interactable.actions = [];
 
-    return new Entity(entity.id, group, COLLISION_RADIUS, true)
+    return new Entity(entity.id, group, CHEST_COLLISION_RADIUS, true)
         .addComponent('glow', glow)
         .addComponent('interactable', interactable);
 }

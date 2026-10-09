@@ -20,6 +20,11 @@ export type GrassSurfaceOptions = {
      */
     acceptNormal?: (normal: THREE.Vector3) => number;
     /**
+     * Rejects a blade by its root position (target-local X/Z) — how the ground
+     * under static objects is kept bare, so blades never poke through them.
+     */
+    rejectPoint?: (x: number, z: number) => boolean;
+    /**
      * Grow blades only on triangles centred inside this region. Filtering at the
      * area table — not by rejecting samples afterwards — is what makes a patch
      * cost its own area instead of the whole mesh's.
@@ -159,6 +164,7 @@ export class GrassSurface {
             // Rejection sampling, after the normal is known: a fractional value
             // thins a region instead of cutting it off on a hard chunk edge.
             if (options.acceptNormal && Math.random() >= options.acceptNormal(_normal)) continue;
+            if (options.rejectPoint?.(_point.x, _point.z)) continue;
 
             _qAlign.setFromUnitVectors(UP, _normal);
             _qYaw.setFromAxisAngle(UP, Math.random() * Math.PI * 2);

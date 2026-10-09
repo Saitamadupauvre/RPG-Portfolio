@@ -4,6 +4,7 @@ import type { TileMap } from '../../data/tileMap';
 import { createTileGrid, type TileGrid } from '../../domain/terrain/TileGrid';
 import { createGroundMaterial } from './grass/groundMaterial';
 import type { GrassBounds, GrassSurface } from './grass/GrassSurface';
+import { footprintsInBounds, isUnderFootprint, type GrassFootprint } from './grass/grassFootprints';
 import { rebuildTileGrid } from './terrainField';
 
 const GRASS_DENSITY = 90;
@@ -57,6 +58,8 @@ export class Terrain {
     /** Grown patch keys, `${col},${row}` in patch space. */
     private grassPatches = new Set<string>();
     private lastGrassKey: string | null = null;
+    /** Ground under static objects, kept bare. */
+    private grassFootprints: GrassFootprint[] = [];
 
     constructor(map: TileMap, grass: GrassSurface) {
         this.grass = grass;
@@ -113,6 +116,12 @@ export class Terrain {
         }
     }
 
+    /** Static objects moved or changed: every patch regrows around the new set. */
+    public setGrassFootprints(footprints: GrassFootprint[]) {
+        this.grassFootprints = footprints;
+        this.clearGrass();
+    }
+
     private clearGrass() {
         this.grass.detach(this.mesh);
         this.topsGeometry?.dispose();
@@ -143,13 +152,19 @@ export class Terrain {
             this.topsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(this.topPositions, 3));
         }
 
+        const bounds = this.patchBounds(key);
+        const footprints = footprintsInBounds(this.grassFootprints, bounds);
+
         this.grass.attach(this.mesh, {
             sampleGeometry: this.topsGeometry,
             density: GRASS_PATCH_DENSITY,
             chunkSize: GRASS_CHUNK_SIZE,
             maxDistance: GRASS_VIEW_RADIUS,
-            bounds: this.patchBounds(key),
+            bounds,
             key,
+            // Undefined when nothing static stands on this patch, so the common
+            // patch skips the per-blade test entirely.
+            rejectPoint: footprints.length > 0 ? (x, z) => isUnderFootprint(footprints, x, z) : undefined,
             // Rejects blades whose triangle points sideways — belt-and-braces
             // now that walls are excluded up front, and still needed for any
             // steep-but-not-cliff tile-top geometry in the future.

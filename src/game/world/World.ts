@@ -20,6 +20,7 @@ import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
 import { isBossDefeated } from "../../domain/defeatedBosses";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { Terrain } from "./Terrain";
+import { buildGrassFootprints } from "./grass/grassFootprints";
 import { Water } from "./water/Water";
 import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
@@ -29,6 +30,11 @@ const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 const CAMERA_CLEARANCE = 2;
 
 const RESPAWN_DELAY_MS = 1200;
+/**
+ * How much wider than its body a mover parts the grass. At exactly the
+ * collision radius the parted ring hides under the body itself and barely shows.
+ */
+const GRASS_PUSH_SCALE = 1.8;
 
 export class World {
     private experience: Experience;
@@ -132,6 +138,9 @@ export class World {
         // array costs nothing per frame, and an enemy pathing towards a wall in
         // an unloaded chunk still gets the right answer.
         rebuildNavGrid(layout);
+        // Same reasoning: from the whole layout, so a patch grown before its
+        // chunk's entities stream in is still bare under them.
+        this.terrain.setGrassFootprints(buildGrassFootprints(layout));
         this.streamer.setLayout(layout);
 
         this.streamFor(this.player.mesh.position);
@@ -265,10 +274,10 @@ export class World {
             // Only dynamic moving entities (enemies, player) part the grass as they walk.
             // Static props, walls, and structures are excluded to avoid stretching grass around wide obstacles.
             if (entity.collisionRadius === undefined || entity.isStatic) continue;
-            this.grassColliders.push({ position: entity.mesh.position, radius: entity.collisionRadius });
+            this.grassColliders.push({ position: entity.mesh.position, radius: entity.collisionRadius * GRASS_PUSH_SCALE });
         }
         if (this.player.collisionRadius !== undefined) {
-            this.grassColliders.push({ position: this.player.mesh.position, radius: this.player.collisionRadius });
+            this.grassColliders.push({ position: this.player.mesh.position, radius: this.player.collisionRadius * GRASS_PUSH_SCALE });
         }
 
         // Grass exists only in a ring around the player, so the ring has to

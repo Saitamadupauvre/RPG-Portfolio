@@ -9,7 +9,9 @@ export const MAX_COLLIDERS = 16;
 /** Collider radius, in world units, past which the sideways grass shove stops growing. */
 const MAX_PUSH_RADIUS = 0.8;
 /** Fraction of that radius a blade at the collider's centre is shoved outward. */
-const PUSH_STRENGTH = 0.8;
+const PUSH_STRENGTH = 1.0;
+/** How far past a collider's radius the wind is still damped, as a multiple of it. */
+const CALM_RADIUS = 1.6;
 /**
  * How much of each blade's own tilt reaches its lighting normal. Blades lean
  * up to ~20 degrees at random, and lit by their full tilt, the ones leaning
@@ -116,6 +118,10 @@ if (grassSwayLen > grassSwayMax) grassWindDisp.xz *= grassSwayMax / grassSwayLen
 grassWindDisp.y -= dot(grassWindDisp.xz, grassWindDisp.xz) / (2.0 * uBladeHeight);
 
 vec3 grassDisp = vec3(0.0);
+// 0 = full wind, 1 = none. Raised near any collider so the wind cannot blow
+// the parted blades back over the body: under a strong gust the push was
+// getting lost in the sway.
+float grassCalm = 0.0;
 
 for (int i = 0; i < ${MAX_COLLIDERS}; i++) {
     if (i >= uColliderCount) break;
@@ -124,8 +130,11 @@ for (int i = 0; i < ${MAX_COLLIDERS}; i++) {
     vec2 grassAway = grassRoot.xz - grassCollider.xz;
     float grassDist = length(grassAway);
 
-    if (grassDist > grassCollider.w) continue;
     if (abs(grassRoot.y - grassCollider.y) > grassCollider.w * 2.0) continue;
+    // The calm zone is wider than the push zone and fades out, so the wind
+    // eases back in around the body instead of switching on at a hard ring.
+    grassCalm = max(grassCalm, 1.0 - smoothstep(grassCollider.w, grassCollider.w * ${CALM_RADIUS.toFixed(2)}, grassDist));
+    if (grassDist > grassCollider.w) continue;
 
     float grassPush = 1.0 - grassDist / grassCollider.w;
     vec2 grassDir = grassDist > 0.0001 ? grassAway / grassDist : vec2(1.0, 0.0);
@@ -138,7 +147,7 @@ for (int i = 0; i < ${MAX_COLLIDERS}; i++) {
     grassDisp.y -= grassPush * uBladeHeight * 0.9 * grassW;
 }
 
-grassDisp += grassWindDisp;
+grassDisp += grassWindDisp * (1.0 - grassCalm);
 
 // World-space displacement back into blade-local space. The columns of
 // grassModel are orthogonal (rotation composed with per-axis scale), so its

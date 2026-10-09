@@ -11,7 +11,7 @@ import { PALETTE } from '../render/palette';
 
 const FLAME_COLOR = PALETTE.autumn;
 const INTERACT_RADIUS = 2.2;
-const COLLISION_RADIUS = 0.5;
+export const BONFIRE_COLLISION_RADIUS = 0.5;
 
 export function createBonfire(entity: BonfireEntity): Entity {
     const group = new THREE.Group();
@@ -46,7 +46,7 @@ export function createBonfire(entity: BonfireEntity): Entity {
         },
     ], { allowsLevelUp: true });
 
-    return new Entity(entity.id, group, COLLISION_RADIUS, true)
+    return new Entity(entity.id, group, BONFIRE_COLLISION_RADIUS, true)
         .addComponent('glow', glow)
         .addComponent('interactable', interactable);
 }

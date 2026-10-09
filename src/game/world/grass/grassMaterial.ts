@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BLADE_HEIGHT } from './bladeGeometry';
-import { createPatchUniforms, PATCH_GLSL, type PatchUniforms } from './groundPalette';
+import { createGrassColorUniforms, type GrassColorUniforms } from './groundPalette';
 
 /** Compile-time loop bound: GLSL needs a constant, so the array size is fixed. */
 export const MAX_COLLIDERS = 16;
@@ -10,27 +10,22 @@ const MAX_PUSH_RADIUS = 0.8;
 /** Fraction of that radius a blade at the collider's centre is shoved outward. */
 const PUSH_STRENGTH = 0.8;
 
-/** Tip colour: deep blue-green, so blades read as darker strokes over the ground. */
-export const GRASS_TIP_COLOR = 0x1d7350;
-
-export type GrassUniforms = PatchUniforms & {
+export type GrassUniforms = GrassColorUniforms & {
     uTime: { value: number };
     uWindStrength: { value: number };
     uWindSpeed: { value: number };
     uBladeHeight: { value: number };
-    uTipColor: { value: THREE.Color };
     uColliders: { value: THREE.Vector4[] };
     uColliderCount: { value: number };
 };
 
-export function createGrassUniforms(tipColor?: THREE.ColorRepresentation): GrassUniforms {
+export function createGrassUniforms(): GrassUniforms {
     return {
-        ...createPatchUniforms(),
+        ...createGrassColorUniforms(),
         uTime: { value: 0 },
         uWindStrength: { value: 0.09 },
         uWindSpeed: { value: 1.1 },
         uBladeHeight: { value: BLADE_HEIGHT },
-        uTipColor: { value: new THREE.Color(tipColor ?? GRASS_TIP_COLOR) },
         uColliders: { value: Array.from({ length: MAX_COLLIDERS }, () => new THREE.Vector4()) },
         uColliderCount: { value: 0 },
     };
@@ -38,26 +33,18 @@ export function createGrassUniforms(tipColor?: THREE.ColorRepresentation): Grass
 
 const GRASS_VERTEX_PARS = /* glsl */ `
 attribute float aHeight;
-attribute float aTint;
 uniform float uTime;
 uniform float uWindStrength;
 uniform float uWindSpeed;
 uniform float uBladeHeight;
 uniform vec4 uColliders[${MAX_COLLIDERS}];
 uniform int uColliderCount;
-varying float vGrassHeight;
-varying float vGrassTint;
-varying vec2 vGrassRootXZ;
 varying vec3 vGrassNormal;
 `;
 
 const GRASS_FRAGMENT_PARS = /* glsl */ `
-uniform vec3 uTipColor;
-varying float vGrassHeight;
-varying float vGrassTint;
-varying vec2 vGrassRootXZ;
+uniform vec3 uGrassColor;
 varying vec3 vGrassNormal;
-${PATCH_GLSL}
 `;
 
 // Runs right after <begin_vertex> has filled `transformed`, and before
@@ -65,9 +52,6 @@ ${PATCH_GLSL}
 // blade-local space while the maths below is done in world space.
 const GRASS_BEND = /* glsl */ `
 #include <begin_vertex>
-
-vGrassHeight = aHeight;
-vGrassTint = aTint;
 
 #ifdef USE_INSTANCING
     mat4 grassModel = modelMatrix * instanceMatrix;
@@ -78,7 +62,6 @@ vGrassTint = aTint;
 #endif
 
 vec3 grassRoot = grassModel[3].xyz;
-vGrassRootXZ = grassRoot.xz;
 
 // The blade's own up axis, in view space. The fragment shader lights every
 // blade with this instead of its true face normal, which is what stops the
@@ -137,13 +120,11 @@ const GRASS_NORMAL = /* glsl */ `
 normal = normalize(vGrassNormal);
 `;
 
-// The root takes the exact ground colour underneath it, so blades emerge from
-// the ground instead of sitting on it; the tip darkens into uTipColor.
+// The same colour as the ground underneath, so blades emerge from it instead
+// of sitting on it.
 const GRASS_COLOR = /* glsl */ `
 #include <color_fragment>
-vec3 grassBase = grassGroundColor(vGrassRootXZ);
-vec3 grassShade = mix(grassBase, uTipColor, smoothstep(0.25, 1.0, vGrassHeight) * 0.7);
-diffuseColor.rgb = grassShade * vGrassTint;
+diffuseColor.rgb = uGrassColor;
 `;
 
 /**
@@ -154,7 +135,7 @@ diffuseColor.rgb = grassShade * vGrassTint;
  */
 export function createGrassMaterial(uniforms: GrassUniforms) {
     const material = new THREE.MeshLambertMaterial({
-        // White: the real colour comes from the gradient in GRASS_COLOR.
+        // White: the real colour is set in GRASS_COLOR.
         color: 0xffffff,
         side: THREE.DoubleSide,
     });

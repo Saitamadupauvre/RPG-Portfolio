@@ -20,7 +20,7 @@ const SEGMENTS = 3;
  *   as harsh 3D scatter. Up-facing normals make blades shade like the ground
  *   they stand on, so the whole field lights as one soft surface.
  *
- * `aHeight` (0 at the root, 1 at the tip) is the bend and gradient weight.
+ * `aHeight` (0 at the root, 1 at the tip) is the bend weight.
  */
 export function createBladeGeometry(): THREE.BufferGeometry {
     const positions: number[] = [];

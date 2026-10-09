@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPatchUniforms, PATCH_GLSL } from './groundPalette';
+import { createGrassColorUniforms } from './groundPalette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
 varying vec2 vGroundXZ;
@@ -21,7 +21,24 @@ uniform vec3 uCliffColor;
 uniform vec3 uCliffColorDark;
 uniform float uCliffStart;
 uniform float uCliffEnd;
-${PATCH_GLSL}
+uniform vec3 uGrassColor;
+
+float rockHash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float rockNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+
+    float a = rockHash(i);
+    float b = rockHash(i + vec2(1.0, 0.0));
+    float c = rockHash(i + vec2(0.0, 1.0));
+    float d = rockHash(i + vec2(1.0, 1.0));
+
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
 `;
 
 /**
@@ -33,19 +50,17 @@ ${PATCH_GLSL}
 const GROUND_COLOR = /* glsl */ `
 #include <color_fragment>
 float cliff = 1.0 - smoothstep(uCliffStart, uCliffEnd, vFlatness);
-float rockNoise = grassNoise(vGroundXZ * 0.4);
-vec3 rockColor = mix(uCliffColorDark, uCliffColor, smoothstep(0.35, 0.65, rockNoise));
-diffuseColor.rgb = mix(grassGroundColor(vGroundXZ), rockColor, cliff);
+vec3 rockColor = mix(uCliffColorDark, uCliffColor, smoothstep(0.35, 0.65, rockNoise(vGroundXZ * 0.4)));
+diffuseColor.rgb = mix(uGrassColor, rockColor, cliff);
 `;
 
 /**
- * The ground, painted with the same noise patches the grass roots sample.
+ * The ground: the shared grass colour on flat tiles, rock on steep faces.
  * Lambert-based rather than the old raw ShaderMaterial, so it takes the scene
- * lights, fog and shadows — and so its shading matches the blades standing on
- * it. A flat colour here would make the field read as a green bedsheet.
+ * lights, fog and shadows — and so its shading matches the blades standing on it.
  *
- * Colouring is driven by world XZ, so the pattern does not stretch or repeat
- * with the mesh's UVs and stays continuous across any future ground chunks.
+ * The rock noise is driven by world XZ, so it does not stretch or repeat with
+ * the mesh's UVs and stays continuous across ground chunks.
  */
 /** Cosine of the slope where rock starts taking over, and where it fully has. */
 const CLIFF_END = Math.cos((30 * Math.PI) / 180);
@@ -55,7 +70,7 @@ const CLIFF_COLOR_DARK = 0x8a4322;
 
 export function createGroundMaterial(): THREE.MeshLambertMaterial {
     const uniforms = {
-        ...createPatchUniforms(),
+        ...createGrassColorUniforms(),
         uCliffColor: { value: new THREE.Color(CLIFF_COLOR) },
         uCliffColorDark: { value: new THREE.Color(CLIFF_COLOR_DARK) },
         uCliffStart: { value: CLIFF_START },

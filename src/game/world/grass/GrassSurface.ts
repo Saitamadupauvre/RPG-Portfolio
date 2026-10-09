@@ -86,7 +86,6 @@ const range = (min: number, max: number) => min + Math.random() * (max - min);
 
 type Bucket = {
     matrices: THREE.Matrix4[];
-    tints: number[];
     heights: number[];
     box: THREE.Box3;
 };
@@ -103,7 +102,6 @@ function sortBucketByHeight(bucket: Bucket): Bucket {
 
     return {
         matrices: order.map(({ index }) => bucket.matrices[index]),
-        tints: order.map(({ index }) => bucket.tints[index]),
         heights: order.map(({ height }) => height),
         box: bucket.box,
     };
@@ -125,11 +123,10 @@ export class GrassSurface {
     private lod: GrassLodLevel[];
 
     constructor(options: {
-        tipColor?: THREE.ColorRepresentation;
         maxDistance?: number;
         lod?: GrassLodLevel[];
     } = {}) {
-        this.uniforms = createGrassUniforms(options.tipColor);
+        this.uniforms = createGrassUniforms();
         this.material = createGrassMaterial(this.uniforms);
         this.maxDistance = options.maxDistance ?? DEFAULT_MAX_DISTANCE;
         this.lod = [...(options.lod ?? DEFAULT_LOD)].sort((a, b) => a.distance - b.distance);
@@ -179,27 +176,19 @@ export class GrassSurface {
             const key = this.chunkKey(_point, chunkSize);
             let bucket = buckets.get(key);
             if (!bucket) {
-                bucket = { matrices: [], tints: [], heights: [], box: new THREE.Box3().makeEmpty() };
+                bucket = { matrices: [], heights: [], box: new THREE.Box3().makeEmpty() };
                 buckets.set(key, bucket);
             }
             bucket.matrices.push(_matrix.clone());
-            // Per-blade brightness. Without it the field is one flat wash; the
-            // speckle is most of what makes painted grass look hand-made.
-            bucket.tints.push(range(0.85, 1.15));
             bucket.heights.push(height);
             bucket.box.expandByPoint(_point);
         }
 
         for (const bucket of buckets.values()) {
-            const { matrices, tints, box } = sortBucketByHeight(bucket);
-            // Cloned per chunk because aTint is an *instanced* attribute, and
-            // instanced attributes live on the geometry — a shared geometry
-            // could only ever carry one chunk's tints. The blade itself is a
-            // handful of vertices, so the duplication is negligible.
-            const geometry = this.bladeGeometry.clone();
-            geometry.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(tints), 1));
-
-            const mesh = new THREE.InstancedMesh(geometry, this.material, matrices.length);
+            const { matrices, box } = sortBucketByHeight(bucket);
+            // Every chunk shares the one blade geometry: the per-blade data
+            // (instanceMatrix) lives on the InstancedMesh, not on the geometry.
+            const mesh = new THREE.InstancedMesh(this.bladeGeometry, this.material, matrices.length);
             for (let i = 0; i < matrices.length; i++) mesh.setMatrixAt(i, matrices[i]);
             mesh.instanceMatrix.needsUpdate = true;
             mesh.castShadow = false;
@@ -217,11 +206,10 @@ export class GrassSurface {
     }
 
     /**
-     * Drops every chunk grown on `target`. The blade geometries are clones (one
-     * per chunk, because aTint is an instanced attribute), so they are this
-     * surface's to dispose — the shared material and blade template are not.
-     * Without this, resculpting terrain would leak a full blade set per stroke:
-     * GPU buffers have no garbage collector.
+     * Drops every chunk grown on `target`. Each chunk's instance buffer is its
+     * own to dispose — the shared blade geometry and material are not, other
+     * chunks still draw with them. Without this, resculpting terrain would leak
+     * a full instance buffer per stroke: GPU buffers have no garbage collector.
      */
     public detach(target: THREE.Object3D, key?: string) {
         const kept: Chunk[] = [];
@@ -234,7 +222,6 @@ export class GrassSurface {
 
             target.remove(chunk.mesh);
             chunk.mesh.dispose();
-            chunk.mesh.geometry.dispose();
         }
 
         this.chunks = kept;
@@ -271,11 +258,9 @@ export class GrassSurface {
     public dispose() {
         for (const chunk of this.chunks) {
             chunk.mesh.removeFromParent();
-            chunk.mesh.geometry.dispose();
             chunk.mesh.dispose();
         }
         this.chunks = [];
-        // The template every chunk geometry was cloned from.
         this.bladeGeometry.dispose();
         this.material.dispose();
     }

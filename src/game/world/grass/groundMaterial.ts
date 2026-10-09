@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createGrassColorUniforms } from './groundPalette';
+import { createGrassColorUniforms, GRASS_COLOR_GLSL } from './groundPalette';
 import { PALETTE } from '../../render/palette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
@@ -22,24 +22,7 @@ uniform vec3 uCliffColor;
 uniform vec3 uCliffColorDark;
 uniform float uCliffStart;
 uniform float uCliffEnd;
-uniform vec3 uGrassColor;
-
-float rockHash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-}
-
-float rockNoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-
-    float a = rockHash(i);
-    float b = rockHash(i + vec2(1.0, 0.0));
-    float c = rockHash(i + vec2(0.0, 1.0));
-    float d = rockHash(i + vec2(1.0, 1.0));
-
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
+${GRASS_COLOR_GLSL}
 `;
 
 /**
@@ -51,17 +34,18 @@ float rockNoise(vec2 p) {
 const GROUND_COLOR = /* glsl */ `
 #include <color_fragment>
 float cliff = 1.0 - smoothstep(uCliffStart, uCliffEnd, vFlatness);
-vec3 rockColor = mix(uCliffColorDark, uCliffColor, smoothstep(0.35, 0.65, rockNoise(vGroundXZ * 0.4)));
-diffuseColor.rgb = mix(uGrassColor, rockColor, cliff);
+vec3 rockColor = mix(uCliffColorDark, uCliffColor, smoothstep(0.35, 0.65, meadowNoise(vGroundXZ * 0.4)));
+diffuseColor.rgb = mix(groundColorAt(vGroundXZ), rockColor, cliff);
 `;
 
 /**
- * The ground: the shared grass colour on flat tiles, rock on steep faces.
+ * The ground: the shared grass colour (with its patches) on flat tiles, rock
+ * on steep faces.
  * Lambert-based rather than the old raw ShaderMaterial, so it takes the scene
  * lights, fog and shadows — and so its shading matches the blades standing on it.
  *
- * The rock noise is driven by world XZ, so it does not stretch or repeat with
- * the mesh's UVs and stays continuous across ground chunks.
+ * The patch and rock noise are driven by world XZ, so they do not stretch or
+ * repeat with the mesh's UVs and stay continuous across ground chunks.
  */
 /** Cosine of the slope where rock starts taking over, and where it fully has. */
 const CLIFF_END = Math.cos((30 * Math.PI) / 180);

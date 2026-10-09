@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BLADE_HEIGHT } from './bladeGeometry';
-import { createGrassColorUniforms, type GrassColorUniforms } from './groundPalette';
+import { createGrassColorUniforms, GRASS_COLOR_GLSL, type GrassColorUniforms } from './groundPalette';
 
 /** Compile-time loop bound: GLSL needs a constant, so the array size is fixed. */
 export const MAX_COLLIDERS = 16;
@@ -9,6 +9,13 @@ export const MAX_COLLIDERS = 16;
 const MAX_PUSH_RADIUS = 0.8;
 /** Fraction of that radius a blade at the collider's centre is shoved outward. */
 const PUSH_STRENGTH = 0.8;
+/**
+ * How much of each blade's own tilt reaches its lighting normal. Blades lean
+ * up to ~20 degrees at random, and lit by their full tilt, the ones leaning
+ * away from the sun came out much darker than their neighbours. 0 would light
+ * every blade like the flat ground; a little tilt keeps a faint variation.
+ */
+const NORMAL_TILT = 0.25;
 
 export type GrassUniforms = GrassColorUniforms & {
     uTime: { value: number };
@@ -40,11 +47,15 @@ uniform float uBladeHeight;
 uniform vec4 uColliders[${MAX_COLLIDERS}];
 uniform int uColliderCount;
 varying vec3 vGrassNormal;
+varying vec2 vGrassRootXZ;
+varying float vGrassHeight;
 `;
 
 const GRASS_FRAGMENT_PARS = /* glsl */ `
-uniform vec3 uGrassColor;
 varying vec3 vGrassNormal;
+varying vec2 vGrassRootXZ;
+varying float vGrassHeight;
+${GRASS_COLOR_GLSL}
 `;
 
 // Runs right after <begin_vertex> has filled `transformed`, and before
@@ -62,11 +73,19 @@ const GRASS_BEND = /* glsl */ `
 #endif
 
 vec3 grassRoot = grassModel[3].xyz;
+// The root, not the tip: a blade takes the colour of the ground it grows
+// from, and it keeps it while the wind moves the tip.
+vGrassRootXZ = grassRoot.xz;
+vGrassHeight = aHeight;
 
-// The blade's own up axis, in view space. The fragment shader lights every
-// blade with this instead of its true face normal, which is what stops the
-// field from scattering into hard lit/unlit halves.
-vGrassNormal = normalize(normalMatrix * normalize(grassRot * vec3(0.0, 1.0, 0.0)));
+// Lighting normal, in view space. The fragment shader lights every blade with
+// this instead of its true face normal, which is what stops the field from
+// scattering into hard lit/unlit halves. It sits mostly on world up (how the
+// ground under it is lit) and only NORMAL_TILT of the way toward the blade's
+// own leaning axis.
+vec3 grassBladeUp = normalize(normalMatrix * normalize(grassRot * vec3(0.0, 1.0, 0.0)));
+vec3 grassWorldUp = normalize(mat3(viewMatrix) * vec3(0.0, 1.0, 0.0));
+vGrassNormal = normalize(mix(grassWorldUp, grassBladeUp, ${NORMAL_TILT.toFixed(2)}));
 
 float grassW = aHeight * aHeight;
 vec3 grassDisp = vec3(0.0);
@@ -120,11 +139,11 @@ const GRASS_NORMAL = /* glsl */ `
 normal = normalize(vGrassNormal);
 `;
 
-// The same colour as the ground underneath, so blades emerge from it instead
-// of sitting on it.
+// Root matches the ground underneath, patches included, so blades emerge from
+// it instead of sitting on it; tips go slightly brighter.
 const GRASS_COLOR = /* glsl */ `
 #include <color_fragment>
-diffuseColor.rgb = uGrassColor;
+diffuseColor.rgb = bladeColorAt(vGrassRootXZ, vGrassHeight);
 `;
 
 /**

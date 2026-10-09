@@ -14,7 +14,7 @@ const GRASS_CHUNK_SIZE = 4;
  * culling saves the draw calls, not the construction, so the cap is applied up
  * front — but only against the streamed ring below, never the whole map.
  */
-const GRASS_BUDGET = 260_000;
+const GRASS_BUDGET = 420_000;
 /** Side of one streamed grass patch, in world units. */
 const GRASS_PATCH_SIZE = 8;
 /** How far from the player grass exists at all. Also the surface's cull distance. */

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const BLADE_WIDTH = 0.105;
+const BLADE_WIDTH = 0.12;
 const BLADE_HEIGHT = 0.34;
 /** How far the blade arcs forward on its way to the tip. */
 const BLADE_CURVE = 0.11;

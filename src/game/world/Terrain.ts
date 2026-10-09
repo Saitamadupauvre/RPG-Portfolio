@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { TileMap } from '../../data/tileMap';
 import { createTileGrid, type TileGrid } from '../../domain/terrain/TileGrid';
 import { createGroundMaterial } from './grass/groundMaterial';
@@ -165,8 +166,8 @@ export class Terrain {
 
 function buildGeometry(grid: TileGrid): { geometry: THREE.BufferGeometry; topPositions: number[] } {
     const { cols, rows, tileSize } = grid.map;
-    const positions: number[] = [];
     const topPositions: number[] = [];
+    const wallPositions: number[] = [];
 
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
@@ -179,25 +180,44 @@ function buildGeometry(grid: TileGrid): { geometry: THREE.BufferGeometry; topPos
             // Counter-clockwise seen from above, so the face points up. Reversed,
             // the ground renders from below and every surface query that reads a
             // normal — grass placement, cliff shading — sees an upside-down world.
-            quad(positions, [x0, c00, z0], [x0, c01, z1], [x1, c11, z1], [x1, c10, z0]);
             quad(topPositions, [x0, c00, z0], [x0, c01, z1], [x1, c11, z1], [x1, c10, z0]);
 
             // Only the +X and +Z seams are walled, so each seam is built once
             // rather than twice from either side.
-            wall(positions, grid, col, row, 1, 0);
-            wall(positions, grid, col, row, 0, 1);
+            wall(wallPositions, grid, col, row, 1, 0);
+            wall(wallPositions, grid, col, row, 0, 1);
         }
     }
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.computeVertexNormals();
+    // Tops and walls get their normals separately, then are merged into one
+    // mesh (still one draw call). Tops keep flat per-face normals. Walls are
+    // smoothed: welding their shared corners makes computeVertexNormals average
+    // the facets around each point, so the rock shades as a rounded mass
+    // instead of a crumpled sheet. Doing it on the whole mesh would also weld
+    // the wall to the grass along the cliff edge and blur that crease.
+    const tops = new THREE.BufferGeometry();
+    tops.setAttribute('position', new THREE.Float32BufferAttribute(topPositions, 3));
+    tops.computeVertexNormals();
+
+    const walls = new THREE.BufferGeometry();
+    walls.setAttribute('position', new THREE.Float32BufferAttribute(wallPositions, 3));
+    const welded = mergeVertices(walls);
+    welded.computeVertexNormals();
+    // mergeGeometries needs every input indexed or none; the tops are not.
+    const smoothWalls = welded.toNonIndexed();
+
+    const geometry = wallPositions.length > 0 ? mergeGeometries([tops, smoothWalls]) : tops;
+    if (geometry !== tops) tops.dispose();
+    walls.dispose();
+    welded.dispose();
+    smoothWalls.dispose();
+
     geometry.computeBoundingSphere();
     return { geometry, topPositions };
 }
 
 /** Target facet size (world units) — long/tall walls get more facets instead of stretched ones. */
-const WALL_FACET_SIZE = 1.1;
+const WALL_FACET_SIZE = 0.7;
 /** Fraction of one sub-facet's span the interior grid points may jitter by. */
 const WALL_JITTER = 0.4;
 /** Extra outward push at the base (v = 1), tapering to none at the top — a wider, rooted foot. */

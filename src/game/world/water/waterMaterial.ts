@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getHeightTexture, heightFieldBounds } from './heightField';
+import { getWindUniforms, WIND_GLSL, type WindUniforms } from '../wind';
 import { PALETTE } from '../../render/palette';
 
 /** Depth over which the sea goes from near-clear at the shore to its full opacity. */
@@ -10,8 +11,21 @@ const DEEP_ALPHA = 0.95;
 /** Width of the white outline hugging the shore, in world units of depth. */
 const OUTLINE_WIDTH = 0.35;
 
-/** Peak-to-trough of the swell, in world units. The waves are real geometry now. */
-const WAVE_HEIGHT = 0.42;
+/**
+ * Swell height per unit of wind strength. The waves are real geometry, and
+ * their height follows the shared wind, so a stormier wind raises both the
+ * grass sway and the sea.
+ */
+const WAVE_PER_WIND = 1.8;
+/**
+ * How fast the swell drifts downwind, in world units per second. Fixed, not
+ * tied to the wind speed: sliding a height pattern sideways makes every point
+ * under it bob as the crests pass, at drift / wavelength, so a fast drift is a
+ * fast up-and-down. The wind's speed shows in the ripples instead.
+ */
+const SWELL_DRIFT = 0.25;
+/** Tilt of the wind ripples' normals per unit of wind strength. Shading only. */
+const RIPPLE_PER_WIND = 1.2;
 /** World-space wavelength of the slowest wave. */
 const WAVE_LENGTH = 3.2;
 
@@ -60,22 +74,28 @@ float waterNoise(vec2 p) {
  */
 const WAVE_GLSL = /* glsl */ `
 uniform float uTime;
-uniform float uWaveHeight;
 uniform float uWaveLength;
 
 float waterSwellHeight(vec2 xz) {
     float scale = 6.2831853 / uWaveLength;
+    // Both layers drift downwind: noise(xz - dir * t) is the same field slid
+    // along dir over time. The second layer heads ~20 degrees off the wind
+    // and at a different speed, so the two keep sliding past each other and
+    // the surface churns instead of moving as one rigid sheet. The drift is
+    // the fixed, slow uSwellDrift, never uWindSpeed (see SWELL_DRIFT).
+    vec2 waterSide = vec2(-uWindDir.y, uWindDir.x);
+    vec2 waterDir2 = normalize(uWindDir + waterSide * 0.35);
     // p2's multiplier is capped so its wavelength stays above ~2 plane quads
     // (the 500-unit, 250-segment plane is 2 units per quad) - past that the
     // ripple is smaller than the geometry can resolve and aliases instead of
     // reading as "tighter".
-    vec2 p1 = xz * scale * 0.8 + uTime * vec2(0.22, 0.13);
-    vec2 p2 = xz * scale * 1.6 + uTime * vec2(-0.18, 0.29);
+    vec2 p1 = (xz - uWindDir * uTime * uSwellDrift) * scale * 0.8;
+    vec2 p2 = (xz - waterDir2 * uTime * uSwellDrift * 0.7) * scale * 1.6;
 
     float n1 = waterNoise(p1) * 2.0 - 1.0;
     float n2 = waterNoise(p2) * 2.0 - 1.0;
 
-    return (n1 * 0.6 + n2 * 0.4) * uWaveHeight;
+    return (n1 * 0.6 + n2 * 0.4) * waterWaveHeight();
 }
 
 /**
@@ -88,7 +108,7 @@ float waterSwellHeight(vec2 xz) {
  * at a glance.
  */
 float waterBreathe() {
-    return sin(uTime * 0.9) * uWaveHeight * 0.5;
+    return sin(uTime * 0.9) * waterWaveHeight() * 0.5;
 }
 
 void waterWave(vec2 xz, out float height, out vec2 slope) {
@@ -131,7 +151,19 @@ float waterGroundHeight(vec2 worldXZ) {
 }
 `;
 
+/** Wind uniforms plus the swell height they drive, for both shader stages. */
+const WATER_WIND_GLSL = /* glsl */ `
+${WIND_GLSL}
+uniform float uWavePerWind;
+uniform float uSwellDrift;
+uniform float uRipplePerWind;
+float waterWaveHeight() {
+    return uWindStrength * uWavePerWind;
+}
+`;
+
 const WATER_VERTEX_PARS = /* glsl */ `
+${WATER_WIND_GLSL}
 varying vec2 vWaterXZ;
 varying vec3 vWaterWave;
 varying float vWaterViewZ;
@@ -185,7 +217,8 @@ uniform vec2 uResolution;
 uniform float uCameraNear;
 uniform float uCameraFar;
 uniform float uWaterLevel;
-uniform float uWaveHeight;
+uniform float uTime;
+${WATER_WIND_GLSL}
 
 /**
  * The scene's own depth buffer (water excluded), read back as a straight
@@ -248,7 +281,7 @@ diffuseColor.rgb = mix(uWaterColor, uOutlineColor, waterOutline);
 // shading: a soft shadow sitting in the troughs, the surface's own colour
 // everywhere else. Height alone (not slope) so it's a calm tonal roll rather
 // than a hard rim on the flanks.
-float waterTrough = smoothstep(0.05, -0.85, vWaterWave.x / max(uWaveHeight, 0.0001));
+float waterTrough = smoothstep(0.05, -0.85, vWaterWave.x / max(waterWaveHeight(), 0.0001));
 diffuseColor.rgb *= mix(1.0, 0.82, waterTrough * waterCoast);
 
 float waterAlpha = mix(uShoreAlpha, uDeepAlpha, smoothstep(0.0, uDepthFade, waterDepth));
@@ -266,14 +299,28 @@ diffuseColor.a = max(waterAlpha, waterOutline) * waterCoast;
 const WATER_NORMAL = /* glsl */ `
 #include <normal_fragment_begin>
 
-vec3 waterNormal = normalize(vec3(-vWaterWave.y, 1.0, -vWaterWave.z));
+// Wind ripples: fine noise scrolled downwind at the wind's own speed, added
+// to the slope as shading only - the geometry never moves for them, so they
+// carry the wind's speed across the surface without any extra bobbing.
+// Sampled in wind-aligned axes and stretched across the wind, so they read as
+// streaks the gusts are dragging along rather than round blobs.
+vec2 waterSide = vec2(-uWindDir.y, uWindDir.x);
+vec2 waterFlow = vWaterXZ - uWindDir * uTime * uWindSpeed * 0.7;
+vec2 waterRippleUV = vec2(dot(waterFlow, uWindDir) * 1.4, dot(waterFlow, waterSide) * 0.5);
+const float RIPPLE_EPS = 0.15;
+float waterRippleAlong = waterNoise(waterRippleUV + vec2(RIPPLE_EPS, 0.0)) - waterNoise(waterRippleUV - vec2(RIPPLE_EPS, 0.0));
+float waterRippleAcross = waterNoise(waterRippleUV + vec2(0.0, RIPPLE_EPS)) - waterNoise(waterRippleUV - vec2(0.0, RIPPLE_EPS));
+vec2 waterRipple = (uWindDir * waterRippleAlong + waterSide * waterRippleAcross) / (2.0 * RIPPLE_EPS);
+vec2 waterSlopeTotal = vWaterWave.yz + waterRipple * uWindStrength * uRipplePerWind;
+
+vec3 waterNormal = normalize(vec3(-waterSlopeTotal.x, 1.0, -waterSlopeTotal.y));
 // The normal is in view space by the time lighting reads it. viewMatrix is the
 // one transform available here (normalMatrix is vertex-side only), and w = 0
 // makes it rotate the direction without translating it.
 normal = normalize((viewMatrix * vec4(waterNormal, 0.0)).xyz);
 `;
 
-export type WaterUniforms = {
+export type WaterUniforms = WindUniforms & {
     uWaterLevel: { value: number };
     uTime: { value: number };
     uHeightMap: { value: THREE.Texture };
@@ -286,7 +333,9 @@ export type WaterUniforms = {
     uOutlineWidth: { value: number };
     uShoreAlpha: { value: number };
     uDeepAlpha: { value: number };
-    uWaveHeight: { value: number };
+    uWavePerWind: { value: number };
+    uSwellDrift: { value: number };
+    uRipplePerWind: { value: number };
     uWaveLength: { value: number };
     uSceneDepth: { value: THREE.Texture | null };
     uResolution: { value: THREE.Vector2 };
@@ -308,6 +357,7 @@ export function createWaterMaterial(waterLevel: number): {
     const texture = getHeightTexture();
 
     const uniforms: WaterUniforms = {
+        ...getWindUniforms(),
         uWaterLevel: { value: waterLevel },
         uTime: { value: 0 },
         uHeightMap: { value: texture },
@@ -320,7 +370,9 @@ export function createWaterMaterial(waterLevel: number): {
         uOutlineWidth: { value: OUTLINE_WIDTH },
         uShoreAlpha: { value: SHORE_ALPHA },
         uDeepAlpha: { value: DEEP_ALPHA },
-        uWaveHeight: { value: WAVE_HEIGHT },
+        uWavePerWind: { value: WAVE_PER_WIND },
+        uSwellDrift: { value: SWELL_DRIFT },
+        uRipplePerWind: { value: RIPPLE_PER_WIND },
         uWaveLength: { value: WAVE_LENGTH },
         uSceneDepth: { value: null },
         uResolution: { value: new THREE.Vector2(1, 1) },

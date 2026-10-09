@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BLADE_HEIGHT } from './bladeGeometry';
 import { createGrassColorUniforms, GRASS_COLOR_GLSL, type GrassColorUniforms } from './groundPalette';
+import { getWindUniforms, WIND_GLSL, type WindUniforms } from '../wind';
 
 /** Compile-time loop bound: GLSL needs a constant, so the array size is fixed. */
 export const MAX_COLLIDERS = 16;
@@ -17,10 +18,8 @@ const PUSH_STRENGTH = 0.8;
  */
 const NORMAL_TILT = 0.25;
 
-export type GrassUniforms = GrassColorUniforms & {
+export type GrassUniforms = GrassColorUniforms & WindUniforms & {
     uTime: { value: number };
-    uWindStrength: { value: number };
-    uWindSpeed: { value: number };
     uBladeHeight: { value: number };
     uColliders: { value: THREE.Vector4[] };
     uColliderCount: { value: number };
@@ -29,9 +28,8 @@ export type GrassUniforms = GrassColorUniforms & {
 export function createGrassUniforms(): GrassUniforms {
     return {
         ...createGrassColorUniforms(),
+        ...getWindUniforms(),
         uTime: { value: 0 },
-        uWindStrength: { value: 0.09 },
-        uWindSpeed: { value: 1.1 },
         uBladeHeight: { value: BLADE_HEIGHT },
         uColliders: { value: Array.from({ length: MAX_COLLIDERS }, () => new THREE.Vector4()) },
         uColliderCount: { value: 0 },
@@ -41,8 +39,7 @@ export function createGrassUniforms(): GrassUniforms {
 const GRASS_VERTEX_PARS = /* glsl */ `
 attribute float aHeight;
 uniform float uTime;
-uniform float uWindStrength;
-uniform float uWindSpeed;
+${WIND_GLSL}
 uniform float uBladeHeight;
 uniform vec4 uColliders[${MAX_COLLIDERS}];
 uniform int uColliderCount;
@@ -88,15 +85,37 @@ vec3 grassWorldUp = normalize(mat3(viewMatrix) * vec3(0.0, 1.0, 0.0));
 vGrassNormal = normalize(mix(grassWorldUp, grassBladeUp, ${NORMAL_TILT.toFixed(2)}));
 
 float grassW = aHeight * aHeight;
-vec3 grassDisp = vec3(0.0);
+vec3 grassWindDisp = vec3(0.0);
 
 // Two octaves at different wavelengths so the field rolls in broad gusts with
 // finer ripple on top, rather than every blade ticking on the same beat.
-float grassPhase = grassRoot.x * 0.35 + grassRoot.z * 0.45;
-float grassWind = sin(uTime * uWindSpeed + grassPhase)
-    + 0.3 * sin(uTime * uWindSpeed * 2.7 + grassPhase * 3.1);
-grassDisp.x += grassWind * uWindStrength * grassW;
-grassDisp.z += grassWind * uWindStrength * 0.4 * grassW;
+// Every wave is sin(phase - time): written that way round, its crests travel
+// *along* uWindDir, the same way the blades lean and the sea rolls.
+float grassPhase = dot(grassRoot.xz, uWindDir) * 0.45;
+float grassWind = sin(grassPhase - uTime * uWindSpeed)
+    + 0.3 * sin(grassPhase * 3.1 - uTime * uWindSpeed * 2.7)
+    // Per-blade flutter: fast and phase-scrambled by the root position, so
+    // neighbouring blades thrash out of step instead of moving as one sheet.
+    + 0.35 * sin(uTime * uWindSpeed * 6.0 + grassRoot.x * 7.3 + grassRoot.z * 5.1);
+// Gusts: a slow, long wave rolling across the field that scales the sway
+// between calm and well over double. Without it a strong wind is just a faster
+// metronome; with it, visible bands of grass get slammed while the rest settles.
+float grassGust = 0.5 + 0.5 * sin(grassPhase * 0.3 - uTime * uWindSpeed * 0.45);
+grassGust = 0.3 + 2.2 * grassGust * grassGust;
+// Biased to one side (+0.6) so blades lean downwind instead of swinging
+// symmetrically around upright, which is what reads as wind rather than wobble.
+float grassSway = (grassWind + 0.6) * grassGust * uWindStrength * grassW;
+grassWindDisp.xz += uWindDir * grassSway;
+// Peak gust on a peak sway would fold a blade flat past its own length.
+float grassSwayLen = length(grassWindDisp.xz);
+float grassSwayMax = uBladeHeight * 0.95 * grassW;
+if (grassSwayLen > grassSwayMax) grassWindDisp.xz *= grassSwayMax / grassSwayLen;
+// A blade pushed sideways must also drop, or it stretches like rubber under a
+// strong gust. d^2 / 2h is the small-angle drop of a stick of length h tipped
+// by d at its end.
+grassWindDisp.y -= dot(grassWindDisp.xz, grassWindDisp.xz) / (2.0 * uBladeHeight);
+
+vec3 grassDisp = vec3(0.0);
 
 for (int i = 0; i < ${MAX_COLLIDERS}; i++) {
     if (i >= uColliderCount) break;
@@ -118,6 +137,8 @@ for (int i = 0; i < ${MAX_COLLIDERS}; i++) {
     grassDisp.xz += grassDir * grassPush * grassShove * grassW;
     grassDisp.y -= grassPush * uBladeHeight * 0.9 * grassW;
 }
+
+grassDisp += grassWindDisp;
 
 // World-space displacement back into blade-local space. The columns of
 // grassModel are orthogonal (rotation composed with per-axis scale), so its

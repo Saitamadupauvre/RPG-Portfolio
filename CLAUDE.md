@@ -67,12 +67,13 @@ Layered, event-driven — each layer only knows about the layer below it via typ
   - `PlayerAttackInteraction.ts` — left-click raycasts onto the ground plane at player height, aims + triggers the attack.
   - `effects/` — `ParticleSystem.ts` (one `InstancedMesh` per system, per-instance alpha attribute), `ScreenShake.ts`.
   - `input/keyboardLayout.ts` — QWERTY/AZERTY movement bindings.
-  - `render/` — `materials.ts` (`createLitMaterial` / `fromGltfMaterial`: one Lambert entry point for every entity, same lighting model as the patched-Lambert ground, grass and water).
+  - `render/` — `materials.ts` (`createLitMaterial` / `fromGltfMaterial`: one Lambert entry point for every entity, same lighting model as the patched-Lambert ground, grass and water). `palette.ts` — `PALETTE` (every surface colour) + `LIGHT` (sky/bounce/sun); never hardcode a hex in a factory. Art direction, colour rules and the reference image live in `docs/art/`.
   - `world/World.ts` — terrain, water, player, chunk-streamed entities, entity group visibility per state, per-frame update, death/respawn, camera follow.
   - `world/ChunkStreamer.ts` — which chunks are loaded around the player (pure bookkeeping; callbacks spawn/despawn).
-  - `world/Terrain.ts` + `terrainField.ts` — tile mesh with jagged cliff walls, streamed grass patches; shared `TileGrid` accessor, `groundHeight`, `snapToGround`.
-  - `world/grass/` — instanced grass (`GrassSurface`, blade geometry, patched materials, ground material/palette).
-  - `world/water/` — endless sea plane, depth prepass, heightfield texture, water shader.
+  - `world/Terrain.ts` + `terrainField.ts` — tile mesh with jagged cliff walls (smooth-shaded separately from the flat tops, then merged), streamed grass patches; shared `TileGrid` accessor, `groundHeight`, `snapToGround`.
+  - `world/grass/` — instanced grass (`GrassSurface`, blade geometry, patched materials, ground material). `groundPalette.ts` holds the GLSL colour shared by ground and blades (`grassColorAt` with large patches, `bladeColorAt` root-to-tip gradient keyed on the blade's root). `grassFootprints.ts` keeps the ground bare under static objects, built from the whole layout in `World.loadLayout` (not from streamed entities). Movers part the grass through shader colliders, and the wind is damped around them.
+  - `world/wind.ts` — `WIND` (direction/strength/speed) + one shared set of wind uniforms, spread by reference into the grass and water materials so both always blow the same way.
+  - `world/water/` — endless sea plane, depth prepass, heightfield texture, water shader. The swell drifts downwind at a fixed slow speed (bob rate), its height scales with wind strength; the wind's speed shows only as normal-map ripples, never as faster bobbing.
   - `world/Environment.ts` — sky, fog, lights. The shadow camera follows the player (`followShadows`), snapped to whole shadow texels.
   - `world/navigation.ts` — shared nav grid: collidable props/statues/bonfires block cells, underwater ground blocks cells, cliff steps via `canTraverse`.
   - `editor/` — dev-only map editor (`EditorSystem`, `editorLayout` localStorage working copy, `TileSelection`, `entityDefaults`). The working copy replaces the committed map only once the editor is first opened.

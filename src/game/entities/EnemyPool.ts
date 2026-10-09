@@ -9,6 +9,7 @@ import { AttackComponent } from './components/AttackComponent';
 import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { EnemyAIComponent } from './components/EnemyAIComponent';
 import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
 
 interface EnemyLook {
     size: number;
@@ -24,14 +25,14 @@ interface EnemyLook {
 
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
-        size: 0.6, color: 0x33aa33, hp: 20,
+        size: 0.6, color: PALETTE.berry, hp: 20,
         moveSpeed: 2, aggroRadius: 5, deaggroRadius: 8, attackRange: 1.1, coins: 5,
         combo: [
             { options: { damage: 8, distance: 0.9, duration: 0.25, color: 0xffaa00 }, recovery: 0.5, windup: 0.4 },
         ],
     },
     elite: {
-        size: 0.9, color: 0xdd8822, hp: 50,
+        size: 0.9, color: PALETTE.autumn, hp: 50,
         moveSpeed: 2.5, aggroRadius: 6, deaggroRadius: 10, attackRange: 1.3, coins: 18,
         combo: [
             { options: { damage: 6, distance: 1, duration: 0.2, color: 0xffaa00 }, recovery: 0.25, windup: 0.3 },
@@ -39,7 +40,7 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
         ],
     },
     boss: {
-        size: 1.4, color: 0xcc2222, hp: 200,
+        size: 1.4, color: PALETTE.bark, hp: 200,
         moveSpeed: 2.2, aggroRadius: 8, deaggroRadius: 14, attackRange: 1.6, coins: 80,
         combo: [
             { options: { damage: 10, distance: 1.4, duration: 0.25, color: 0xffaa00 }, recovery: 0.3, windup: 0.4 },

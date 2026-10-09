@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createGrassColorUniforms } from './groundPalette';
+import { PALETTE } from '../../render/palette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
 varying vec2 vGroundXZ;
@@ -65,8 +66,8 @@ diffuseColor.rgb = mix(uGrassColor, rockColor, cliff);
 /** Cosine of the slope where rock starts taking over, and where it fully has. */
 const CLIFF_END = Math.cos((30 * Math.PI) / 180);
 const CLIFF_START = Math.cos((48 * Math.PI) / 180);
-const CLIFF_COLOR = 0xb8622f;
-const CLIFF_COLOR_DARK = 0x8a4322;
+const CLIFF_COLOR = PALETTE.rock;
+const CLIFF_COLOR_DARK = PALETTE.bark;
 
 export function createGroundMaterial(): THREE.MeshLambertMaterial {
     const uniforms = {

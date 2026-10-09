@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getHeightTexture, heightFieldBounds } from './heightField';
+import { PALETTE } from '../../render/palette';
 
 /** Depth over which the sea goes from near-clear at the shore to its full opacity. */
 const DEPTH_FADE = 2.6;
@@ -14,8 +15,8 @@ const WAVE_HEIGHT = 0.42;
 /** World-space wavelength of the slowest wave. */
 const WAVE_LENGTH = 3.2;
 
-/** Deep saturated navy, close to the reference art, instead of the old shallow teal. */
-const WATER_COLOR = 0x0c3f66;
+/** Deep saturated blue, the cool counterweight to the warm meadow. */
+const WATER_COLOR = PALETTE.sea;
 const OUTLINE_COLOR = 0xffffff;
 
 /**

@@ -38,7 +38,9 @@ export class Experience {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // PCF is the soft filter since r182 (PCFSoftShadowMap is deprecated);
+        // the blur width is set per light with shadow.radius.
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
         // The scene is rendered twice per frame (water depth prepass, then the
         // real pass). Each render() redraws the shadow map unless told not to,
         // so shadows are flagged for exactly one redraw per tick instead.

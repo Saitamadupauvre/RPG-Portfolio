@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
 
 /**
  * Laid out along the sword's own +Z with the origin at the grip — the point the hand closes
@@ -27,9 +28,9 @@ const SWORD_TIP_Z = GUARD_Z + GUARD_THICKNESS / 2 + BLADE_LENGTH;
 export function createSwordMesh(): THREE.Group {
     const sword = new THREE.Group();
 
-    const leather = createLitMaterial({ color: 0x5a3a1e });
-    const brass = createLitMaterial({ color: 0xe8c65a });
-    const steel = createLitMaterial({ color: 0xeef2ff });
+    const leather = createLitMaterial({ color: PALETTE.bark });
+    const brass = createLitMaterial({ color: PALETTE.gold });
+    const steel = createLitMaterial({ color: PALETTE.cream });
 
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(HANDLE_RADIUS, HANDLE_RADIUS, HANDLE_LENGTH, 8), leather);
     handle.rotation.x = Math.PI / 2;

@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import type { Experience } from '../Experience';
+import { LIGHT } from '../render/palette';
 
-const SKY_COLOR = 0x9adcf2;
-/** Bounce light colour. Saturated grass green, so shadowed sides read as colour, never grey. */
-const BOUNCE_COLOR = 0x8cc472;
-const SUN_COLOR = 0xfff0c2;
+const HEMISPHERE_INTENSITY = 0.85;
+const SUN_INTENSITY = 2.8;
 /**
- * A second, dim light aimed back from the sky side, so the unlit half of every
- * mesh reads blue-tinted instead of muddy. To revisit with the palette pass.
+ * How much of the sun a shadow removes. Below 1 the surface colour still shows
+ * through, so shade on grass stays green instead of going grey.
  */
-const FILL_COLOR = 0x8fb8dd;
+const SHADOW_INTENSITY = 0.75;
+/** Shadow edge blur, in shadow texels. Soft edges read as daylight, hard ones as a stage spot. */
+const SHADOW_RADIUS = 4;
 /** Sun position relative to the point it lights. Fixed, so the light direction never changes. */
 const SUN_OFFSET = new THREE.Vector3(10, 15, 8);
 /**
@@ -27,7 +28,6 @@ export class Environment {
     private experience: Experience;
     private hemisphere: THREE.HemisphereLight;
     private sun: THREE.DirectionalLight;
-    private fill: THREE.DirectionalLight;
     private lightRight = new THREE.Vector3();
     private lightUp = new THREE.Vector3();
     private focus = new THREE.Vector3();
@@ -35,22 +35,24 @@ export class Environment {
     constructor(experience: Experience) {
         this.experience = experience;
 
-        this.experience.scene.background = new THREE.Color(SKY_COLOR);
+        this.experience.scene.background = new THREE.Color(LIGHT.sky);
         // Far enough that saturated colour survives across the view instead of
         // fading to sky within a few chunks.
-        this.experience.scene.fog = new THREE.Fog(SKY_COLOR, 40, 95);
+        this.experience.scene.fog = new THREE.Fog(LIGHT.sky, 40, 95);
 
-        // Ambient-dominated: the hemisphere does most of the work so nothing
-        // ever falls into near-black, and the sun only adds shape on top.
-        this.hemisphere = new THREE.HemisphereLight(SKY_COLOR, BOUNCE_COLOR, 0.95);
+        // Sun-dominated: a strong warm key against a cooler, dimmer hemisphere.
+        // That warm/cool split is what gives low-poly shapes their form; an
+        // ambient-heavy setup lights every side the same and flattens them.
+        this.hemisphere = new THREE.HemisphereLight(LIGHT.sky, LIGHT.bounce, HEMISPHERE_INTENSITY);
 
-        this.sun = new THREE.DirectionalLight(SUN_COLOR, 1.6);
+        this.sun = new THREE.DirectionalLight(LIGHT.sun, SUN_INTENSITY);
         this.sun.position.copy(SUN_OFFSET);
         this.sun.castShadow = true;
         // The direct lever for "less dark shadow": scales how much light the
         // shadow removes, instead of flooding the scene with ambient to
         // compensate (which would flatten everything).
-        this.sun.shadow.intensity = 0.5;
+        this.sun.shadow.intensity = SHADOW_INTENSITY;
+        this.sun.shadow.radius = SHADOW_RADIUS;
         this.sun.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
         this.sun.shadow.camera.near = 1;
         this.sun.shadow.camera.far = SUN_OFFSET.length() + SHADOW_HALF_SIZE * 2;
@@ -67,14 +69,10 @@ export class Environment {
         this.sun.shadow.bias = -0.0004;
         this.sun.shadow.normalBias = 0.03;
 
-        this.fill = new THREE.DirectionalLight(FILL_COLOR, 0.45);
-        this.fill.position.set(-8, 6, -10);
-
         this.experience.scene.add(this.hemisphere);
         this.experience.scene.add(this.sun);
         // The target must be in the scene graph or its matrix never updates.
         this.experience.scene.add(this.sun.target);
-        this.experience.scene.add(this.fill);
     }
 
     /**

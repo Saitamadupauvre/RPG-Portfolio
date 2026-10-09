@@ -8,8 +8,9 @@ import { discover, isDiscovered } from '../../domain/discovery';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
 import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
 
-const GLOW_COLOR = 0xffcc55;
+const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
 const STATUE_COLLISION_RADIUS = 0.5;
 
@@ -17,11 +18,11 @@ export function createStatue(entity: StatueEntity): Entity {
     const group = new THREE.Group();
     applyTransform(group, entity);
 
-    const baseMaterial = createLitMaterial({ color: 0x8d95a3 });
+    const baseMaterial = createLitMaterial({ color: PALETTE.stone });
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.4, 8), baseMaterial);
     base.position.y = 0.2;
 
-    const bodyMaterial = createLitMaterial({ color: 0xdbe3ee });
+    const bodyMaterial = createLitMaterial({ color: PALETTE.cream });
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.6, 0.5), bodyMaterial);
     body.position.y = 1.2;
 

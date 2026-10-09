@@ -7,8 +7,9 @@ import { setCheckpoint } from '../../domain/checkpoint';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
 import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
 
-const FLAME_COLOR = 0xff8822;
+const FLAME_COLOR = PALETTE.autumn;
 const INTERACT_RADIUS = 2.2;
 const COLLISION_RADIUS = 0.5;
 
@@ -16,7 +17,7 @@ export function createBonfire(entity: BonfireEntity): Entity {
     const group = new THREE.Group();
     applyTransform(group, entity);
 
-    const stoneMaterial = createLitMaterial({ color: 0x6b7280 });
+    const stoneMaterial = createLitMaterial({ color: PALETTE.stone });
     const stones = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.25, 8), stoneMaterial);
     stones.position.y = 0.12;
     stones.castShadow = true;

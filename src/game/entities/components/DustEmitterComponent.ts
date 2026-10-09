@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { ParticleSystem } from '../../effects/ParticleSystem';
 import type { MovementComponent } from './MovementComponent';
+import { PALETTE } from '../../render/palette';
 
 const SPAWN_INTERVAL = 0.15;
 const BURST_COUNT = 3;
 
 const DUST_CONFIG = {
     size: 0.05,
-    color: 0x8a6d4b,
+    color: PALETTE.wheat,
     poolSize: 32,
     life: 0.35,
     speed: 0.6,

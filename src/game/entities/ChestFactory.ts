@@ -8,14 +8,15 @@ import { isChestOpened, openChest } from '../../domain/openedChests';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
 import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
 
 const chestColor: Record<ChestEntity['chestTier'], number> = {
-    wood: 0x8b5a2b,
-    silver: 0xc0c0c0,
-    gold: 0xffd700,
+    wood: PALETTE.bark,
+    silver: PALETTE.stone,
+    gold: PALETTE.gold,
 };
 
-const GLOW_COLOR = 0xffcc55;
+const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
 const COLLISION_RADIUS = 0.5;
 const LID_OPEN_ANGLE = -Math.PI / 2.4;

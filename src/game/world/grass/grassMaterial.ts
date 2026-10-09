@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { TOON_LIGHTING_GLSL } from '../../render/toonLighting';
 import { BLADE_HEIGHT } from './bladeGeometry';
 import { createPatchUniforms, PATCH_GLSL, type PatchUniforms } from './groundPalette';
 
@@ -168,7 +167,6 @@ export function createGrassMaterial(uniforms: GrassUniforms) {
         shader.fragmentShader = shader.fragmentShader
             .replace('#include <common>', `#include <common>\n${GRASS_FRAGMENT_PARS}`)
             .replace('#include <normal_fragment_begin>', GRASS_NORMAL)
-            .replace('#include <lights_fragment_end>', TOON_LIGHTING_GLSL)
             .replace('#include <color_fragment>', GRASS_COLOR);
     };
 

@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { TOON_LIGHTING_GLSL } from '../../render/toonLighting';
 import { getHeightTexture, heightFieldBounds } from './heightField';
 
 /** Depth over which the sea goes from near-clear at the shore to its full opacity. */
@@ -259,8 +258,8 @@ diffuseColor.a = max(waterAlpha, waterOutline) * waterCoast;
  * The normal of the displaced surface, from the wave's exact derivative.
  *
  * The geometry really moves, but a plane's interpolated normal still points
- * straight up unless it is rebuilt - and without it the toon banding collapses
- * the whole ocean into one uniform band. Slope along each axis, negated, against
+ * straight up unless it is rebuilt - and without it the lighting stays flat over
+ * the whole ocean, swell or not. Slope along each axis, negated, against
  * a unit up: the standard height-field-to-normal.
  */
 const WATER_NORMAL = /* glsl */ `
@@ -297,7 +296,7 @@ export type WaterUniforms = {
 /**
  * Built the same way as the ground (`grass/groundMaterial.ts`): a stock Lambert
  * patched through `onBeforeCompile`, so it inherits the scene's lights, fog and
- * shadows and can run the shared toon banding. A raw ShaderMaterial would have
+ * shadows. A raw ShaderMaterial would have
  * to re-implement all of that to sit next to the terrain without looking foreign.
  */
 export function createWaterMaterial(waterLevel: number): {
@@ -330,7 +329,7 @@ export function createWaterMaterial(waterLevel: number): {
 
     const material = new THREE.MeshLambertMaterial({
         color: 0xffffff,
-        // A dark navy multiplied by toon-banded shadow light crushes to near
+        // A dark navy multiplied by shadow light crushes to near
         // black in a walled-in pond that never catches direct sun. Emissive
         // sits outside the light multiply, so it keeps the sea readably blue
         // in full shade without washing out the lit swell.
@@ -349,7 +348,6 @@ export function createWaterMaterial(waterLevel: number): {
             .replace('#include <begin_vertex>', WATER_VERTEX);
         shader.fragmentShader = shader.fragmentShader
             .replace('#include <common>', `#include <common>\n${WATER_FRAGMENT_PARS}`)
-            .replace('#include <lights_fragment_end>', TOON_LIGHTING_GLSL)
             .replace('#include <color_fragment>', WATER_COLOR_GLSL)
             .replace('#include <normal_fragment_begin>', WATER_NORMAL);
     };

@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { TOON_LIGHTING_GLSL } from '../../render/toonLighting';
 import { createPatchUniforms, PATCH_GLSL } from './groundPalette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
@@ -71,7 +70,6 @@ export function createGroundMaterial(): THREE.MeshLambertMaterial {
             .replace('#include <begin_vertex>', GROUND_WORLDPOS);
         shader.fragmentShader = shader.fragmentShader
             .replace('#include <common>', `#include <common>\n${GROUND_FRAGMENT_PARS}`)
-            .replace('#include <lights_fragment_end>', TOON_LIGHTING_GLSL)
             .replace('#include <color_fragment>', GROUND_COLOR);
     };
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
-import type { EmissiveMaterial } from '../../render/toon';
+import type { EmissiveMaterial } from '../../render/materials';
 
 const PULSE_SPEED = 2.5;
 const PULSE_MIN = 0.35;

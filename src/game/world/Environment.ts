@@ -6,9 +6,8 @@ const SKY_COLOR = 0x9adcf2;
 const BOUNCE_COLOR = 0x8cc472;
 const SUN_COLOR = 0xfff0c2;
 /**
- * A second, dim light aimed back from the sky side. Cel shading collapses the
- * unlit half of every mesh into one flat band; a cool fill keeps that band
- * blue-tinted (the way cartoon shadows are painted) instead of muddy.
+ * A second, dim light aimed back from the sky side, so the unlit half of every
+ * mesh reads blue-tinted instead of muddy. To revisit with the palette pass.
  */
 const FILL_COLOR = 0x8fb8dd;
 /** Sun position relative to the point it lights. Fixed, so the light direction never changes. */
@@ -37,8 +36,8 @@ export class Environment {
         this.experience = experience;
 
         this.experience.scene.background = new THREE.Color(SKY_COLOR);
-        // Pushed further out than before: cartoon looks want saturated colour to
-        // survive across the view, not fade to sky within a few chunks.
+        // Far enough that saturated colour survives across the view instead of
+        // fading to sky within a few chunks.
         this.experience.scene.fog = new THREE.Fog(SKY_COLOR, 40, 95);
 
         // Ambient-dominated: the hemisphere does most of the work so nothing
@@ -51,8 +50,6 @@ export class Environment {
         // The direct lever for "less dark shadow": scales how much light the
         // shadow removes, instead of flooding the scene with ambient to
         // compensate (which would flatten everything).
-        // Higher than the previous soft 0.4: with toon banding the shadow terminator
-        // is a hard edge, and a weak shadow next to a hard edge reads as a bug.
         this.sun.shadow.intensity = 0.5;
         this.sun.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
         this.sun.shadow.camera.near = 1;

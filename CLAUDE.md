@@ -59,7 +59,7 @@ Layered, event-driven — each layer only knows about the layer below it via typ
   - `entities/PlayerFactory.ts` — root group → `visual` → model; placeholder capsule until `player.glb` loads. Initial speed/HP come from `getPlayerStats()`. Combo moves use `damageScale` (× base damage) so Strength upgrades apply. Components in order: movement, dash, attack, combo, `animationDriver`, `animator`, dust, swordTrail, health, hitFlash — order matters (driver feeds params the animator reads the same frame; trail samples the posed sword).
   - `entities/playerAnimation.ts` — `playerController` graph only (no clip data). Blender checklist in the file header.
   - `entities/SwordFactory.ts` — placeholder sword, origin at the grip, blade along +Z.
-  - `entities/loadModel.ts` — cached glTF load (failed loads are evicted so they can retry), `SkeletonUtils.clone`, PBR→toon conversion, fit to height.
+  - `entities/loadModel.ts` — cached glTF load (failed loads are evicted so they can retry), `SkeletonUtils.clone`, PBR→Lambert conversion (`fromGltfMaterial`), fit to height.
   - `entities/components/` — `MovementComponent`, `DashComponent`, `AttackComponent` (`reset`, `baseDamage`), `ComboComponent` (`damageScale`, `reset`, `onBusyChanged`), `PlayerAnimationDriver`, `DetectionComponent`, `EnemyAIComponent` (`reset(origin)`), `PathfindingComponent`, `HealthBarComponent`, `HitFlashComponent` (`reset`), `GlowComponent`, `InteractableComponent`, `DustEmitterComponent`, `SwordTrailComponent`.
   - `CombatSystem.ts` — hitboxes vs body hurtboxes (radius + `bodyHeight`, not `setFromObject`), damage, flash, particles, shake, kills + pool release, bonfire/respawn enemy reset. `forgetChunk(key)` drops enemy sources (dead ones too) of an unloading chunk.
   - `InteractionSystem.ts` — nearest `interactable` in range, prompt event, key dispatch.
@@ -67,7 +67,7 @@ Layered, event-driven — each layer only knows about the layer below it via typ
   - `PlayerAttackInteraction.ts` — left-click raycasts onto the ground plane at player height, aims + triggers the attack.
   - `effects/` — `ParticleSystem.ts` (one `InstancedMesh` per system, per-instance alpha attribute), `ScreenShake.ts`.
   - `input/keyboardLayout.ts` — QWERTY/AZERTY movement bindings.
-  - `render/` — `toon.ts` (`createToonMaterial`, shared gradient), `toonLighting.ts` (GLSL band step for patched Lambert).
+  - `render/` — `materials.ts` (`createLitMaterial` / `fromGltfMaterial`: one Lambert entry point for every entity, same lighting model as the patched-Lambert ground, grass and water).
   - `world/World.ts` — terrain, water, player, chunk-streamed entities, entity group visibility per state, per-frame update, death/respawn, camera follow.
   - `world/ChunkStreamer.ts` — which chunks are loaded around the player (pure bookkeeping; callbacks spawn/despawn).
   - `world/Terrain.ts` + `terrainField.ts` — tile mesh with jagged cliff walls, streamed grass patches; shared `TileGrid` accessor, `groundHeight`, `snapToGround`.

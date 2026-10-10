@@ -16,7 +16,9 @@ export class WaterDepthPrepass {
     constructor(width: number, height: number) {
         this.target = new THREE.WebGLRenderTarget(width, height);
         this.depthTexture = new THREE.DepthTexture(width, height);
-        this.depthTexture.type = THREE.FloatType;
+        // 24-bit integer depth is plenty for shore foam and half the bandwidth of
+        // a 32-bit float buffer, which is also slower to sample on many GPUs.
+        this.depthTexture.type = THREE.UnsignedIntType;
         this.target.depthTexture = this.depthTexture;
     }
 

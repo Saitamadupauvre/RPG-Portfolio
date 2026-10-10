@@ -30,6 +30,13 @@ export type GrassSurfaceOptions = {
      * cost its own area instead of the whole mesh's.
      */
     bounds?: GrassBounds;
+    /**
+     * Triangle indices to grow on, precomputed by the caller. Wins over
+     * `bounds`: filtering by bounds still visits every triangle of the
+     * geometry, so a caller growing many patches off one big mesh should
+     * bucket the triangles once and hand each patch its own list.
+     */
+    triangles?: number[];
     /** Patch label, so `detach` can drop this attach's chunks and leave the rest. */
     key?: string;
     /**
@@ -153,7 +160,9 @@ export class GrassSurface {
         if (options.maxDistance !== undefined) this.maxDistance = options.maxDistance;
 
         const geometry = options.sampleGeometry ?? target.geometry;
-        const { areas, triangles, total } = this.buildAreaTable(geometry, options.bounds);
+        const { areas, triangles, total } = options.triangles
+            ? this.buildAreaTableFor(geometry, options.triangles)
+            : this.buildAreaTable(geometry, options.bounds);
         if (total <= 0) return;
 
         const bladeCount = Math.round(density * total);
@@ -335,6 +344,22 @@ export class GrassSurface {
         }
 
         return { areas: Float64Array.from(areas), triangles, total };
+    }
+
+    /** Same table as buildAreaTable, over a given triangle list only. */
+    private buildAreaTableFor(geometry: THREE.BufferGeometry, triangles: number[]) {
+        const areas = new Float64Array(triangles.length);
+        let total = 0;
+
+        for (let i = 0; i < triangles.length; i++) {
+            this.readTriangle(geometry, triangles[i]);
+            _ab.subVectors(_b, _a);
+            _ac.subVectors(_c, _a);
+            total += _ab.cross(_ac).length() * 0.5;
+            areas[i] = total;
+        }
+
+        return { areas, triangles, total };
     }
 
     /**

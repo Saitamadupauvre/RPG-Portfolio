@@ -28,6 +28,20 @@ import { groundHeight, snapToGround } from "./terrainField";
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 /** Keeps the camera from burying itself in a hill or cliff behind the player. */
 const CAMERA_CLEARANCE = 2;
+/** The way the camera faces, flattened onto the ground: back along its offset. */
+const GROUND_VIEW_DIR = new THREE.Vector3(-CAMERA_OFFSET.x, 0, -CAMERA_OFFSET.z).normalize();
+
+/**
+ * Where the camera stands to frame `target`. The offset alone would sink it
+ * into rising ground behind the player; lifting it to clear the terrain under
+ * it is cheaper than a raycast and enough for a fixed isometric view. Shared by
+ * followPlayer and the grass planner, so the two can never disagree.
+ */
+function cameraEye(target: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+    out.copy(target).add(CAMERA_OFFSET);
+    out.y = Math.max(out.y, groundHeight(out.x, out.z) + CAMERA_CLEARANCE);
+    return out;
+}
 
 const RESPAWN_DELAY_MS = 1200;
 /**
@@ -58,7 +72,9 @@ export class World {
     private collision = new EntityCollisionSystem();
     private interaction = new InteractionSystem();
     private paused = false;
-    private grass = new GrassSurface();
+    // One full-ratio tier: Terrain already grows far patches sparser, and a draw
+    // LOD on top would thin them a second time.
+    public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
     private grassColliders: GrassCollider[] = [];
     public terrain: Terrain;
     public water: Water;
@@ -282,7 +298,9 @@ export class World {
 
         // Grass exists only in a ring around the player, so the ring has to
         // follow them before the surface is asked to draw it.
-        this.terrain.updateGrass(this.player.mesh.position.x, this.player.mesh.position.z);
+        // The camera always frames the player, so the player is the focus.
+        const { x, z } = this.player.mesh.position;
+        this.terrain.updateGrass({ x, z, dirX: GROUND_VIEW_DIR.x, dirZ: GROUND_VIEW_DIR.z });
         this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);
     }
 
@@ -292,14 +310,7 @@ export class World {
     }
 
     private followPlayer(camera: THREE.PerspectiveCamera) {
-        camera.position.copy(this.player.mesh.position).add(CAMERA_OFFSET);
-        // The offset alone would sink the camera into rising ground behind the
-        // player; lifting it to clear the terrain under it is cheaper than a
-        // raycast and enough for a fixed isometric view.
-        camera.position.y = Math.max(
-            camera.position.y,
-            groundHeight(camera.position.x, camera.position.z) + CAMERA_CLEARANCE,
-        );
+        cameraEye(this.player.mesh.position, camera.position);
         camera.lookAt(this.player.mesh.position);
         camera.updateMatrixWorld();
     }

@@ -7,30 +7,116 @@ import type { GrassBounds, GrassSurface } from './grass/GrassSurface';
 import { footprintsInBounds, isUnderFootprint, type GrassFootprint } from './grass/grassFootprints';
 import { rebuildTileGrid } from './terrainField';
 
-const GRASS_DENSITY = 90;
 const GRASS_CHUNK_SIZE = 4;
-/**
- * Ceiling on blades held at once. Density alone is per square unit, so an area
- * this is not divided against would silently multiply the blade count. Distance
- * culling saves the draw calls, not the construction, so the cap is applied up
- * front — but only against the streamed ring below, never the whole map.
- */
-const GRASS_BUDGET = 420_000;
 /** Side of one streamed grass patch, in world units. */
 const GRASS_PATCH_SIZE = 8;
-/** How far from the player grass exists at all. Also the surface's cull distance. */
-const GRASS_VIEW_RADIUS = 40;
-/** Patch ring that covers that radius in every direction. */
-const GRASS_PATCH_RADIUS = Math.ceil(GRASS_VIEW_RADIUS / GRASS_PATCH_SIZE);
+
 /**
- * Area of the grown ring — a constant. Dividing the budget by this instead of
- * by the map area is the whole point: grow the map and the density does not
- * move, because the grass that exists is always the same ring around the player.
+ * Blades per square unit by distance from the camera's focus, nearest first.
+ * The density is baked when a patch grows — far patches simply hold fewer
+ * blades — instead of growing everything dense and hiding most of it at draw
+ * time, which still paid to build and store the hidden ones. The last tier's
+ * distance is where grass stops existing at all.
+ *
+ * Rough upper bound (full circle; the squashed rear makes it ~25% less):
+ * π·12²·12 + π·(24²−12²)·4 + π·(40²−24²)·1 ≈ 5k + 5k + 3k ≈ 14k blades.
  */
-const GRASS_RING_AREA = ((GRASS_PATCH_RADIUS * 2 + 1) * GRASS_PATCH_SIZE) ** 2;
-const GRASS_PATCH_DENSITY = Math.min(GRASS_DENSITY, GRASS_BUDGET / GRASS_RING_AREA);
+const GRASS_TIERS = [
+    { distance: 12, density: 12 },
+    { distance: 24, density: 4 },
+    { distance: 40, density: 1 },
+];
+const GRASS_VIEW_RADIUS = GRASS_TIERS[GRASS_TIERS.length - 1].distance;
+/**
+ * How much faster distance grows behind the focus than in front of it. The
+ * camera sits behind the player looking forward, so the ground behind runs off
+ * the bottom of the screen within a few units while the ground ahead reaches
+ * into the fog: 2.5 squashes the circle into an egg that ends near the camera.
+ */
+const GRASS_BEHIND_STRETCH = 2.5;
+/**
+ * A patch only changes tier once it is this far past the boundary. Without it,
+ * walking along a boundary would regrow the same patch back and forth.
+ */
+const GRASS_TIER_HYSTERESIS = 2;
 /** Grass stops growing on anything steeper than this — cliff faces stay bare rock. */
 const MAX_GRASS_SLOPE = Math.cos((45 * Math.PI) / 180);
+/**
+ * Milliseconds per frame spent growing queued patches. At 60 FPS a frame has
+ * ~16 ms in total; growing a whole row of patches in one go blew through that
+ * and showed up as a hitch.
+ */
+const GRASS_GROW_BUDGET_MS = 2;
+/**
+ * Queues longer than this are grown at once rather than over frames: that is a
+ * start, a respawn teleport or an editor rebuild, all behind a loading screen,
+ * an iris or a deliberate edit, where finishing now beats popping in.
+ */
+const GRASS_SYNC_THRESHOLD = 24;
+/** Focus movement, in world units, between two grass replans. */
+const GRASS_REPLAN_DISTANCE = 2;
+
+/** The point the camera frames and the way it faces, flattened onto the ground. */
+export type GrassFocus = { x: number; z: number; dirX: number; dirZ: number };
+
+type QueuedPatch = { key: string; tier: number; distance: number };
+
+/**
+ * Distance from the focus to the nearest point of a patch, stretched behind
+ * the focus by GRASS_BEHIND_STRETCH. Nearest point, not centre: a patch the
+ * focus stands on is at distance 0 and always gets the densest tier.
+ */
+function patchDistance(col: number, row: number, focus: GrassFocus): number {
+    const minX = col * GRASS_PATCH_SIZE;
+    const minZ = row * GRASS_PATCH_SIZE;
+    const dx = Math.max(minX, Math.min(focus.x, minX + GRASS_PATCH_SIZE)) - focus.x;
+    const dz = Math.max(minZ, Math.min(focus.z, minZ + GRASS_PATCH_SIZE)) - focus.z;
+
+    // Split into "along the view" and "across it"; only the part behind is stretched.
+    const along = dx * focus.dirX + dz * focus.dirZ;
+    const across = dx * focus.dirZ - dz * focus.dirX;
+    return Math.hypot(along < 0 ? along * GRASS_BEHIND_STRETCH : along, across);
+}
+
+/**
+ * The tier a patch at `distance` belongs to, or null past the last one. A
+ * patch already grown keeps its tier while it is within the hysteresis band
+ * around that tier's edges.
+ */
+function tierFor(distance: number, current: number | undefined): number | null {
+    if (current !== undefined) {
+        const inner = current === 0 ? -Infinity : GRASS_TIERS[current - 1].distance - GRASS_TIER_HYSTERESIS;
+        const outer = GRASS_TIERS[current].distance + GRASS_TIER_HYSTERESIS;
+        if (distance >= inner && distance < outer) return current;
+    }
+
+    const tier = GRASS_TIERS.findIndex((level) => distance < level.distance);
+    return tier === -1 ? null : tier;
+}
+
+/**
+ * Groups the tops' triangles by the patch their centroid falls in. One pass
+ * over the map instead of one per patch grown: that per-patch full scan was
+ * the hitch on every patch, whatever the blade count. Centroid, so a triangle
+ * on a seam belongs to exactly one patch and never gets planted twice.
+ */
+function bucketTrianglesByPatch(positions: number[]): Map<string, number[]> {
+    const buckets = new Map<string, number[]>();
+    const triangleCount = positions.length / 9;
+
+    for (let t = 0; t < triangleCount; t++) {
+        const i = t * 9;
+        const x = (positions[i] + positions[i + 3] + positions[i + 6]) / 3;
+        const z = (positions[i + 2] + positions[i + 5] + positions[i + 8]) / 3;
+        const key = `${Math.floor(x / GRASS_PATCH_SIZE)},${Math.floor(z / GRASS_PATCH_SIZE)}`;
+
+        let bucket = buckets.get(key);
+        if (!bucket) buckets.set(key, (bucket = []));
+        bucket.push(t);
+    }
+
+    return buckets;
+}
 
 /**
  * The tiled ground.
@@ -55,9 +141,14 @@ export class Terrain {
      * most expensive thing in a regrow.
      */
     private topsGeometry: THREE.BufferGeometry | null = null;
-    /** Grown patch keys, `${col},${row}` in patch space. */
-    private grassPatches = new Set<string>();
-    private lastGrassKey: string | null = null;
+    /** Grown patch key (`${col},${row}` in patch space) -> the tier it was grown at. */
+    private grassPatches = new Map<string, number>();
+    /** Where the last replan ran; null forces one. */
+    private lastPlan: { x: number; z: number } | null = null;
+    /** Missing or wrong-tier patches, nearest first — drained a few per frame. */
+    private grassQueue: QueuedPatch[] = [];
+    /** Tops triangle indices per patch key, bucketed once with topsGeometry. */
+    private patchTriangles = new Map<string, number[]>();
     /** Ground under static objects, kept bare. */
     private grassFootprints: GrassFootprint[] = [];
 
@@ -87,33 +178,70 @@ export class Terrain {
      * Grows and drops grass patches around [x, z]. Like the entity streamer, the
      * common frame is one compare: patches only change on a border crossing.
      */
-    public updateGrass(x: number, z: number) {
-        const col = Math.floor(x / GRASS_PATCH_SIZE);
-        const row = Math.floor(z / GRASS_PATCH_SIZE);
-        const key = `${col},${row}`;
-        if (key === this.lastGrassKey) return;
-        this.lastGrassKey = key;
+    public updateGrass(focus: GrassFocus) {
+        const last = this.lastPlan;
+        const moved = last ? Math.hypot(focus.x - last.x, focus.z - last.z) : Infinity;
+        if (moved >= GRASS_REPLAN_DISTANCE) {
+            this.lastPlan = { x: focus.x, z: focus.z };
+            this.replanGrass(focus);
+        }
 
-        const wanted = new Set<string>();
-        for (let r = row - GRASS_PATCH_RADIUS; r <= row + GRASS_PATCH_RADIUS; r++) {
-            for (let c = col - GRASS_PATCH_RADIUS; c <= col + GRASS_PATCH_RADIUS; c++) {
-                wanted.add(`${c},${r}`);
+        this.growQueuedPatches();
+    }
+
+    /** Drops patches out of range and queues missing or wrong-tier ones, nearest first. */
+    private replanGrass(focus: GrassFocus) {
+        const wanted = new Map<string, QueuedPatch>();
+        const minCol = Math.floor((focus.x - GRASS_VIEW_RADIUS) / GRASS_PATCH_SIZE);
+        const maxCol = Math.floor((focus.x + GRASS_VIEW_RADIUS) / GRASS_PATCH_SIZE);
+        const minRow = Math.floor((focus.z - GRASS_VIEW_RADIUS) / GRASS_PATCH_SIZE);
+        const maxRow = Math.floor((focus.z + GRASS_VIEW_RADIUS) / GRASS_PATCH_SIZE);
+
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                const key = `${c},${r}`;
+                const distance = patchDistance(c, r, focus);
+                const tier = tierFor(distance, this.grassPatches.get(key));
+                if (tier !== null) wanted.set(key, { key, tier, distance });
             }
         }
 
-        for (const grown of this.grassPatches) {
+        for (const grown of this.grassPatches.keys()) {
             if (wanted.has(grown)) continue;
 
             this.grass.detach(this.mesh, grown);
             this.grassPatches.delete(grown);
         }
 
-        for (const patch of wanted) {
-            if (this.grassPatches.has(patch)) continue;
+        // Rebuilt rather than appended to: entries queued by the last replan may
+        // have fallen out of range or changed tier since.
+        this.grassQueue = [...wanted.values()]
+            .filter(({ key, tier }) => this.grassPatches.get(key) !== tier)
+            .sort((a, b) => a.distance - b.distance);
+    }
 
-            this.growPatch(patch);
-            this.grassPatches.add(patch);
+    /**
+     * Grows queued patches until the frame's budget is spent. At least one per
+     * call, so a slow machine still makes progress instead of starving.
+     */
+    private growQueuedPatches() {
+        if (this.grassQueue.length > GRASS_SYNC_THRESHOLD) {
+            for (const patch of this.grassQueue) this.growPatch(patch);
+            this.grassQueue = [];
+            return;
         }
+
+        const start = performance.now();
+        let index = 0;
+
+        while (index < this.grassQueue.length) {
+            this.growPatch(this.grassQueue[index++]);
+            if (performance.now() - start >= GRASS_GROW_BUDGET_MS) break;
+        }
+
+        // One splice at the end instead of shift() per patch: shift re-indexes
+        // the whole array every call.
+        if (index > 0) this.grassQueue.splice(0, index);
     }
 
     /** Static objects moved or changed: every patch regrows around the new set. */
@@ -126,9 +254,11 @@ export class Terrain {
         this.grass.detach(this.mesh);
         this.topsGeometry?.dispose();
         this.topsGeometry = null;
+        this.patchTriangles.clear();
         this.grassPatches.clear();
-        // Forces the next updateGrass to regrow rather than see an unchanged key.
-        this.lastGrassKey = null;
+        this.grassQueue = [];
+        // Forces the next updateGrass to replan rather than wait for movement.
+        this.lastPlan = null;
     }
 
     private patchBounds(key: string): GrassBounds {
@@ -142,7 +272,12 @@ export class Terrain {
         };
     }
 
-    private growPatch(key: string) {
+    private growPatch({ key, tier }: QueuedPatch) {
+        // A tier change regrows in place. Detach and attach run in the same
+        // frame, so the old blades never leave a visible gap.
+        if (this.grassPatches.has(key)) this.grass.detach(this.mesh, key);
+        this.grassPatches.set(key, tier);
+
         // Grass is sampled off a tops-only geometry, not the render geometry:
         // the cliff walls and their talus skirts include near-flat facets
         // (the base bulge, the mound) that would otherwise pass the slope
@@ -150,17 +285,25 @@ export class Terrain {
         if (!this.topsGeometry) {
             this.topsGeometry = new THREE.BufferGeometry();
             this.topsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(this.topPositions, 3));
+            this.patchTriangles = bucketTrianglesByPatch(this.topPositions);
         }
+
+        // Water or off-map: nothing to grow. Still recorded as grown above, so
+        // the replan does not queue it again every couple of units.
+        const triangles = this.patchTriangles.get(key);
+        if (!triangles) return;
 
         const bounds = this.patchBounds(key);
         const footprints = footprintsInBounds(this.grassFootprints, bounds);
 
         this.grass.attach(this.mesh, {
             sampleGeometry: this.topsGeometry,
-            density: GRASS_PATCH_DENSITY,
+            density: GRASS_TIERS[tier].density,
             chunkSize: GRASS_CHUNK_SIZE,
-            maxDistance: GRASS_VIEW_RADIUS,
-            bounds,
+            // From the camera, which stands ~8.5 units behind the focus: the
+            // patches already end at the last tier, this only must not cut them.
+            maxDistance: GRASS_VIEW_RADIUS + 20,
+            triangles,
             key,
             // Undefined when nothing static stands on this patch, so the common
             // patch skips the per-blade test entirely.

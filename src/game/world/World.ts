@@ -61,6 +61,8 @@ export class World {
      * the cost we just saved right back.
      */
     private entities: Entity[] = [];
+    /** Reused every frame for collision so update() allocates no array. */
+    private allBodies: Entity[] = [];
     private streamer: ChunkStreamer;
     /**
      * The chunk an entity was spawned into. Enemies wander, so their live
@@ -254,8 +256,9 @@ export class World {
 
         this.player.update(dt);
         this.streamFor(this.player.mesh.position);
-        const allBodies = this.entities.concat(this.player);
-        this.collision.resolve(allBodies);
+        this.allBodies.length = 0;
+        this.allBodies.push(...this.entities, this.player);
+        this.collision.resolve(this.allBodies);
         this.seatOnTerrain();
         this.interaction.update(this.entities, this.player.mesh.position);
 

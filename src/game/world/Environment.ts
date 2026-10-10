@@ -15,12 +15,12 @@ const SHADOW_RADIUS = 4;
 const SUN_OFFSET = new THREE.Vector3(10, 15, 8);
 /**
  * Half-size of the square the shadow map covers, centred on the player. The
- * map follows the player rather than covering the whole terrain: same 2048²
+ * map follows the player rather than covering the whole terrain: same texels
  * texels over a far smaller area means much crisper shadows, and a terrain
  * resized in the editor can no longer fall outside the frustum.
  */
-const SHADOW_HALF_SIZE = 45;
-const SHADOW_MAP_SIZE = 2048;
+const SHADOW_HALF_SIZE = 25;
+const SHADOW_MAP_SIZE = 1024;
 /** World units per shadow texel. */
 const SHADOW_TEXEL = (SHADOW_HALF_SIZE * 2) / SHADOW_MAP_SIZE;
 

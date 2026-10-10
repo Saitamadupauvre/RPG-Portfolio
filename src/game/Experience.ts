@@ -10,6 +10,13 @@ import { GRASS_LAYER } from './world/grass/GrassSurface';
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;
 
+/**
+ * Pixel ratio ceiling. Fill cost grows with its square: 2 shades 4 pixels per
+ * CSS pixel, 1.5 only 2.25, and on a low-poly scene with MSAA the difference
+ * is hard to see.
+ */
+const MAX_PIXEL_RATIO = 1.5;
+
 export class Experience {
     private static instance: Experience;
 
@@ -42,7 +49,7 @@ export class Experience {
             antialias: true
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
         this.renderer.shadowMap.enabled = true;
         // PCF is the soft filter since r182 (PCFSoftShadowMap is deprecated);
         // the blur width is set per light with shadow.radius.
@@ -121,7 +128,7 @@ export class Experience {
         // Flipping this changes every lit material's shader, so three
         // recompiles them once — expect one hitch on the toggle itself.
         this.renderer.shadowMap.enabled = toggles.shadows;
-        this.renderer.setPixelRatio(toggles.lowPixelRatio ? 1 : Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(toggles.lowPixelRatio ? 1 : Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
         this.resize();
     }
 

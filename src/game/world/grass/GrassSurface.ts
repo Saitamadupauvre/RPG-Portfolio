@@ -51,8 +51,8 @@ export type GrassSurfaceOptions = {
 export type GrassLodLevel = { distance: number; ratio: number };
 
 /**
- * Blades are stored tallest-first, so a ratio keeps the most visible ones and
- * the field thins out instead of dropping whole chunks. Tuned against the
+ * Blades are stored in random order, so a ratio keeps an even random subset
+ * and the field thins out instead of dropping whole chunks. Tuned against the
  * scene fog (26..72) so the last tier dies inside the fog, never in clear view.
  */
 const DEFAULT_LOD: GrassLodLevel[] = [
@@ -102,28 +102,17 @@ const _leanAxis = new THREE.Vector3();
 
 const range = (min: number, max: number) => min + Math.random() * (max - min);
 
+/** Floats per instance matrix in an InstancedMesh's instanceMatrix buffer. */
+const MATRIX_FLOATS = 16;
+
 type Bucket = {
-    matrices: THREE.Matrix4[];
-    heights: number[];
+    /**
+     * Instance matrices packed back to back, 16 floats each — the exact layout
+     * of InstancedMesh.instanceMatrix, so the chunk copies it in one go.
+     */
+    matrices: number[];
     box: THREE.Box3;
 };
-
-/**
- * Reorders a chunk tallest blade first. LOD then just shortens the draw count,
- * and what survives at distance is the tall grass — the blades that actually
- * carry the silhouette — instead of a random, patchy-looking subset.
- */
-function sortBucketByHeight(bucket: Bucket): Bucket {
-    const order = bucket.heights
-        .map((height, index) => ({ height, index }))
-        .sort((a, b) => b.height - a.height);
-
-    return {
-        matrices: order.map(({ index }) => bucket.matrices[index]),
-        heights: order.map(({ height }) => height),
-        box: bucket.box,
-    };
-}
 
 /**
  * Scatters instanced grass blades over any mesh's triangles.
@@ -201,20 +190,23 @@ export class GrassSurface {
             const key = this.chunkKey(_point, chunkSize);
             let bucket = buckets.get(key);
             if (!bucket) {
-                bucket = { matrices: [], heights: [], box: new THREE.Box3().makeEmpty() };
+                bucket = { matrices: [], box: new THREE.Box3().makeEmpty() };
                 buckets.set(key, bucket);
             }
-            bucket.matrices.push(_matrix.clone());
-            bucket.heights.push(height);
+            // Written straight into the bucket's flat array: a clone() per
+            // blade was one short-lived Matrix4 object each, all garbage the
+            // moment the chunk was built.
+            _matrix.toArray(bucket.matrices, bucket.matrices.length);
             bucket.box.expandByPoint(_point);
         }
 
-        for (const bucket of buckets.values()) {
-            const { matrices, box } = sortBucketByHeight(bucket);
+        for (const { matrices, box } of buckets.values()) {
+            const count = matrices.length / MATRIX_FLOATS;
             // Every chunk shares the one blade geometry: the per-blade data
             // (instanceMatrix) lives on the InstancedMesh, not on the geometry.
-            const mesh = new THREE.InstancedMesh(this.bladeGeometry, this.material, matrices.length);
-            for (let i = 0; i < matrices.length; i++) mesh.setMatrixAt(i, matrices[i]);
+            const mesh = new THREE.InstancedMesh(this.bladeGeometry, this.material, count);
+            // One bulk copy instead of setMatrixAt per blade.
+            mesh.instanceMatrix.array.set(matrices);
             mesh.instanceMatrix.needsUpdate = true;
             mesh.castShadow = false;
             mesh.receiveShadow = true;
@@ -227,7 +219,7 @@ export class GrassSurface {
             box.getBoundingSphere(sphere);
             sphere.radius += BLADE_HEIGHT * 1.5;
 
-            this.chunks.push({ mesh, sphere, target, key: options.key, capacity: matrices.length });
+            this.chunks.push({ mesh, sphere, target, key: options.key, capacity: count });
         }
     }
 

@@ -33,6 +33,9 @@ export class Experience {
 
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
         this.camera.position.z = 5;
+        // Cameras only see layer 0 by default; grass sits on its own layer so
+        // the water depth prepass can skip it.
+        this.camera.layers.enable(GRASS_LAYER);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,

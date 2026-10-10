@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GRASS_LAYER } from '../grass/GrassSurface';
 
 /**
  * Renders the scene's depth (water hidden) into a texture the water shader can
@@ -34,10 +35,17 @@ export class WaterDepthPrepass {
         // its undisplaced positions and the shore foam would read the wrong
         // distance. `customDepthMaterial` is no escape hatch either: three only
         // consults it during shadow passes, not for `overrideMaterial`.
+        //
+        // Grass is left out entirely, though: it was most of the frame's
+        // triangles, drawn a second time just for this. Blades are a fraction
+        // of a unit tall, so the foam reading the ground under them instead is
+        // not visible, while skipping them halves the field's cost.
         const previousTarget = renderer.getRenderTarget();
+        camera.layers.disable(GRASS_LAYER);
         renderer.setRenderTarget(this.target);
         renderer.render(scene, camera);
         renderer.setRenderTarget(previousTarget);
+        camera.layers.enable(GRASS_LAYER);
 
         water.visible = wasVisible;
     }

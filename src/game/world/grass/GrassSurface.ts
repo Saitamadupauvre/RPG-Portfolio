@@ -49,11 +49,17 @@ export type GrassLodLevel = { distance: number; ratio: number };
  * scene fog (26..72) so the last tier dies inside the fog, never in clear view.
  */
 const DEFAULT_LOD: GrassLodLevel[] = [
-    { distance: 18, ratio: 1 },
-    { distance: 34, ratio: 0.5 },
-    { distance: 52, ratio: 0.22 },
-    { distance: Infinity, ratio: 0.09 },
+    { distance: 12, ratio: 1 },
+    { distance: 22, ratio: 0.5 },
+    { distance: 32, ratio: 0.25 },
+    { distance: Infinity, ratio: 0.1 },
 ];
+
+/**
+ * Render layer every blade lives on, so a camera can skip the whole field in
+ * one bit test instead of hiding hundreds of chunk meshes one by one.
+ */
+export const GRASS_LAYER = 1;
 
 const DEFAULT_MAX_DISTANCE = 70;
 
@@ -205,6 +211,7 @@ export class GrassSurface {
             mesh.receiveShadow = true;
             // Culled per chunk by update(), not by three's per-object test.
             mesh.frustumCulled = false;
+            mesh.layers.set(GRASS_LAYER);
             target.add(mesh);
 
             const sphere = new THREE.Sphere();

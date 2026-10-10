@@ -126,6 +126,10 @@ export class GrassSurface {
     private chunks: Chunk[] = [];
     private maxDistance: number;
     private lod: GrassLodLevel[];
+    /** Dev switch (perf overlay): hides every chunk without detaching anything. */
+    public enabled = true;
+    /** Last update()'s counts, for the dev perf overlay. */
+    public readonly stats = { chunks: 0, visibleChunks: 0, drawnBlades: 0, grownBlades: 0 };
 
     constructor(options: {
         maxDistance?: number;
@@ -240,17 +244,26 @@ export class GrassSurface {
         _projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
         _frustum.setFromProjectionMatrix(_projScreen);
 
+        const stats = this.stats;
+        stats.chunks = this.chunks.length;
+        stats.visibleChunks = 0;
+        stats.drawnBlades = 0;
+        stats.grownBlades = 0;
+
         for (const chunk of this.chunks) {
+            stats.grownBlades += chunk.capacity;
             _sphere.copy(chunk.sphere).applyMatrix4(chunk.target.matrixWorld);
             const distance = _sphere.center.distanceTo(camera.position) - _sphere.radius;
 
-            chunk.mesh.visible = distance < this.maxDistance && _frustum.intersectsSphere(_sphere);
+            chunk.mesh.visible = this.enabled && distance < this.maxDistance && _frustum.intersectsSphere(_sphere);
             if (!chunk.mesh.visible) continue;
 
             // InstancedMesh.count is the draw count, not the allocation: lowering
             // it skips the tail of the buffer, so a coarser LOD costs nothing to
             // switch to and needs no second mesh.
             chunk.mesh.count = Math.max(1, Math.round(chunk.capacity * this.ratioFor(distance)));
+            stats.visibleChunks++;
+            stats.drawnBlades += chunk.mesh.count;
         }
     }
 

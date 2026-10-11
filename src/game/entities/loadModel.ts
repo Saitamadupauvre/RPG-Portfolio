@@ -30,6 +30,16 @@ function load(url: string): Promise<CachedModel> {
     return pending;
 }
 
+/**
+ * The Lambert material a Blender role name ended up as, if the model has one.
+ * Models name their materials by role ("Flame", "Figure") so the game can make
+ * one glow or recolour another without counting meshes.
+ */
+export function findMaterial(materials: readonly THREE.Material[], name: string): THREE.MeshLambertMaterial | undefined {
+    return materials.find((material): material is THREE.MeshLambertMaterial =>
+        material instanceof THREE.MeshLambertMaterial && material.name === name);
+}
+
 export interface ModelFitOptions {
     /** Target world height; the model is uniformly scaled to match. */
     height: number;
@@ -37,6 +47,11 @@ export interface ModelFitOptions {
     originY?: number;
     /** Extra yaw if the source model does not face +Z. */
     yaw?: number;
+    /**
+     * 'centre' (default) puts the model's bounding-box centre over the origin; 'origin' keeps
+     * the model's own X/Z, for a tree whose trunk base is the point the game seats and collides.
+     */
+    anchor?: 'centre' | 'origin';
 }
 
 export interface LoadedModel {
@@ -95,8 +110,10 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
         const scaledBox = new THREE.Box3().setFromObject(object);
         const centre = new THREE.Vector3();
         scaledBox.getCenter(centre);
-        object.position.x -= centre.x;
-        object.position.z -= centre.z;
+        if (fit.anchor !== 'origin') {
+            object.position.x -= centre.x;
+            object.position.z -= centre.z;
+        }
         object.position.y -= scaledBox.min.y - (fit.originY ?? 0);
     }
 

@@ -1,7 +1,14 @@
 import type { MapEntity, Vec3 } from '../../data/MapEntity';
+import { randomBonfireModel } from '../../data/bonfireModels';
 import { projects } from '../../data/projects';
+import { isPropModel, isPropModelKind, PROP_MODELS, randomModelOfKind } from '../../data/propModels';
 
 const chestCoins: Record<'wood' | 'silver' | 'gold', number> = { wood: 25, silver: 60, gold: 120 };
+
+function randomPropTransform(): { rotation: Vec3; scale: Vec3 } {
+    const size = 0.7 + Math.random() * 0.8;
+    return { rotation: [0, Math.random() * Math.PI * 2, 0], scale: [size, size, size] };
+}
 
 const builders: {
     [K in MapEntity['kind']]: (id: string, position: Vec3, variant: string) => Extract<MapEntity, { kind: K }>;
@@ -30,13 +37,21 @@ const builders: {
         itemType: variant || 'shard',
         position,
     }),
-    prop: (id, position, variant) => ({
-        kind: 'prop',
-        id,
-        propType: variant || 'wall',
-        collidable: variant !== 'decor',
-        position,
-    }),
+    prop: (id, position, variant) => {
+        // "tree", "bush" or "rock" place a random model of that kind; a model id places exactly that one.
+        const propType = isPropModelKind(variant) ? randomModelOfKind(variant) : variant;
+        const model = isPropModel(propType) ? PROP_MODELS[propType] : undefined;
+
+        return {
+            kind: 'prop',
+            id,
+            propType,
+            position,
+            // Every model placed gets its own heading and size, so a copse never looks stamped.
+            ...(model && randomPropTransform()),
+            ...(model?.kind === 'rock' && { material: 'stone' as const }),
+        };
+    },
     statue: (id, position, variant) => ({
         kind: 'statue',
         id,
@@ -46,6 +61,7 @@ const builders: {
     bonfire: (id, position) => ({
         kind: 'bonfire',
         id,
+        model: randomBonfireModel(),
         position,
     }),
 };

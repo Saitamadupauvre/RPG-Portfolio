@@ -1,7 +1,6 @@
 import { events } from '../../core/events';
 import { tileMap } from '../../data/tileMap';
 import type { ChestLoot, MapEntity, Vec3 } from '../../data/MapEntity';
-import { projects } from '../../data/projects';
 import { defaultLoot, fieldsByKind, lootFieldByKind, type FieldSpec } from './editorFields';
 
 type PaletteEntry = { kind: MapEntity['kind']; variant: string; label: string };
@@ -10,18 +9,13 @@ const palette: PaletteEntry[] = [
     { kind: 'enemy', variant: 'grunt', label: 'Grunt' },
     { kind: 'enemy', variant: 'elite', label: 'Elite' },
     { kind: 'enemy', variant: 'boss', label: 'Boss' },
-    { kind: 'prop', variant: 'wall', label: 'Wall' },
-    { kind: 'prop', variant: 'decor', label: 'Decor' },
-    { kind: 'chest', variant: 'wood', label: 'Chest (wood)' },
-    { kind: 'chest', variant: 'silver', label: 'Chest (silver)' },
-    { kind: 'chest', variant: 'gold', label: 'Chest (gold)' },
+    { kind: 'prop', variant: 'tree', label: 'Tree (random)' },
+    { kind: 'prop', variant: 'bush', label: 'Bush (random)' },
+    { kind: 'prop', variant: 'rock', label: 'Rock (random)' },
+    { kind: 'chest', variant: '', label: 'Chest' },
     { kind: 'item', variant: 'shard', label: 'Item' },
     { kind: 'bonfire', variant: '', label: 'Bonfire' },
-    ...projects.map((project) => ({
-        kind: 'statue' as const,
-        variant: project.id,
-        label: `Statue: ${project.title}`,
-    })),
+    { kind: 'statue', variant: '', label: 'Statue' },
 ];
 
 const gizmoModes = [

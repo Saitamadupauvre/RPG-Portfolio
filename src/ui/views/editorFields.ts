@@ -1,5 +1,7 @@
 import type { ChestLoot, MapEntity } from '../../data/MapEntity';
+import { BONFIRE_MODEL_IDS } from '../../data/bonfireModels';
 import { projects } from '../../data/projects';
+import { PROP_MODEL_IDS } from '../../data/propModels';
 import type { StatId } from '../../data/stats';
 
 /**
@@ -37,11 +39,11 @@ export const fieldsByKind: Record<MapEntity['kind'], readonly FieldSpec[]> = {
         },
     ],
     prop: [
-        { control: 'text', key: 'propType', label: 'propType' },
-        { control: 'checkbox', key: 'collidable', label: 'collidable' },
+        { control: 'select', key: 'propType', label: 'model', options: options(...PROP_MODEL_IDS) },
+        { control: 'select', key: 'material', label: 'rock material', options: options('stone', 'cliff') },
     ],
     statue: [{ control: 'select', key: 'projectId', label: 'project', options: projectOptions }],
-    bonfire: [],
+    bonfire: [{ control: 'select', key: 'model', label: 'model', options: options(...BONFIRE_MODEL_IDS) }],
 };
 
 /** The one payload field each loot kind carries, keyed by the loot's own `kind` tag. */

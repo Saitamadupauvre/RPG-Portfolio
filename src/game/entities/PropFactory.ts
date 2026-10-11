@@ -4,10 +4,9 @@ import { Entity } from './Entity';
 import { applyTransform } from './applyTransform';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
+import { PROP_BASE_FOOTPRINT } from './collisionSizes';
 
 export const PROP_BASE_HEIGHT = { collidable: 2, decor: 0.7 };
-/** Footprint of the unscaled prop box in X and Z. Its collider is derived from this. */
-export const PROP_BASE_FOOTPRINT = 1;
 
 export function createProp(entity: PropEntity): Entity {
     const height = entity.collidable ? PROP_BASE_HEIGHT.collidable : PROP_BASE_HEIGHT.decor;

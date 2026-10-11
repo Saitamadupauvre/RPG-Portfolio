@@ -9,10 +9,10 @@ import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
+import { STATUE_COLLISION_RADIUS } from './collisionSizes';
 
 const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
-export const STATUE_COLLISION_RADIUS = 0.5;
 
 export function createStatue(entity: StatueEntity): Entity {
     const group = new THREE.Group();

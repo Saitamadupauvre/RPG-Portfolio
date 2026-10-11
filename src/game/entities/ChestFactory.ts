@@ -9,6 +9,7 @@ import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
+import { CHEST_COLLISION_RADIUS } from './collisionSizes';
 
 const chestColor: Record<ChestEntity['chestTier'], number> = {
     wood: PALETTE.bark,
@@ -18,7 +19,6 @@ const chestColor: Record<ChestEntity['chestTier'], number> = {
 
 const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
-export const CHEST_COLLISION_RADIUS = 0.5;
 const LID_OPEN_ANGLE = -Math.PI / 2.4;
 
 export function createChest(entity: ChestEntity): Entity {

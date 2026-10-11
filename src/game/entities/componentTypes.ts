@@ -5,6 +5,7 @@ import type { ComboComponent } from './components/ComboComponent';
 import type { DashComponent } from './components/DashComponent';
 import type { DustEmitterComponent } from './components/DustEmitterComponent';
 import type { EnemyAIComponent } from './components/EnemyAIComponent';
+import type { FireComponent } from './components/FireComponent';
 import type { GlowComponent } from './components/GlowComponent';
 import type { HealthBarComponent } from './components/HealthBarComponent';
 import type { HitFlashComponent } from './components/HitFlashComponent';
@@ -21,6 +22,7 @@ export type ComponentMap = {
     dash: DashComponent;
     dust: DustEmitterComponent;
     enemyAI: EnemyAIComponent;
+    fire: FireComponent;
     glow: GlowComponent;
     health: HealthComponent;
     healthBar: HealthBarComponent;

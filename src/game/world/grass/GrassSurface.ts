@@ -1,60 +1,25 @@
 import * as THREE from 'three';
 import { BLADE_HEIGHT, createBladeGeometry } from './bladeGeometry';
 import { createGrassMaterial, createGrassUniforms, MAX_COLLIDERS, type GrassUniforms } from './grassMaterial';
+import { createRandom, hashString, type Random } from './random';
 
 export type GrassCollider = { position: THREE.Vector3; radius: number };
 
-/** Axis-aligned XZ region, in the target's local space. */
 export type GrassBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
 
 export type GrassSurfaceOptions = {
-    /** Blades per square world unit of surface area. */
+    key: string;
     density?: number;
-    /** Edge length of a cull chunk, in the target's local units. */
     chunkSize?: number;
-    /** Chunks further than this from the camera are hidden. */
     maxDistance?: number;
-    /**
-     * Density multiplier for a sampled surface normal. Returning 0 rejects the
-     * blade outright — how cliff faces are kept bare.
-     */
     acceptNormal?: (normal: THREE.Vector3) => number;
-    /**
-     * Rejects a blade by its root position (target-local X/Z) — how the ground
-     * under static objects is kept bare, so blades never poke through them.
-     */
     rejectPoint?: (x: number, z: number) => boolean;
-    /**
-     * Grow blades only on triangles centred inside this region. Filtering at the
-     * area table — not by rejecting samples afterwards — is what makes a patch
-     * cost its own area instead of the whole mesh's.
-     */
-    bounds?: GrassBounds;
-    /**
-     * Triangle indices to grow on, precomputed by the caller. Wins over
-     * `bounds`: filtering by bounds still visits every triangle of the
-     * geometry, so a caller growing many patches off one big mesh should
-     * bucket the triangles once and hand each patch its own list.
-     */
     triangles?: number[];
-    /** Patch label, so `detach` can drop this attach's chunks and leave the rest. */
-    key?: string;
-    /**
-     * Geometry to scatter blades over, in the target's local space. Defaults to
-     * the target's own; set it when only part of the rendered surface should
-     * grow grass (tile tops, not cliff walls).
-     */
     sampleGeometry?: THREE.BufferGeometry;
 };
 
-/** Draw a `ratio` slice of a chunk's blades once it is `distance` units away. */
 export type GrassLodLevel = { distance: number; ratio: number };
 
-/**
- * Blades are stored in random order, so a ratio keeps an even random subset
- * and the field thins out instead of dropping whole chunks. Tuned against the
- * scene fog (26..72) so the last tier dies inside the fog, never in clear view.
- */
 const DEFAULT_LOD: GrassLodLevel[] = [
     { distance: 12, ratio: 1 },
     { distance: 22, ratio: 0.5 },
@@ -62,27 +27,38 @@ const DEFAULT_LOD: GrassLodLevel[] = [
     { distance: Infinity, ratio: 0.1 },
 ];
 
-/**
- * Render layer every blade lives on, so a camera can skip the whole field in
- * one bit test instead of hiding hundreds of chunk meshes one by one.
- */
 export const GRASS_LAYER = 1;
 
 const DEFAULT_MAX_DISTANCE = 70;
+const DEFAULT_DENSITY = 20;
+const DEFAULT_CHUNK_SIZE = 5;
+const MATRIX_FLOATS = 16;
+const INITIAL_BUCKET_BLADES = 256;
+const CHUNK_AXIS_SPAN = 4096;
+const CHUNK_AXIS_OFFSET = CHUNK_AXIS_SPAN / 2;
+const SPHERE_PADDING = BLADE_HEIGHT * 1.5;
+const MAX_LEAN = 0.35;
+const WIDTH_RANGE = [0.8, 1.2] as const;
+const HEIGHT_RANGE = [0.55, 1.35] as const;
 
 type Chunk = {
     mesh: THREE.InstancedMesh;
-    /** Bounding sphere in the target's local space. */
     sphere: THREE.Sphere;
     target: THREE.Object3D;
-    key?: string;
-    /** Instances the chunk holds; mesh.count is the LOD slice of it. */
+    key: string;
     capacity: number;
 };
 
+type Bucket = {
+    matrices: Float32Array;
+    length: number;
+    box: THREE.Box3;
+};
+
+type RankedCollider = { collider: GrassCollider; distance: number };
+
 const UP = new THREE.Vector3(0, 1, 0);
 
-// Module-level scratch objects: allocating these per frame would churn the GC.
 const _projScreen = new THREE.Matrix4();
 const _frustum = new THREE.Frustum();
 const _sphere = new THREE.Sphere();
@@ -100,27 +76,84 @@ const _qYaw = new THREE.Quaternion();
 const _qLean = new THREE.Quaternion();
 const _leanAxis = new THREE.Vector3();
 
-const range = (min: number, max: number) => min + Math.random() * (max - min);
+function range(random: Random, [min, max]: readonly [number, number]) {
+    return min + random() * (max - min);
+}
 
-/** Floats per instance matrix in an InstancedMesh's instanceMatrix buffer. */
-const MATRIX_FLOATS = 16;
+function chunkKey(point: THREE.Vector3, chunkSize: number): number {
+    const cx = Math.floor(point.x / chunkSize) + CHUNK_AXIS_OFFSET;
+    const cy = Math.floor(point.y / chunkSize) + CHUNK_AXIS_OFFSET;
+    const cz = Math.floor(point.z / chunkSize) + CHUNK_AXIS_OFFSET;
+    return (cx * CHUNK_AXIS_SPAN + cy) * CHUNK_AXIS_SPAN + cz;
+}
 
-type Bucket = {
-    /**
-     * Instance matrices packed back to back, 16 floats each — the exact layout
-     * of InstancedMesh.instanceMatrix, so the chunk copies it in one go.
-     */
-    matrices: number[];
-    box: THREE.Box3;
-};
+function createBucket(): Bucket {
+    return {
+        matrices: new Float32Array(INITIAL_BUCKET_BLADES * MATRIX_FLOATS),
+        length: 0,
+        box: new THREE.Box3().makeEmpty(),
+    };
+}
 
-/**
- * Scatters instanced grass blades over any mesh's triangles.
- *
- * One instance can host several attached meshes; they share a blade geometry,
- * a material and a uniform block, so wind and collisions are updated once per
- * frame regardless of how many surfaces are grassed.
- */
+function pushMatrix(bucket: Bucket, matrix: THREE.Matrix4) {
+    if (bucket.length + MATRIX_FLOATS > bucket.matrices.length) {
+        const grown = new Float32Array(bucket.matrices.length * 2);
+        grown.set(bucket.matrices);
+        bucket.matrices = grown;
+    }
+    matrix.toArray(bucket.matrices, bucket.length);
+    bucket.length += MATRIX_FLOATS;
+}
+
+function readTriangle(geometry: THREE.BufferGeometry, triangle: number) {
+    const position = geometry.attributes.position;
+    const index = geometry.index;
+    const i = triangle * 3;
+
+    _a.fromBufferAttribute(position, index ? index.getX(i) : i);
+    _b.fromBufferAttribute(position, index ? index.getX(i + 1) : i + 1);
+    _c.fromBufferAttribute(position, index ? index.getX(i + 2) : i + 2);
+}
+
+function samplePoint(random: Random) {
+    const u = Math.sqrt(random());
+    const v = random();
+    _point.set(0, 0, 0)
+        .addScaledVector(_a, 1 - u)
+        .addScaledVector(_b, u * (1 - v))
+        .addScaledVector(_c, u * v);
+}
+
+function buildAreaTable(geometry: THREE.BufferGeometry, triangles?: number[]) {
+    const count = triangles
+        ? triangles.length
+        : Math.floor((geometry.index?.count ?? geometry.attributes.position.count) / 3);
+    const areas = new Float64Array(count);
+    let total = 0;
+
+    for (let i = 0; i < count; i++) {
+        readTriangle(geometry, triangles ? triangles[i] : i);
+        _ab.subVectors(_b, _a);
+        _ac.subVectors(_c, _a);
+        total += _ab.cross(_ac).length() * 0.5;
+        areas[i] = total;
+    }
+
+    return { areas, total };
+}
+
+function pickTriangle(random: Random, areas: Float64Array, total: number) {
+    const target = random() * total;
+    let low = 0;
+    let high = areas.length - 1;
+    while (low < high) {
+        const mid = (low + high) >> 1;
+        if (areas[mid] < target) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}
+
 export class GrassSurface {
     private uniforms: GrassUniforms;
     private bladeGeometry = createBladeGeometry();
@@ -128,9 +161,8 @@ export class GrassSurface {
     private chunks: Chunk[] = [];
     private maxDistance: number;
     private lod: GrassLodLevel[];
-    /** Dev switch (perf overlay): hides every chunk without detaching anything. */
+    private ranked: RankedCollider[] = [];
     public enabled = true;
-    /** Last update()'s counts, for the dev perf overlay. */
     public readonly stats = { chunks: 0, visibleChunks: 0, drawnBlades: 0, grownBlades: 0 };
 
     constructor(options: {
@@ -143,92 +175,72 @@ export class GrassSurface {
         this.lod = [...(options.lod ?? DEFAULT_LOD)].sort((a, b) => a.distance - b.distance);
     }
 
-    public attach(target: THREE.Mesh, options: GrassSurfaceOptions = {}) {
-        const density = options.density ?? 20;
-        const chunkSize = options.chunkSize ?? 5;
+    public attach(target: THREE.Mesh, options: GrassSurfaceOptions) {
+        const density = options.density ?? DEFAULT_DENSITY;
+        const chunkSize = options.chunkSize ?? DEFAULT_CHUNK_SIZE;
         if (options.maxDistance !== undefined) this.maxDistance = options.maxDistance;
 
         const geometry = options.sampleGeometry ?? target.geometry;
-        const { areas, triangles, total } = options.triangles
-            ? this.buildAreaTableFor(geometry, options.triangles)
-            : this.buildAreaTable(geometry, options.bounds);
+        const { triangles } = options;
+        const { areas, total } = buildAreaTable(geometry, triangles);
         if (total <= 0) return;
 
+        const random = createRandom(hashString(options.key));
         const bladeCount = Math.round(density * total);
-        // Each bucket grows its own bounding box as blades land in it, rather
-        // than keeping every sampled point around just to measure it later.
-        const buckets = new Map<string, Bucket>();
+        const buckets = new Map<number, Bucket>();
 
         for (let i = 0; i < bladeCount; i++) {
-            const picked = this.pickTriangle(areas, total);
-            const triangle = triangles ? triangles[picked] : picked;
-            this.readTriangle(geometry, triangle);
-            this.samplePoint();
+            const picked = pickTriangle(random, areas, total);
+            readTriangle(geometry, triangles ? triangles[picked] : picked);
+            samplePoint(random);
 
             _ab.subVectors(_b, _a);
             _ac.subVectors(_c, _a);
             _normal.crossVectors(_ab, _ac).normalize();
 
-            // Rejection sampling, after the normal is known: a fractional value
-            // thins a region instead of cutting it off on a hard chunk edge.
-            if (options.acceptNormal && Math.random() >= options.acceptNormal(_normal)) continue;
+            if (options.acceptNormal && random() >= options.acceptNormal(_normal)) continue;
             if (options.rejectPoint?.(_point.x, _point.z)) continue;
 
             _qAlign.setFromUnitVectors(UP, _normal);
-            _qYaw.setFromAxisAngle(UP, Math.random() * Math.PI * 2);
-            _leanAxis.set(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).normalize();
-            _qLean.setFromAxisAngle(_leanAxis, range(-0.35, 0.35));
+            _qYaw.setFromAxisAngle(UP, random() * Math.PI * 2);
+            _leanAxis.set(random() * 2 - 1, 0, random() * 2 - 1).normalize();
+            _qLean.setFromAxisAngle(_leanAxis, range(random, [-MAX_LEAN, MAX_LEAN]));
 
             _qAlign.multiply(_qYaw).multiply(_qLean);
-            const width = range(0.8, 1.2);
-            // Height varies a lot on purpose: a uniform-height lawn reads as a
-            // flat green carpet, mixed heights read as grass.
-            const height = range(0.55, 1.35);
+            const width = range(random, WIDTH_RANGE);
+            const height = range(random, HEIGHT_RANGE);
             _scale.set(width, height, width);
             _matrix.compose(_point, _qAlign, _scale);
 
-            const key = this.chunkKey(_point, chunkSize);
+            const key = chunkKey(_point, chunkSize);
             let bucket = buckets.get(key);
             if (!bucket) {
-                bucket = { matrices: [], box: new THREE.Box3().makeEmpty() };
+                bucket = createBucket();
                 buckets.set(key, bucket);
             }
-            // Written straight into the bucket's flat array: a clone() per
-            // blade was one short-lived Matrix4 object each, all garbage the
-            // moment the chunk was built.
-            _matrix.toArray(bucket.matrices, bucket.matrices.length);
+            pushMatrix(bucket, _matrix);
             bucket.box.expandByPoint(_point);
         }
 
-        for (const { matrices, box } of buckets.values()) {
-            const count = matrices.length / MATRIX_FLOATS;
-            // Every chunk shares the one blade geometry: the per-blade data
-            // (instanceMatrix) lives on the InstancedMesh, not on the geometry.
+        for (const { matrices, length, box } of buckets.values()) {
+            const count = length / MATRIX_FLOATS;
             const mesh = new THREE.InstancedMesh(this.bladeGeometry, this.material, count);
-            // One bulk copy instead of setMatrixAt per blade.
-            mesh.instanceMatrix.array.set(matrices);
+            mesh.instanceMatrix.array.set(matrices.subarray(0, length));
             mesh.instanceMatrix.needsUpdate = true;
             mesh.castShadow = false;
             mesh.receiveShadow = true;
-            // Culled per chunk by update(), not by three's per-object test.
             mesh.frustumCulled = false;
             mesh.layers.set(GRASS_LAYER);
             target.add(mesh);
 
             const sphere = new THREE.Sphere();
             box.getBoundingSphere(sphere);
-            sphere.radius += BLADE_HEIGHT * 1.5;
+            sphere.radius += SPHERE_PADDING;
 
             this.chunks.push({ mesh, sphere, target, key: options.key, capacity: count });
         }
     }
 
-    /**
-     * Drops every chunk grown on `target`. Each chunk's instance buffer is its
-     * own to dispose — the shared blade geometry and material are not, other
-     * chunks still draw with them. Without this, resculpting terrain would leak
-     * a full instance buffer per stroke: GPU buffers have no garbage collector.
-     */
     public detach(target: THREE.Object3D, key?: string) {
         const kept: Chunk[] = [];
 
@@ -262,24 +274,16 @@ export class GrassSurface {
             stats.grownBlades += chunk.capacity;
             _sphere.copy(chunk.sphere).applyMatrix4(chunk.target.matrixWorld);
             const distance = _sphere.center.distanceTo(camera.position) - _sphere.radius;
+            const inRange = this.enabled && distance < this.maxDistance && _frustum.intersectsSphere(_sphere);
+            const count = inRange ? Math.round(chunk.capacity * this.ratioFor(distance)) : 0;
 
-            chunk.mesh.visible = this.enabled && distance < this.maxDistance && _frustum.intersectsSphere(_sphere);
-            if (!chunk.mesh.visible) continue;
+            chunk.mesh.visible = count > 0;
+            if (count === 0) continue;
 
-            // InstancedMesh.count is the draw count, not the allocation: lowering
-            // it skips the tail of the buffer, so a coarser LOD costs nothing to
-            // switch to and needs no second mesh.
-            chunk.mesh.count = Math.max(1, Math.round(chunk.capacity * this.ratioFor(distance)));
+            chunk.mesh.count = count;
             stats.visibleChunks++;
-            stats.drawnBlades += chunk.mesh.count;
+            stats.drawnBlades += count;
         }
-    }
-
-    private ratioFor(distance: number): number {
-        for (const level of this.lod) {
-            if (distance < level.distance) return level.ratio;
-        }
-        return this.lod[this.lod.length - 1].ratio;
     }
 
     public dispose() {
@@ -292,125 +296,35 @@ export class GrassSurface {
         this.material.dispose();
     }
 
-    /** Nearest colliders to the camera win when there are more than the shader can hold. */
-    private packColliders(camera: THREE.Camera, colliders: GrassCollider[]) {
-        let selected = colliders;
-        if (selected.length > MAX_COLLIDERS) {
-            selected = [...colliders]
-                .sort((a, b) =>
-                    a.position.distanceToSquared(camera.position) - b.position.distanceToSquared(camera.position))
-                .slice(0, MAX_COLLIDERS);
+    private ratioFor(distance: number): number {
+        for (const level of this.lod) {
+            if (distance < level.distance) return level.ratio;
         }
+        return this.lod[this.lod.length - 1].ratio;
+    }
 
+    private rankByDistance(camera: THREE.Camera, colliders: GrassCollider[]): RankedCollider[] {
+        const ranked = this.ranked;
+
+        for (let i = 0; i < colliders.length; i++) {
+            const entry = ranked[i] ?? (ranked[i] = { collider: colliders[i], distance: 0 });
+            entry.collider = colliders[i];
+            entry.distance = colliders[i].position.distanceToSquared(camera.position);
+        }
+        ranked.length = colliders.length;
+
+        return ranked.sort((a, b) => a.distance - b.distance);
+    }
+
+    private packColliders(camera: THREE.Camera, colliders: GrassCollider[]) {
+        const count = Math.min(colliders.length, MAX_COLLIDERS);
+        const ranked = colliders.length > MAX_COLLIDERS ? this.rankByDistance(camera, colliders) : null;
         const slots = this.uniforms.uColliders.value;
-        for (let i = 0; i < selected.length; i++) {
-            const { position, radius } = selected[i];
+
+        for (let i = 0; i < count; i++) {
+            const { position, radius } = ranked ? ranked[i].collider : colliders[i];
             slots[i].set(position.x, position.y, position.z, radius);
         }
-        this.uniforms.uColliderCount.value = selected.length;
-    }
-
-    /**
-     * Cumulative triangle areas. Sampling against this makes big triangles
-     * receive proportionally more blades — a plain "pick a random triangle"
-     * would clump grass wherever the mesh happens to be finely tessellated.
-     */
-    private buildAreaTable(geometry: THREE.BufferGeometry, bounds?: GrassBounds) {
-        const triangleCount = Math.floor((geometry.index?.count ?? geometry.attributes.position.count) / 3);
-        const areas: number[] = [];
-        // Only built when bounds are given: without them the table index *is* the
-        // triangle index, and an identity array would be pure overhead.
-        const triangles: number[] | null = bounds ? [] : null;
-        let total = 0;
-
-        for (let i = 0; i < triangleCount; i++) {
-            this.readTriangle(geometry, i);
-
-            if (bounds && !this.centroidInside(bounds)) continue;
-
-            _ab.subVectors(_b, _a);
-            _ac.subVectors(_c, _a);
-            total += _ab.cross(_ac).length() * 0.5;
-            areas.push(total);
-            triangles?.push(i);
-        }
-
-        return { areas: Float64Array.from(areas), triangles, total };
-    }
-
-    /** Same table as buildAreaTable, over a given triangle list only. */
-    private buildAreaTableFor(geometry: THREE.BufferGeometry, triangles: number[]) {
-        const areas = new Float64Array(triangles.length);
-        let total = 0;
-
-        for (let i = 0; i < triangles.length; i++) {
-            this.readTriangle(geometry, triangles[i]);
-            _ab.subVectors(_b, _a);
-            _ac.subVectors(_c, _a);
-            total += _ab.cross(_ac).length() * 0.5;
-            areas[i] = total;
-        }
-
-        return { areas, triangles, total };
-    }
-
-    /**
-     * Centroid, not overlap: a triangle straddling a patch edge belongs to
-     * exactly one patch, so neighbouring patches never double-plant a seam.
-     */
-    private centroidInside(bounds: GrassBounds): boolean {
-        const x = (_a.x + _b.x + _c.x) / 3;
-        const z = (_a.z + _b.z + _c.z) / 3;
-
-        return x >= bounds.minX && x < bounds.maxX && z >= bounds.minZ && z < bounds.maxZ;
-    }
-
-    private pickTriangle(areas: Float64Array, total: number) {
-        const target = Math.random() * total;
-        let low = 0;
-        let high = areas.length - 1;
-        while (low < high) {
-            const mid = (low + high) >> 1;
-            if (areas[mid] < target) low = mid + 1;
-            else high = mid;
-        }
-        return low;
-    }
-
-    private readTriangle(geometry: THREE.BufferGeometry, triangle: number) {
-        const position = geometry.attributes.position;
-        const index = geometry.index;
-        const i = triangle * 3;
-        const [ia, ib, ic] = index
-            ? [index.getX(i), index.getX(i + 1), index.getX(i + 2)]
-            : [i, i + 1, i + 2];
-
-        _a.fromBufferAttribute(position, ia);
-        _b.fromBufferAttribute(position, ib);
-        _c.fromBufferAttribute(position, ic);
-    }
-
-    /**
-     * Uniform barycentric sample of triangle _a/_b/_c into _point. The sqrt is
-     * what makes it uniform — raw (r1, r2) weights bunch points near one corner.
-     */
-    private samplePoint() {
-        const u = Math.sqrt(Math.random());
-        const v = Math.random();
-        _point.set(0, 0, 0)
-            .addScaledVector(_a, 1 - u)
-            .addScaledVector(_b, u * (1 - v))
-            .addScaledVector(_c, u * v);
-    }
-
-    /**
-     * Chunk on all three local axes, so a plane authored in XY (a ground mesh
-     * rotated into place) chunks just as well as one authored in XZ.
-     */
-    private chunkKey(point: THREE.Vector3, chunkSize: number) {
-        const cx = Math.floor(point.x / chunkSize);
-        const cy = Math.floor(point.y / chunkSize);
-        const cz = Math.floor(point.z / chunkSize);
-        return `${cx},${cy},${cz}`;
+        this.uniforms.uColliderCount.value = count;
     }
 }

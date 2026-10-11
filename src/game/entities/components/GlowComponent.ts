@@ -10,12 +10,21 @@ export class GlowComponent implements Component {
     public readonly name = 'glow';
 
     private material: EmissiveMaterial;
+    private color: number;
     private elapsed = 0;
     private active = true;
 
     constructor(material: EmissiveMaterial, color: number) {
         this.material = material;
+        this.color = color;
         this.material.emissive = new THREE.Color(color);
+    }
+
+    /** Moves the glow onto another material — used when a loaded model replaces the placeholder. */
+    public setMaterial(material: EmissiveMaterial) {
+        this.material = material;
+        this.material.emissive = new THREE.Color(this.color);
+        if (!this.active) this.material.emissiveIntensity = 0;
     }
 
     public setActive(active: boolean) {

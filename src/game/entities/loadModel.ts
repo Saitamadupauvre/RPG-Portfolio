@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { toToonMaterial, type TintableMaterial } from '../render/toon';
+import { fromGltfMaterial, type TintableMaterial } from '../render/materials';
 
 const loader = new GLTFLoader();
 
@@ -41,7 +41,7 @@ export interface ModelFitOptions {
 
 export interface LoadedModel {
     object: THREE.Object3D;
-    /** Per-instance toon materials — safe to tint (hit flash) without touching other instances. */
+    /** Per-instance lit materials — safe to tint (hit flash) without touching other instances. */
     materials: TintableMaterial[];
     /** The clips the file carries (Blender actions), shared between instances: clips are read-only data. */
     animations: readonly THREE.AnimationClip[];
@@ -67,15 +67,15 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
         if (child instanceof THREE.SkinnedMesh) child.frustumCulled = false;
 
         // clone() shares materials with the cached original, and glTF always brings PBR
-        // materials — so convert each one to toon *and* keep it per-instance in a single
+        // materials — so convert each one to Lambert *and* keep it per-instance in a single
         // step. Converting here rather than in the caller means every model in the game
-        // is cel-shaded by construction, with no factory left to forget it.
+        // is lit the same way by construction, with no factory left to forget it.
         const convert = (material: THREE.Material): THREE.Material => {
-            const toon = material instanceof THREE.MeshStandardMaterial
-                ? toToonMaterial(material)
+            const lit = material instanceof THREE.MeshStandardMaterial
+                ? fromGltfMaterial(material)
                 : material.clone();
-            if ('color' in toon) materials.push(toon as TintableMaterial);
-            return toon;
+            if ('color' in lit) materials.push(lit as TintableMaterial);
+            return lit;
         };
 
         child.material = Array.isArray(child.material)

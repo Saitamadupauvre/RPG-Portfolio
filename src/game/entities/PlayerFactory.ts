@@ -15,7 +15,7 @@ import { playerController } from './playerAnimation';
 import { createSwordMesh } from './SwordFactory';
 import { loadModel } from './loadModel';
 import { events } from '../../core/events';
-import { createToonMaterial } from '../render/toon';
+import { createLitMaterial } from '../render/materials';
 import { getPlayerStats } from '../../domain/playerProgress';
 
 const PLAYER_RADIUS = 0.4;
@@ -47,7 +47,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     // swaps in whenever it finishes loading. Keeping the factory synchronous means World,
     // the camera and every system can hold the Entity immediately.
     const geometry = new THREE.CapsuleGeometry(0.4, 1, 4, 8);
-    const material = createToonMaterial({ color: 0xffffff });
+    const material = createLitMaterial({ color: 0xffffff });
     const body = new THREE.Mesh(geometry, material);
     body.castShadow = true;
     visual.add(body);

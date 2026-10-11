@@ -7,17 +7,18 @@ import { applyChestLoot } from '../../domain/chestLoot';
 import { isChestOpened, openChest } from '../../domain/openedChests';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
-import { createToonMaterial } from '../render/toon';
+import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
+import { CHEST_COLLISION_RADIUS } from './collisionSizes';
 
 const chestColor: Record<ChestEntity['chestTier'], number> = {
-    wood: 0x8b5a2b,
-    silver: 0xc0c0c0,
-    gold: 0xffd700,
+    wood: PALETTE.bark,
+    silver: PALETTE.stone,
+    gold: PALETTE.gold,
 };
 
-const GLOW_COLOR = 0xffcc55;
+const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
-const COLLISION_RADIUS = 0.5;
 const LID_OPEN_ANGLE = -Math.PI / 2.4;
 
 export function createChest(entity: ChestEntity): Entity {
@@ -25,7 +26,7 @@ export function createChest(entity: ChestEntity): Entity {
     applyTransform(group, entity);
 
     const color = chestColor[entity.chestTier];
-    const bodyMaterial = createToonMaterial({ color });
+    const bodyMaterial = createLitMaterial({ color });
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.6), bodyMaterial);
     body.position.y = 0.225;
     body.castShadow = true;
@@ -35,7 +36,7 @@ export function createChest(entity: ChestEntity): Entity {
     const hinge = new THREE.Group();
     hinge.position.set(0, 0.45, -0.3);
 
-    const lidMaterial = createToonMaterial({ color });
+    const lidMaterial = createLitMaterial({ color });
     const lid = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.6), lidMaterial);
     lid.position.set(0, 0.075, 0.3);
     lid.castShadow = true;
@@ -65,7 +66,7 @@ export function createChest(entity: ChestEntity): Entity {
 
     if (alreadyOpened) interactable.actions = [];
 
-    return new Entity(entity.id, group, COLLISION_RADIUS, true)
+    return new Entity(entity.id, group, CHEST_COLLISION_RADIUS, true)
         .addComponent('glow', glow)
         .addComponent('interactable', interactable);
 }

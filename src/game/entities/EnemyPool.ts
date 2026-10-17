@@ -22,20 +22,20 @@ interface EnemyLook {
     attackRange: number;
     coins: number;
     combo: ComboMove[];
-    /** Blender model (tools/blender/make_world.py) that replaces the placeholder box; none yet for the boss. */
+    /** Blender model (tools/blender/make_enemies.py) that replaces the placeholder box; none yet for the boss. */
     model?: { url: string; height: number };
 }
 
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
-        size: 0.6, color: PALETTE.berry, hp: 20, model: { url: 'models/enemy-grunt.glb', height: 1.05 },
+        size: 0.6, color: PALETTE.berry, hp: 20, model: { url: 'models/enemy-goblin.glb', height: 1.05 },
         moveSpeed: 2, aggroRadius: 5, deaggroRadius: 8, attackRange: 1.1, coins: 5,
         combo: [
             { options: { damage: 8, distance: 0.9, duration: 0.25, color: 0xffaa00 }, recovery: 0.5, windup: 0.4 },
         ],
     },
     elite: {
-        size: 0.9, color: PALETTE.autumn, hp: 50, model: { url: 'models/enemy-elite.glb', height: 1.7 },
+        size: 0.9, color: PALETTE.autumn, hp: 50, model: { url: 'models/enemy-soldier.glb', height: 2 },
         moveSpeed: 2.5, aggroRadius: 6, deaggroRadius: 10, attackRange: 1.3, coins: 18,
         combo: [
             { options: { damage: 6, distance: 1, duration: 0.2, color: 0xffaa00 }, recovery: 0.25, windup: 0.3 },

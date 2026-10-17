@@ -7,12 +7,16 @@ import { findProject } from '../../data/projects';
 import { discover, isDiscovered } from '../../domain/discovery';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
+import { findMaterial, loadModel } from './loadModel';
+import { disposeObject3D } from './disposeObject3D';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
 import { STATUE_COLLISION_RADIUS } from './collisionSizes';
 
 const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
+const MODEL_URL = 'models/statue.glb';
+const MODEL_HEIGHT = 2.6;
 
 export function createStatue(entity: StatueEntity): Entity {
     const group = new THREE.Group();
@@ -33,6 +37,20 @@ export function createStatue(entity: StatueEntity): Entity {
     const glow = new GlowComponent(bodyMaterial, GLOW_COLOR);
     const project = findProject(entity.projectId);
     glow.setActive(!!project && !isDiscovered(entity.projectId));
+
+    // The primitives above stand in until the model arrives (and stay if it never does).
+    loadModel(MODEL_URL, { height: MODEL_HEIGHT })
+        .then(({ object, materials }) => {
+            const figure = findMaterial(materials, 'Statue');
+            if (!figure) throw new Error('statue.glb has no "Statue" material to glow');
+
+            group.remove(base, body);
+            disposeObject3D(base);
+            disposeObject3D(body);
+            group.add(object);
+            glow.setMaterial(figure);
+        })
+        .catch((error) => console.error('[statue] model failed to load, keeping placeholder', error));
 
     const label = project ? `Examine ${project.title}` : 'Examine statue';
     const interactable = new InteractableComponent(INTERACT_RADIUS, [{

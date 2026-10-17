@@ -16,11 +16,14 @@ Defined in `src/game/render/palette.ts`. Every lit surface picks from it.
 | `meadow`   | `#9dbf58` | Ground and grass, most of the screen        |
 | `meadowPatch` | `#a7c263` | Large soft lighter patches on the ground |
 | `leaf`     | `#52834a` | Foliage                                     |
+| `leafBright` | `#7fb050` | Main tree foliage (sunlit)               |
+| `leafLime` | `#a3bf50` | Yellow-green tree variation                 |
 | `leafDeep` | `#34574a` | Foliage in shade                            |
 | `autumn`   | `#d4945a` | Autumn trees, fire, elite enemies           |
 | `wheat`    | `#dcc89e` | Pale stone, light wood, dust                |
 | `rock`     | `#8f735c` | Cliff faces                                 |
 | `bark`     | `#6b4f3f` | Dark wood, cliff shadow, leather, boss      |
+| `stoneDeep` | `#74707f` | Stone in shade (rock colour variation)     |
 | `stone`    | `#8f8c99` | Rock, walls, bonfire stones                 |
 | `sea`      | `#245a73` | Deep water                                  |
 | `berry`    | `#c65364` | Flowers, small enemies                      |

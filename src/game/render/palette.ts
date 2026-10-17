@@ -19,6 +19,10 @@ export const PALETTE = {
     meadowPatch: 0xa7c263,
     /** Foliage. Darker and cooler than the meadow so trees stand out from it. */
     leaf: 0x52834a,
+    /** Sunlit foliage: the main tree colour, lighter than `leaf` so crowns do not sink into the meadow. */
+    leafBright: 0x7fb050,
+    /** Yellow-green foliage, for variety between neighbouring trees. */
+    leafLime: 0xa3bf50,
     /** Foliage in shade, pushed toward blue-green. */
     leafDeep: 0x34574a,
     /** Autumn accent foliage and warm highlights. */
@@ -31,6 +35,8 @@ export const PALETTE = {
     bark: 0x6b4f3f,
     /** Rock and cold stone, nudged toward violet instead of neutral grey. */
     stone: 0x8f8c99,
+    /** Stone in shade: the dark end of rock colour variation. */
+    stoneDeep: 0x74707f,
     /** Deep water. */
     sea: 0x245a73,
     /** Primary accent: flowers, enemies, danger. Near the meadow's complement. */

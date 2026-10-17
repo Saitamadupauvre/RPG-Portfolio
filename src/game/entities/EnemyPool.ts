@@ -10,6 +10,7 @@ import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { EnemyAIComponent } from './components/EnemyAIComponent';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
+import { loadModel } from './loadModel';
 
 interface EnemyLook {
     size: number;
@@ -21,18 +22,20 @@ interface EnemyLook {
     attackRange: number;
     coins: number;
     combo: ComboMove[];
+    /** Blender model (tools/blender/make_enemies.py) that replaces the placeholder box; none yet for the boss. */
+    model?: { url: string; height: number };
 }
 
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
-        size: 0.6, color: PALETTE.berry, hp: 20,
+        size: 0.6, color: PALETTE.berry, hp: 20, model: { url: 'models/enemy-goblin.glb', height: 1.05 },
         moveSpeed: 2, aggroRadius: 5, deaggroRadius: 8, attackRange: 1.1, coins: 5,
         combo: [
             { options: { damage: 8, distance: 0.9, duration: 0.25, color: 0xffaa00 }, recovery: 0.5, windup: 0.4 },
         ],
     },
     elite: {
-        size: 0.9, color: PALETTE.autumn, hp: 50,
+        size: 0.9, color: PALETTE.autumn, hp: 50, model: { url: 'models/enemy-soldier.glb', height: 2 },
         moveSpeed: 2.5, aggroRadius: 6, deaggroRadius: 10, attackRange: 1.3, coins: 18,
         combo: [
             { options: { damage: 6, distance: 1, duration: 0.2, color: 0xffaa00 }, recovery: 0.25, windup: 0.3 },
@@ -105,9 +108,14 @@ export class EnemyPool {
 
         const geometry = getGeometry(type);
         const material = createMaterial(type);
-        const mesh = new THREE.Mesh(geometry, material);
         const look = enemyLook[type];
         const height = bodyHeightOf(type);
+
+        // The root is what moves, turns and gets hit; the box inside is only the stand-in
+        // until the model arrives (and stays for types that have none).
+        const mesh = new THREE.Group();
+        const placeholder = new THREE.Mesh(geometry, material);
+        mesh.add(placeholder);
 
         const health = new HealthComponent(look.hp);
         const attack = new AttackComponent(mesh);
@@ -123,6 +131,19 @@ export class EnemyPool {
             .addComponent('enemyAI', ai);
         entity.bodyHeight = height;
         entity.groundOffset = height / 2;
+
+        if (look.model) {
+            const hitFlash = entity.getComponent('hitFlash');
+            // The root's origin is the body's centre, so the model's feet go half a body below it.
+            loadModel(look.model.url, { height: look.model.height, originY: -height / 2 })
+                .then(({ object, materials }) => {
+                    mesh.remove(placeholder);
+                    material.dispose();
+                    mesh.add(object);
+                    hitFlash?.setMaterials(materials);
+                })
+                .catch((error) => console.error(`[enemy] ${look.model?.url} failed to load, keeping placeholder`, error));
+        }
 
         return entity;
     }

@@ -37,11 +37,20 @@ export interface ItemEntity extends MapEntityTransform {
     projectId?: string;
 }
 
+/**
+ * What a rock is made of. 'cliff' is the terrain's own rock, so a boulder blends
+ * into the cliff beside it; 'stone' is the cooler grey-violet of ruins and walls.
+ * Either way the top of the rock grows the same grass as the ground.
+ */
+export type RockMaterial = 'stone' | 'cliff';
+
 export interface PropEntity extends MapEntityTransform {
     kind: 'prop';
     id: string;
+    /** A model id from `data/propModels.ts`. */
     propType: string;
-    collidable?: boolean;
+    /** Only rocks read it; defaults to 'stone'. */
+    material?: RockMaterial;
 }
 
 export interface StatueEntity extends MapEntityTransform {
@@ -53,6 +62,8 @@ export interface StatueEntity extends MapEntityTransform {
 export interface BonfireEntity extends MapEntityTransform {
     kind: 'bonfire';
     id: string;
+    /** A campfire model id from `data/bonfireModels.ts`; absent = the default one. */
+    model?: string;
 }
 
 export type MapEntity = EnemyEntity | ChestEntity | ItemEntity | PropEntity | StatueEntity | BonfireEntity;

@@ -2,9 +2,9 @@ import type { MapEntity } from '../../../data/MapEntity';
 import {
     BONFIRE_COLLISION_RADIUS,
     CHEST_COLLISION_RADIUS,
-    PROP_BASE_FOOTPRINT,
     STATUE_COLLISION_RADIUS,
 } from '../../entities/collisionSizes';
+import { isPropModel, PROP_MODELS } from '../../../data/propModels';
 import type { GrassBounds } from './GrassSurface';
 
 const MARGIN = 0.3;
@@ -21,17 +21,7 @@ function circle(entity: MapEntity, radius: number): GrassFootprint {
 
 const footprintOf: { [K in MapEntity['kind']]: (entity: Extract<MapEntity, { kind: K }>) => GrassFootprint | null } = {
     prop: (entity) => {
-        const [x, , z] = entity.position;
-        const yaw = entity.rotation?.[1] ?? 0;
-        return {
-            shape: 'box',
-            x,
-            z,
-            cos: Math.cos(yaw),
-            sin: Math.sin(yaw),
-            halfX: (PROP_BASE_FOOTPRINT * (entity.scale?.[0] ?? 1)) / 2 + MARGIN,
-            halfZ: (PROP_BASE_FOOTPRINT * (entity.scale?.[2] ?? 1)) / 2 + MARGIN,
-        };
+        return isPropModel(entity.propType) ? circle(entity, PROP_MODELS[entity.propType].radius) : null;
     },
     chest: (entity) => circle(entity, CHEST_COLLISION_RADIUS),
     statue: (entity) => circle(entity, STATUE_COLLISION_RADIUS),

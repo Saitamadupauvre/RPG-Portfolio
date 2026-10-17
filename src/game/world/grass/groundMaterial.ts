@@ -35,11 +35,22 @@ const CLIFF_START = Math.cos((48 * Math.PI) / 180);
 const CLIFF_COLOR = PALETTE.rock;
 const CLIFF_COLOR_DARK = PALETTE.bark;
 
-export function createGroundMaterial(): THREE.MeshLambertMaterial {
+export type GroundMaterialOptions = {
+    /** Colours of the steep, bare-rock surfaces. Default: the terrain's own cliffs. */
+    rockColor?: number;
+    rockColorDark?: number;
+};
+
+/**
+ * The terrain shader: grass-coloured where the surface faces up, rock where it
+ * is steep. Any mesh given this material (the terrain, a boulder) reads as part
+ * of the same ground, because the colours come from world position and slope.
+ */
+export function createGroundMaterial(options: GroundMaterialOptions = {}): THREE.MeshLambertMaterial {
     const uniforms = {
         ...createGrassColorUniforms(),
-        uCliffColor: { value: new THREE.Color(CLIFF_COLOR) },
-        uCliffColorDark: { value: new THREE.Color(CLIFF_COLOR_DARK) },
+        uCliffColor: { value: new THREE.Color(options.rockColor ?? CLIFF_COLOR) },
+        uCliffColorDark: { value: new THREE.Color(options.rockColorDark ?? CLIFF_COLOR_DARK) },
         uCliffStart: { value: CLIFF_START },
         uCliffEnd: { value: CLIFF_END },
     };

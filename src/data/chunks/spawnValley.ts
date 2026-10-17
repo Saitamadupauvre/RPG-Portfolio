@@ -7,8 +7,8 @@ export const spawnValley: MapEntity[] = [
 
     { kind: 'bonfire', id: 'bonfire-spawn', position: [0, 0, 2] },
 
-    { kind: 'statue', id: 'statue-rpg-portfolio', projectId: 'rpg-portfolio', position: [0, 0, -6] },
-    { kind: 'statue', id: 'statue-brotatomato', projectId: 'brotatomato', position: [-7, 0, 4] },
+    { kind: 'statue', id: 'statue-zappy', projectId: 'zappy', position: [0, 0, -6] },
+    { kind: 'statue', id: 'statue-arcade', projectId: 'arcade', position: [-7, 0, 4] },
     { kind: 'statue', id: 'statue-raytracer', projectId: 'raytracer', position: [7, 0, 4] },
 
     { kind: 'chest', id: 'chest-coins', chestTier: 'wood', position: [5, 0, -2], loot: [{ kind: 'coins', amount: 40 }] },

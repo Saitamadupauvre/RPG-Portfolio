@@ -281,7 +281,9 @@ export class World {
             if (entity.getComponent('enemyAI')) snapToGround(entity.mesh, entity.groundOffset);
         }
 
-        snapToGround(this.player.mesh, this.player.groundOffset);
+        const airborne = this.player.getComponent('dash')?.airborneHeight() ?? null;
+        if (airborne === null) snapToGround(this.player.mesh, this.player.groundOffset);
+        else this.player.mesh.position.y = airborne + this.player.groundOffset;
     }
 
     private updateGrass(camera: THREE.PerspectiveCamera) {

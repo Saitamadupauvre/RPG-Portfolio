@@ -3,6 +3,7 @@ import type { MapEntity } from '../data/MapEntity';
 import type { Project } from '../data/Project';
 import type { PlayerStats } from '../data/stats';
 import { EventEmitter } from './EventEmitter';
+import type { ScatterSettings, ScreenRect } from './editorTools';
 
 /** What the interact prompt shows: a key and what pressing it does. */
 export type PromptAction = { key: string; label: string };
@@ -34,13 +35,22 @@ export type AppEvents = {
     editorCopyRequested: [];
     editorResetRequested: [];
     editorEntityEdited: [entity: MapEntity];
-    editorSelectionChanged: [entity: MapEntity | null];
+    editorSelectionChanged: [entities: MapEntity[]];
     editorLayoutChanged: [count: number];
     editorTileModeChanged: [enabled: boolean];
     editorTileGridResized: [cols: number, rows: number];
     editorWaterLevelChanged: [level: number];
     editorTileSelectionChanged: [count: number, level: number | null];
     editorTerrainCopyRequested: [];
+    /** The box-select rectangle while dragging, null once released. */
+    editorBoxChanged: [rect: ScreenRect | null];
+    /** Radius in tiles. */
+    editorTileBrushChanged: [enabled: boolean, radius: number];
+    editorScatterArmed: [enabled: boolean];
+    editorScatterChanged: [settings: ScatterSettings];
+    editorUndoRequested: [];
+    editorRedoRequested: [];
+    editorHistoryChanged: [canUndo: boolean, canRedo: boolean];
 };
 
 export const events = new EventEmitter<AppEvents>();

@@ -366,3 +366,39 @@ body {
   from { transform: translateX(-100%); }
   to { transform: translateX(340%); }
 }
+
+.editor-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.editor-scatter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 2px solid #333;
+  padding-top: 0.3rem;
+  font-size: 0.7rem;
+}
+
+.editor-scatter-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border: 2px solid #333;
+  padding: 0.3rem;
+}
+
+#editor-tiles .editor-field > span {
+  width: auto;
+}
+
+/* Box-select rectangle: drawn over the canvas, never catches the pointer. */
+#editor-box {
+  position: fixed;
+  display: none;
+  border: 1px solid var(--accent-teal);
+  background: rgba(58, 230, 201, 0.12);
+  pointer-events: none;
+  z-index: 5;
+}

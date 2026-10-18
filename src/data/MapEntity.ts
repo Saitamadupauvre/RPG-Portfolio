@@ -3,9 +3,12 @@ import type { StatId } from './stats';
 export type Vec3 = [number, number, number];
 
 export interface MapEntityTransform {
+    /** Y is informative only: entities are seated on the terrain under (x, z). */
     position: Vec3;
     rotation?: Vec3;
     scale?: Vec3;
+    /** Raise (or, negative, sink) the entity relative to the ground under it. Follows the terrain when it is resculpted. */
+    heightOffset?: number;
 }
 
 export interface EnemyEntity extends MapEntityTransform {

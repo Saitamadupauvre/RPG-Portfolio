@@ -273,11 +273,12 @@ export class World {
      * and collision have settled x/z, rather than inside each component: a hard
      * snap is exact, cannot fall through the world, and needs no gravity — and
      * one loop here beats threading a ground offset through movement, dash,
-     * pathfinding and the AI.
+     * pathfinding and the AI. Movers only: static entities were seated once by
+     * their factory, and snapping them here would erase an authored heightOffset.
      */
     private seatOnTerrain() {
         for (const entity of this.entities) {
-            snapToGround(entity.mesh, entity.groundOffset);
+            if (entity.getComponent('enemyAI')) snapToGround(entity.mesh, entity.groundOffset);
         }
 
         snapToGround(this.player.mesh, this.player.groundOffset);

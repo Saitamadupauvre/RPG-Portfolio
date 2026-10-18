@@ -67,8 +67,11 @@ const builders: {
 };
 
 export function uniqueId(kind: string, layout: MapEntity[]): string {
+    // A Set first: scanning the whole layout once per candidate index made a
+    // scatter stroke over a few hundred trees quadratic.
+    const taken = new Set(layout.map((entity) => entity.id));
     let index = 1;
-    while (layout.some((entity) => entity.id === `${kind}-${index}`)) index++;
+    while (taken.has(`${kind}-${index}`)) index++;
     return `${kind}-${index}`;
 }
 

@@ -14,6 +14,22 @@ export type FieldSpec =
     | { control: 'select'; key: string; label: string; options: readonly { value: string; label: string }[] }
     | { control: 'checkbox'; key: string; label: string };
 
+export type PaletteEntry = { kind: MapEntity['kind']; variant: string; label: string };
+
+/** What the editor can place, both from the palette buttons and from the scatter brush. */
+export const palette: PaletteEntry[] = [
+    { kind: 'enemy', variant: 'grunt', label: 'Grunt' },
+    { kind: 'enemy', variant: 'elite', label: 'Elite' },
+    { kind: 'enemy', variant: 'boss', label: 'Boss' },
+    { kind: 'prop', variant: 'tree', label: 'Tree (random)' },
+    { kind: 'prop', variant: 'bush', label: 'Bush (random)' },
+    { kind: 'prop', variant: 'rock', label: 'Rock (random)' },
+    { kind: 'chest', variant: '', label: 'Chest' },
+    { kind: 'item', variant: 'shard', label: 'Item' },
+    { kind: 'bonfire', variant: '', label: 'Bonfire' },
+    { kind: 'statue', variant: '', label: 'Statue' },
+];
+
 const projectOptions = projects.map((project) => ({ value: project.id, label: project.title }));
 const statOptions: { value: StatId; label: string }[] = [
     { value: 'health', label: 'health' },

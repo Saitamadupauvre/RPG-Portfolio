@@ -4,17 +4,21 @@ import { PALETTE } from '../../render/palette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
 varying vec2 vGroundXZ;
+varying float vGroundY;
 varying float vFlatness;
 `;
 
 const GROUND_WORLDPOS = /* glsl */ `
 #include <begin_vertex>
-vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz;
+vec3 groundWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
+vGroundXZ = groundWorld.xz;
+vGroundY = groundWorld.y;
 vFlatness = normalize(mat3(modelMatrix) * objectNormal).y;
 `;
 
 const GROUND_FRAGMENT_PARS = /* glsl */ `
 varying vec2 vGroundXZ;
+varying float vGroundY;
 varying float vFlatness;
 uniform vec3 uCliffColor;
 uniform vec3 uCliffColorDark;
@@ -27,7 +31,7 @@ const GROUND_COLOR = /* glsl */ `
 #include <color_fragment>
 float cliff = 1.0 - smoothstep(uCliffStart, uCliffEnd, vFlatness);
 vec3 rockColor = mix(uCliffColorDark, uCliffColor, smoothstep(0.35, 0.65, meadowNoise(vGroundXZ * 0.4)));
-diffuseColor.rgb = mix(grassColorAt(vGroundXZ), rockColor, cliff);
+diffuseColor.rgb = mix(grassColorAt(vGroundXZ), rockColor, cliff) * heightShade(vGroundY);
 `;
 
 const CLIFF_END = Math.cos((30 * Math.PI) / 180);

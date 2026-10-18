@@ -13,7 +13,7 @@ export type GrassSurfaceOptions = {
     chunkSize?: number;
     maxDistance?: number;
     acceptNormal?: (normal: THREE.Vector3) => number;
-    rejectPoint?: (x: number, z: number) => boolean;
+    rejectPoint?: (x: number, z: number, y: number) => boolean;
     triangles?: number[];
     sampleGeometry?: THREE.BufferGeometry;
 };
@@ -199,7 +199,7 @@ export class GrassSurface {
             _normal.crossVectors(_ab, _ac).normalize();
 
             if (options.acceptNormal && random() >= options.acceptNormal(_normal)) continue;
-            if (options.rejectPoint?.(_point.x, _point.z)) continue;
+            if (options.rejectPoint?.(_point.x, _point.z, _point.y)) continue;
 
             _qAlign.setFromUnitVectors(UP, _normal);
             _qYaw.setFromAxisAngle(UP, random() * Math.PI * 2);

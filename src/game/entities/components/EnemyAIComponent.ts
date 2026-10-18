@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { PathfindingComponent } from './PathfindingComponent';
 import { DetectionComponent } from './DetectionComponent';
-import { ComboComponent } from './ComboComponent';
+import type { EnemyAttacker } from './EnemyAttacker';
 
 const RETURN_ARRIVAL_RADIUS = 0.2;
 
@@ -12,11 +12,10 @@ export class EnemyAIComponent implements Component {
     private mesh: THREE.Object3D;
     private player: THREE.Object3D;
     private origin: THREE.Vector3;
-    private attackRange: number;
 
     private pathfinding: PathfindingComponent;
     private detection: DetectionComponent;
-    private combo: ComboComponent;
+    private attacker: EnemyAttacker;
 
     constructor(
         mesh: THREE.Object3D,
@@ -25,17 +24,19 @@ export class EnemyAIComponent implements Component {
         moveSpeed: number,
         aggroRadius: number,
         deaggroRadius: number,
-        combo: ComboComponent,
-        attackRange = 1.2,
+        attacker: EnemyAttacker,
     ) {
         this.mesh = mesh;
         this.player = player;
         this.origin = origin.clone();
-        this.attackRange = attackRange;
 
         this.pathfinding = new PathfindingComponent(mesh, moveSpeed);
         this.detection = new DetectionComponent(mesh, player, this.origin, aggroRadius, deaggroRadius);
-        this.combo = combo;
+        this.attacker = attacker;
+    }
+
+    public get isAggroed(): boolean {
+        return this.detection.isAggroed;
     }
 
     /** Puts the enemy back to its just-spawned state around a (new) home point. */
@@ -43,7 +44,7 @@ export class EnemyAIComponent implements Component {
         this.origin.copy(origin);
         this.detection.setOrigin(this.origin);
         this.pathfinding.clearTarget();
-        this.combo.reset();
+        this.attacker.reset();
     }
 
     public update(dt: number) {
@@ -56,14 +57,13 @@ export class EnemyAIComponent implements Component {
         }
 
         this.pathfinding.update(dt);
-        this.combo.update(dt);
+        this.attacker.update?.(dt);
     }
 
     private pursuePlayer() {
         const distance = this.mesh.position.distanceTo(this.player.position);
-        if (distance <= this.attackRange) {
+        if (this.attacker.engage(this.player.position, distance)) {
             this.pathfinding.clearTarget();
-            this.combo.trigger(this.player.position);
         } else {
             this.pathfinding.setTarget(this.player.position);
         }

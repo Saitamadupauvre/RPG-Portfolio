@@ -81,6 +81,30 @@ export function planGapLeap(x: number, z: number, direction: THREE.Vector3, dash
     return null;
 }
 
+/**
+ * Whether a walker could go from one point to the other in a straight line:
+ * no obstacle, no map edge and no step too tall anywhere along it. Walks the
+ * line in sub-tile steps with the same test slideMove uses, so a lunge that
+ * passes this check is one slideMove will let through.
+ */
+export function hasClearLine(fromX: number, fromZ: number, toX: number, toZ: number): boolean {
+    const grid = getNavGrid();
+    const length = Math.hypot(toX - fromX, toZ - fromZ);
+    const steps = Math.ceil(length / SAMPLE_STEP);
+
+    let x = fromX;
+    let z = fromZ;
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const nextX = fromX + (toX - fromX) * t;
+        const nextZ = fromZ + (toZ - fromZ) * t;
+        if (cannotReach(grid, x, z, nextX, nextZ)) return false;
+        x = nextX;
+        z = nextZ;
+    }
+    return true;
+}
+
 type Grid = ReturnType<typeof getNavGrid>;
 
 function isWorldBlocked(grid: Grid, x: number, z: number): boolean {

@@ -7,6 +7,8 @@ import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { PlayerAnimationDriver } from './components/PlayerAnimationDriver';
 import { DustEmitterComponent } from './components/DustEmitterComponent';
 import { SwordTrailComponent } from './components/SwordTrailComponent';
+import { DashTrailComponent } from './components/DashTrailComponent';
+import { LIGHT, PALETTE } from '../render/palette';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
@@ -123,6 +125,15 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     return entity
         .addComponent('movement', movement)
         .addComponent('dash', dash)
+        // Right after the dash moves the root, so the trail's head sits on the body.
+        .addComponent('dashTrail', new DashTrailComponent(root, entityGroup, () => dash.isDashing, {
+            time: 0.2,
+            width: 0.7,
+            gradient: [
+                { t: 0, color: PALETTE.cream, alpha: 0.9 },
+                { t: 1, color: LIGHT.sky, alpha: 0 },
+            ],
+        }))
         .addComponent('attack', attack)
         .addComponent('combo', combo)
         .addComponent('animationDriver', new PlayerAnimationDriver(animator, visual, movement, { dash, attack, combo }))

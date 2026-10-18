@@ -3,6 +3,7 @@ import type { AnimatorComponent } from '../animation/AnimatorComponent';
 import type { AttackComponent } from './components/AttackComponent';
 import type { ComboComponent } from './components/ComboComponent';
 import type { DashComponent } from './components/DashComponent';
+import type { DashTrailComponent } from './components/DashTrailComponent';
 import type { DustEmitterComponent } from './components/DustEmitterComponent';
 import type { EnemyAIComponent } from './components/EnemyAIComponent';
 import type { FireComponent } from './components/FireComponent';
@@ -20,6 +21,7 @@ export type ComponentMap = {
     attack: AttackComponent;
     combo: ComboComponent;
     dash: DashComponent;
+    dashTrail: DashTrailComponent;
     dust: DustEmitterComponent;
     enemyAI: EnemyAIComponent;
     fire: FireComponent;

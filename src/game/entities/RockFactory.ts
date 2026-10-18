@@ -7,6 +7,7 @@ import type { PropModelDef } from '../../data/propModels';
 import { PALETTE } from '../render/palette';
 import { createGroundMaterial } from '../world/grass/groundMaterial';
 import { createRandom, hashString } from '../world/grass/random';
+import { GhostComponent } from './components/GhostComponent';
 
 /**
  * A rock is shaded by the terrain's own shader: grass where its surface faces
@@ -48,6 +49,7 @@ export function createRock(entity: PropEntity, def: PropModelDef): Entity {
 
     const scale = Math.max(entity.scale?.[0] ?? 1, entity.scale?.[2] ?? 1);
     return new Entity(entity.id, group, def.radius * scale, true)
+        .addComponent('ghost', new GhostComponent(group))
         // The ground materials are shared by every rock; the default disposer would free them under the others.
         .setDisposer(() => {});
 }

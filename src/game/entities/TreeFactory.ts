@@ -8,6 +8,8 @@ import { PALETTE } from '../render/palette';
 import { jitterColor, type TintSpread } from '../render/tint';
 import { applyTreeSway, tickTreeSway } from '../render/treeSway';
 import { createRandom, hashString } from '../world/grass/random';
+import { GhostComponent } from './components/GhostComponent';
+import { disposeObject3D } from './disposeObject3D';
 
 /**
  * How far below the ground the model's base sits, in unscaled world units. A
@@ -73,6 +75,13 @@ export function createTree(entity: PropEntity, def: PropModelDef): Entity {
         .catch((error) => console.error(`[tree] ${def.url} failed to load`, error));
 
     const scale = Math.max(entity.scale?.[0] ?? 1, entity.scale?.[2] ?? 1);
+    const ghost = new GhostComponent(group);
     // A radius of 0 is a bush: no body, the player walks through it.
-    return new Entity(entity.id, group, def.radius > 0 ? def.radius * scale : undefined, true);
+    return new Entity(entity.id, group, def.radius > 0 ? def.radius * scale : undefined, true)
+        .addComponent('ghost', ghost)
+        // Own materials back on first, so they are the ones freed (their ghosts follow them).
+        .setDisposer(() => {
+            ghost.setGhosted(false);
+            disposeObject3D(group);
+        });
 }

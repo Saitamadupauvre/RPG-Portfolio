@@ -9,6 +9,7 @@ import { DustEmitterComponent } from './components/DustEmitterComponent';
 import { SwordTrailComponent } from './components/SwordTrailComponent';
 import { DashTrailComponent } from './components/DashTrailComponent';
 import { LIGHT, PALETTE } from '../render/palette';
+import { XraySilhouette } from '../render/xraySilhouette';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
@@ -89,6 +90,9 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
 
     health.publish();
 
+    // Grey ghost wherever anything hides the player.
+    const xray = new XraySilhouette(root, PALETTE.stone);
+
     loadModel(PLAYER_MODEL_URL, { height: PLAYER_HEIGHT, originY: PLAYER_MODEL_ORIGIN_Y })
         .then(({ object, materials, animations }) => {
             visual.remove(body);
@@ -101,6 +105,8 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
             if (!equip(object, WEAPON_SOCKET, sword)) {
                 console.warn(`[player] model has no "${WEAPON_SOCKET}" empty; the sword stays at the stand-in position`);
             }
+            // The placeholder's twin left with it; the model's meshes get theirs now.
+            xray.refresh();
 
             if (animations.length === 0) {
                 console.warn('[player] model has no animations; export the Actions from Blender to bring it to life');

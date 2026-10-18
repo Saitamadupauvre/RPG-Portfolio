@@ -11,6 +11,8 @@ import { EnemyAIComponent } from './components/EnemyAIComponent';
 import { ComboAttacker, type EnemyAttacker } from './components/EnemyAttacker';
 import { LungeComponent, type LungeOptions } from './components/LungeComponent';
 import { DashTrailComponent } from './components/DashTrailComponent';
+import { XrayComponent } from './components/XrayComponent';
+import { XraySilhouette } from '../render/xraySilhouette';
 import type { TrailRendererOptions } from '../effects/TrailRenderer';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
@@ -155,6 +157,11 @@ export class EnemyPool {
             // AI before attack: a lunge moves the body first, then the hitbox catches up the same frame.
             .addComponent('enemyAI', ai)
             .addComponent('attack', attack);
+        // Red through walls only while hunting the player close by, so a hidden threat is never a surprise.
+        // Aggro only drops far from home, so a chase the player outran would otherwise stay lit across the map.
+        const xray = new XraySilhouette(mesh, PALETTE.berry, false);
+        const isHunting = () => ai.isAggroed && mesh.position.distanceTo(player.position) <= look.aggroRadius;
+        entity.addComponent('xray', new XrayComponent(xray, isHunting));
         // Only lungers dash; the trail runs after the AI so its head is where the body ended up.
         if (attacker instanceof LungeComponent) {
             entity.addComponent('dashTrail', new DashTrailComponent(mesh, entityGroup, () => attacker.isDashing, ENEMY_TRAIL));
@@ -171,6 +178,7 @@ export class EnemyPool {
                     material.dispose();
                     mesh.add(object);
                     hitFlash?.setMaterials(materials);
+                    entity.getComponent('xray')?.refresh();
                 })
                 .catch((error) => console.error(`[enemy] ${look.model?.url} failed to load, keeping placeholder`, error));
         }

@@ -34,8 +34,8 @@ const GROUND_VIEW_DIR = new THREE.Vector3(-CAMERA_OFFSET.x, 0, -CAMERA_OFFSET.z)
 /**
  * Where the camera stands to frame `target`. The offset alone would sink it
  * into rising ground behind the player; lifting it to clear the terrain under
- * it is cheaper than a raycast and enough for a fixed isometric view. Shared by
- * followPlayer and the grass planner, so the two can never disagree.
+ * it is cheaper than a raycast and enough for a fixed isometric view. Whatever
+ * still hides a character is handled by its x-ray silhouette, not the camera.
  */
 function cameraEye(target: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     out.copy(target).add(CAMERA_OFFSET);
@@ -263,6 +263,7 @@ export class World {
         this.interaction.update(this.entities, this.player.mesh.position);
 
         this.followPlayer(camera);
+        this.updateGhosts(camera);
         this.combat.update(dt, camera);
 
         if (this.player.getComponent('health')?.isDead()) this.die(camera);
@@ -308,6 +309,14 @@ export class World {
         const { x, z } = this.player.mesh.position;
         this.terrain.updateGrass({ x, z, dirX: GROUND_VIEW_DIR.x, dirZ: GROUND_VIEW_DIR.z });
         this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);
+    }
+
+    /** Props the camera stands inside turn see-through; after followPlayer, so the test uses this frame's eye. */
+    private updateGhosts(camera: THREE.PerspectiveCamera) {
+        for (const entity of this.entities) {
+            const ghost = entity.getComponent('ghost');
+            ghost?.setGhosted(ghost.contains(camera.position));
+        }
     }
 
     private stopPlayerInput() {

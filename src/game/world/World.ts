@@ -155,13 +155,21 @@ export class World {
         // Built from the *whole* layout, not the loaded chunks: a flat boolean
         // array costs nothing per frame, and an enemy pathing towards a wall in
         // an unloaded chunk still gets the right answer.
+        this.refreshFootprints(layout);
+        this.streamer.setLayout(layout);
+
+        this.streamFor(this.player.mesh.position);
+    }
+
+    /**
+     * Everything derived from where static objects stand, without respawning
+     * them: an editor drag moves the meshes itself, only these lag behind.
+     */
+    public refreshFootprints(layout: MapEntity[]) {
         rebuildNavGrid(layout);
         // Same reasoning: from the whole layout, so a patch grown before its
         // chunk's entities stream in is still bare under them.
         this.terrain.setGrassFootprints(buildGrassFootprints(layout));
-        this.streamer.setLayout(layout);
-
-        this.streamFor(this.player.mesh.position);
     }
 
     /** Loads/unloads the chunks around a position and refreshes the flat view. */

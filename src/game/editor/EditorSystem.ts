@@ -753,6 +753,9 @@ export class EditorSystem {
             if (transform.heightOffset === undefined) delete source.heightOffset;
         }
 
+        // The meshes already stand where they were dropped; the nav grid (what
+        // actually blocks walkers) and the bare grass under them do not yet.
+        this.experience.world.refreshFootprints(this.layout);
         saveWorkingLayout(this.layout);
         this.emitSelection();
     }

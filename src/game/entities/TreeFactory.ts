@@ -9,7 +9,16 @@ import { jitterColor, type TintSpread } from '../render/tint';
 import { applyTreeSway, tickTreeSway } from '../render/treeSway';
 import { createRandom, hashString } from '../world/grass/random';
 
-const LEAF_SPREAD: TintSpread = { hue: 0.05, saturation: 0.1, lightness: 0.07 };
+/**
+ * How far below the ground the model's base sits, in unscaled world units. A
+ * ramp drops half a unit per tile-width unit, so the downhill edge of a
+ * 0.4-radius trunk is 0.2 under its centre: 0.25 keeps it rooted on any ramp.
+ * Bushes are short and wide, so they only need a hair.
+ */
+const TREE_SINK = 0.25;
+const BUSH_SINK = 0.05;
+
+const LEAF_SPREAD: TintSpread ={ hue: 0.05, saturation: 0.1, lightness: 0.07 };
 
 /** Base foliage colours; a repeated entry is a likelier pick, and autumn stays rare. */
 const LEAF_COLORS = [
@@ -33,7 +42,9 @@ export function createTree(entity: PropEntity, def: PropModelDef): Entity {
     const random = createRandom(hashString(entity.id));
 
     // Anchored on the model's own origin: the trunk base is the point the tree is seated and collides on.
-    loadModel(def.url, { height: def.height, anchor: 'origin' })
+    // Sunk a little, since the ground is sampled at the trunk's centre only.
+    const sink = def.kind === 'bush' ? BUSH_SINK : TREE_SINK;
+    loadModel(def.url, { height: def.height, anchor: 'origin', originY: -sink })
         .then(({ object, materials }) => {
             // The fit scaled the model uniformly, so this recovers its size in the units its shader sees.
             const modelHeight = def.height / object.scale.y;

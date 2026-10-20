@@ -39,7 +39,7 @@ const DEFAULTS = {
 };
 
 /** Colours sampled once from the gradient; evaluating stops per vertex per frame is wasted work. */
-const GRADIENT_RESOLUTION = 64;
+export const GRADIENT_RESOLUTION = 64;
 
 // Two vertices per point, pushed apart from the centre line here, so the CPU
 // never needs the camera. 'view': across both the trail and the eye ray.
@@ -330,7 +330,7 @@ function dynamicAttribute(array: Float32Array, itemSize: number) {
 }
 
 /** Bakes the stops into RGBA rows (linear colour, like every other material input). */
-function sampleGradient(stops: TrailGradientStop[]): Float32Array {
+export function sampleGradient(stops: TrailGradientStop[]): Float32Array {
     const out = new Float32Array(GRADIENT_RESOLUTION * 4);
     const colors = stops.map((stop) => new THREE.Color(stop.color));
     const mixed = new THREE.Color();

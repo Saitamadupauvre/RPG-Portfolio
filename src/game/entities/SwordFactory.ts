@@ -55,6 +55,12 @@ export function createSwordMesh(): THREE.Group {
     return sword;
 }
 
+/** World position of the blade's root, just past the guard, from the sword's own transform. */
+export function getSwordBladeBaseWorldPosition(sword: THREE.Object3D, target: THREE.Vector3): THREE.Vector3 {
+    target.set(0, 0, SWORD_TIP_Z - BLADE_LENGTH);
+    return sword.localToWorld(target);
+}
+
 /** World position of the blade tip, from the sword's own transform. */
 export function getSwordTipWorldPosition(sword: THREE.Object3D, target: THREE.Vector3): THREE.Vector3 {
     target.set(0, 0, SWORD_TIP_Z);

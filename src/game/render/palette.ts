@@ -52,7 +52,7 @@ export const PALETTE = {
  * they touch, so they stay close to white.
  */
 export const LIGHT = {
-    sky: 0xbcdde8,
+    sky: 0x87c3ff,
     /** Bounce from the ground: the meadow, darkened. Colours every shaded side. */
     bounce: 0x7d8a5e,
     sun: 0xfff1d0,

@@ -22,9 +22,12 @@ function loadSettings(): ScatterSettings {
     return isScatterSettings(stored) ? stored : structuredClone(DEFAULT_SCATTER);
 }
 
-/** The palette, plus every prop model by name, for a brush of exactly one rock. */
+/**
+ * The palette, plus every prop model by name, for a brush of exactly one rock.
+ * Triggers are left out: a volume is placed on purpose, never sprinkled.
+ */
 const options: PaletteEntry[] = [
-    ...palette,
+    ...palette.filter((entry) => entry.kind !== 'trigger'),
     ...PROP_MODEL_IDS.map((id): PaletteEntry => ({ kind: 'prop', variant: id, label: id })),
 ];
 

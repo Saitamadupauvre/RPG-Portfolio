@@ -2,6 +2,7 @@ import type { AppState } from './StateMachine';
 import type { MapEntity } from '../data/MapEntity';
 import type { Project } from '../data/Project';
 import type { PlayerStats } from '../data/stats';
+import type { TutorialId } from '../data/tutorials';
 import { EventEmitter } from './EventEmitter';
 import type { ScatterSettings, ScreenRect } from './editorTools';
 
@@ -28,6 +29,8 @@ export type AppEvents = {
     /** Whether the player stands at a bonfire, the only place stats can be bought. */
     levelUpAvailableChanged: [available: boolean];
     pauseChanged: [paused: boolean];
+    /** A trigger opened a tutorial: show its page in the book. */
+    tutorialShown: [tutorialId: TutorialId];
 
     editorPlaceKindChanged: [kind: MapEntity['kind'] | null, variant: string];
     editorGizmoChanged: [mode: 'translate' | 'rotate' | 'scale'];

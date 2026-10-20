@@ -1,4 +1,5 @@
 import type { StatId } from './stats';
+import type { TutorialId } from './tutorials';
 
 export type Vec3 = [number, number, number];
 
@@ -69,4 +70,20 @@ export interface BonfireEntity extends MapEntityTransform {
     model?: string;
 }
 
-export type MapEntity = EnemyEntity | ChestEntity | ItemEntity | PropEntity | StatueEntity | BonfireEntity;
+/**
+ * What a trigger does when the player walks in. Tagged union like `ChestLoot`:
+ * a new custom event is one member here plus one handler in `domain/triggerActions.ts`.
+ */
+export type TriggerAction = { kind: 'tutorial'; tutorialId: TutorialId };
+
+/**
+ * An invisible box volume (visible in the editor only). Its size is its `scale`:
+ * the box is one unit wide and deep, one unit tall from the ground up.
+ */
+export interface TriggerEntity extends MapEntityTransform {
+    kind: 'trigger';
+    id: string;
+    action: TriggerAction;
+}
+
+export type MapEntity = EnemyEntity | ChestEntity | ItemEntity | PropEntity | StatueEntity | BonfireEntity | TriggerEntity;

@@ -6,6 +6,7 @@ import { createItem } from './ItemFactory';
 import { createProp } from './PropFactory';
 import { createStatue } from './StatueFactory';
 import { createBonfire } from './BonfireFactory';
+import { createTrigger } from './TriggerFactory';
 
 const entityFactories: { [K in MapEntity['kind']]: (entity: Extract<MapEntity, { kind: K }>) => Entity } = {
     enemy: createEnemy,
@@ -14,6 +15,7 @@ const entityFactories: { [K in MapEntity['kind']]: (entity: Extract<MapEntity, {
     prop: createProp,
     statue: createStatue,
     bonfire: createBonfire,
+    trigger: createTrigger,
 };
 
 export function createMapEntity(mapEntity: MapEntity): Entity {

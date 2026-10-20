@@ -1,7 +1,15 @@
 import { events } from '../../core/events';
 import { tileMap } from '../../data/tileMap';
-import type { ChestLoot, MapEntity, Vec3 } from '../../data/MapEntity';
-import { defaultLoot, fieldsByKind, lootFieldByKind, palette, type FieldSpec } from './editorFields';
+import type { ChestLoot, MapEntity, TriggerAction, Vec3 } from '../../data/MapEntity';
+import {
+    actionFieldByKind,
+    defaultLoot,
+    defaultTriggerAction,
+    fieldsByKind,
+    lootFieldByKind,
+    palette,
+    type FieldSpec,
+} from './editorFields';
 import { button, input, numberField, numberInput, row } from './editorControls';
 import { mountScatterPanel } from './editorScatterPanel';
 import { DEFAULT_TILE_BRUSH_RADIUS } from '../../core/editorTools';
@@ -283,8 +291,44 @@ function renderInspector(entity: MapEntity): HTMLElement {
     }
 
     if (draft.kind === 'chest') form.appendChild(lootEditor(draft.loot, commit));
+    if (draft.kind === 'trigger') form.appendChild(actionEditor(draft, commit));
 
     return form;
+}
+
+/** The trigger's action: its kind, then that kind's one payload field. */
+function actionEditor(trigger: { action: TriggerAction }, commit: () => void): HTMLElement {
+    const box = document.createElement('div');
+    box.className = 'editor-loot';
+
+    const rebuild = () => {
+        const kindSelect = control(
+            {
+                control: 'select',
+                key: 'kind',
+                label: 'action',
+                options: Object.keys(actionFieldByKind).map((kind) => ({ value: kind, label: kind })),
+            },
+            trigger.action.kind,
+            (value) => {
+                trigger.action = defaultTriggerAction(value as TriggerAction['kind']);
+                rebuild();
+                commit();
+            },
+        );
+
+        const spec = actionFieldByKind[trigger.action.kind];
+        const record = trigger.action as unknown as Record<string, unknown>;
+        const payload = control(spec, record[spec.key], (value) => {
+            record[spec.key] = value;
+            commit();
+        });
+
+        box.replaceChildren(row('action', kindSelect), row(spec.label, payload));
+    };
+
+    rebuild();
+    return box;
 }
 
 function lootEditor(loot: ChestLoot[], commit: () => void): HTMLElement {

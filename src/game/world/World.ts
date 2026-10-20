@@ -274,6 +274,7 @@ export class World {
         this.allBodies.push(...this.entities, this.player);
         this.collision.resolve(this.allBodies);
         this.seatOnTerrain();
+        this.updateTriggers();
         this.interaction.update(this.entities, this.player.mesh.position);
 
         this.followPlayer(camera);
@@ -299,6 +300,13 @@ export class World {
         const airborne = this.player.getComponent('dash')?.airborneHeight() ?? null;
         if (airborne === null) snapToGround(this.player.mesh, this.player.groundOffset);
         else this.player.mesh.position.y = airborne + this.player.groundOffset;
+    }
+
+    /** After seating: the player's height is final for this frame, so a box raised off the ground tests right. */
+    private updateTriggers() {
+        for (const entity of this.entities) {
+            entity.getComponent('trigger')?.test(this.player.mesh.position);
+        }
     }
 
     private updateGrass(camera: THREE.PerspectiveCamera) {

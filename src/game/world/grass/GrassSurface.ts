@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BLADE_HEIGHT, createBladeGeometry } from './bladeGeometry';
 import { createGrassMaterial, createGrassUniforms, MAX_COLLIDERS, type GrassUniforms } from './grassMaterial';
 import { createRandom, hashString, type Random } from './random';
+import { GRASS_LAYER } from '../../render/layers';
 
 export type GrassCollider = { position: THREE.Vector3; radius: number };
 
@@ -26,8 +27,6 @@ const DEFAULT_LOD: GrassLodLevel[] = [
     { distance: 32, ratio: 0.25 },
     { distance: Infinity, ratio: 0.1 },
 ];
-
-export const GRASS_LAYER = 1;
 
 const DEFAULT_MAX_DISTANCE = 70;
 const DEFAULT_DENSITY = 20;

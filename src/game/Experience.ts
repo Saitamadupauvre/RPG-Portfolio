@@ -5,7 +5,7 @@ import { EditorSystem } from './editor/EditorSystem';
 import { stateMachine } from '../core/StateMachine';
 import { WaterDepthPrepass } from './world/water/depthPrepass';
 import { PerfOverlay } from './debug/PerfOverlay';
-import { GRASS_LAYER } from './world/grass/GrassSurface';
+import { GRASS_LAYER } from './render/layers';
 
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;

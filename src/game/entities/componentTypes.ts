@@ -15,6 +15,7 @@ import type { HitFlashComponent } from './components/HitFlashComponent';
 import type { InteractableComponent } from './components/InteractableComponent';
 import type { MovementComponent } from './components/MovementComponent';
 import type { SwordTrailComponent } from './components/SwordTrailComponent';
+import type { TriggerComponent } from './components/TriggerComponent';
 import type { XrayComponent } from './components/XrayComponent';
 
 export type ComponentMap = {
@@ -36,6 +37,7 @@ export type ComponentMap = {
     interactable: InteractableComponent;
     movement: MovementComponent;
     swordTrail: SwordTrailComponent;
+    trigger: TriggerComponent;
     xray: XrayComponent;
 };
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GRASS_LAYER } from '../grass/GrassSurface';
+import { EDITOR_LAYER, GRASS_LAYER } from '../../render/layers';
 
 /**
  * Renders the scene's depth (water hidden) into a texture the water shader can
@@ -42,12 +42,16 @@ export class WaterDepthPrepass {
         // triangles, drawn a second time just for this. Blades are a fraction
         // of a unit tall, so the foam reading the ground under them instead is
         // not visible, while skipping them halves the field's cost.
+        // Editor-only volumes are left out too: the shore would foam around trigger boxes.
+        // The mask is restored as it was, not re-enabled, since the editor layer is on only in EDITOR.
         const previousTarget = renderer.getRenderTarget();
+        const previousLayers = camera.layers.mask;
         camera.layers.disable(GRASS_LAYER);
+        camera.layers.disable(EDITOR_LAYER);
         renderer.setRenderTarget(this.target);
         renderer.render(scene, camera);
         renderer.setRenderTarget(previousTarget);
-        camera.layers.enable(GRASS_LAYER);
+        camera.layers.mask = previousLayers;
 
         water.visible = wasVisible;
     }

@@ -27,6 +27,7 @@ import { DEFAULT_SCATTER, DEFAULT_TILE_BRUSH_RADIUS, type ScatterSettings, type 
 import { UndoHistory, type EditorSnapshot } from './UndoHistory';
 import { BrushCursor, ScatterGhosts } from './brushVisuals';
 import { eraseStamp, scatterStamp } from './scatter';
+import { EDITOR_LAYER } from '../render/layers';
 
 const GRID_SNAP = 1;
 const ROTATION_SNAP = Math.PI / 12;
@@ -86,6 +87,12 @@ export class EditorSystem {
     constructor(experience: Experience) {
         this.experience = experience;
         const { camera, canvas, scene } = this.experience;
+
+        // A raycaster, like a camera, only hits layer 0 by default; trigger volumes sit
+        // on the editor layer. Their edges are what gets picked, so keep the line
+        // threshold (world units around a line that count as a hit) tight.
+        this.raycaster.layers.enable(EDITOR_LAYER);
+        this.raycaster.params.Line.threshold = 0.25;
 
         this.orbit = new OrbitControls(camera, canvas);
         this.orbit.enabled = false;
@@ -211,6 +218,8 @@ export class EditorSystem {
     public enter() {
         this.applyWorkingCopy();
         const { camera } = this.experience;
+        // Trigger volumes live on this layer: drawn and pickable only while editing.
+        camera.layers.enable(EDITOR_LAYER);
         this.orbit.target.copy(this.experience.world.player.mesh.position);
         this.orbit.enabled = true;
         this.orbit.update();
@@ -227,6 +236,7 @@ export class EditorSystem {
         this.select([]);
         this.orbit.enabled = false;
         this.grid.visible = false;
+        this.experience.camera.layers.disable(EDITOR_LAYER);
         this.experience.world.resetCamera();
     }
 

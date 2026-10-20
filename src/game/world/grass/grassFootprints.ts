@@ -28,6 +28,7 @@ const footprintOf: { [K in MapEntity['kind']]: (entity: Extract<MapEntity, { kin
     bonfire: (entity) => circle(entity, BONFIRE_COLLISION_RADIUS),
     enemy: () => null,
     item: () => null,
+    trigger: () => null,
 };
 
 export function buildGrassFootprints(layout: MapEntity[]): GrassFootprint[] {

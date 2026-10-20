@@ -1,5 +1,6 @@
 import type { EnemyEntity, MapEntity, Vec3 } from '../../data/MapEntity';
 import { randomBonfireModel } from '../../data/bonfireModels';
+import { isTutorialId } from '../../data/tutorials';
 import { projects } from '../../data/projects';
 import { isPropModel, isPropModelKind, PROP_MODELS, randomModelOfKind } from '../../data/propModels';
 
@@ -63,6 +64,14 @@ const builders: {
         id,
         model: randomBonfireModel(),
         position,
+    }),
+    trigger: (id, position, variant) => ({
+        kind: 'trigger',
+        id,
+        action: { kind: 'tutorial', tutorialId: isTutorialId(variant) ? variant : 'movement' },
+        position,
+        // Wide enough that the player cannot slip past its corner, tall enough to catch a dash hop.
+        scale: [4, 2, 4],
     }),
 };
 

@@ -45,6 +45,8 @@ export const PALETTE = {
     gold: 0xe8c068,
     /** Brightest value, for highlights and metal. */
     cream: 0xfff4dc,
+    /** Editor-only trigger volumes: a cyan nothing in the world uses, so a box never passes for scenery. */
+    trigger: 0x4fd6e8,
 } as const;
 
 /**

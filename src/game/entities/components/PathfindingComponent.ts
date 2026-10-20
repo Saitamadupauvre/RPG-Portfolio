@@ -71,16 +71,15 @@ export class PathfindingComponent implements Component {
     private scratchToWaypoint = new THREE.Vector3();
 
     private followPath(dt: number) {
-        if (this.waypointIndex >= this.path.length) return;
-
-        const waypoint = this.path[this.waypointIndex];
-        const toWaypoint = this.scratchToWaypoint.subVectors(waypoint, this.mesh.position).setY(0);
-        const distance = toWaypoint.length();
-
-        if (distance < WAYPOINT_RADIUS) {
+        const toWaypoint = this.scratchToWaypoint;
+        // A reached waypoint is passed in the same frame: returning on it stood the
+        // body still for one frame per cell, which hitched any walk cycle read off its speed.
+        while (this.waypointIndex < this.path.length) {
+            toWaypoint.subVectors(this.path[this.waypointIndex], this.mesh.position).setY(0);
+            if (toWaypoint.length() >= WAYPOINT_RADIUS) break;
             this.waypointIndex++;
-            return;
         }
+        if (this.waypointIndex >= this.path.length) return;
 
         toWaypoint.normalize();
         this.mesh.position.addScaledVector(toWaypoint, this.speed * dt);

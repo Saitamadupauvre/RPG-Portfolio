@@ -1,4 +1,4 @@
-import type { MapEntity, Vec3 } from '../../data/MapEntity';
+import type { EnemyEntity, MapEntity, Vec3 } from '../../data/MapEntity';
 import { randomBonfireModel } from '../../data/bonfireModels';
 import { projects } from '../../data/projects';
 import { isPropModel, isPropModelKind, PROP_MODELS, randomModelOfKind } from '../../data/propModels';
@@ -16,7 +16,7 @@ const builders: {
     enemy: (id, position, variant) => ({
         kind: 'enemy',
         id,
-        enemyType: (variant || 'grunt') as 'grunt' | 'elite' | 'boss',
+        enemyType: (variant || 'grunt') as EnemyEntity['enemyType'],
         position,
     }),
     chest: (id, position, variant) => {

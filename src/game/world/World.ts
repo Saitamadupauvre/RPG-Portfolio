@@ -12,9 +12,11 @@ import { createPlayer } from "../entities/PlayerFactory";
 import { bindPlayerStats } from "../playerStats";
 import { enemyPool } from "../entities/EnemyPool";
 import { CombatSystem } from "../CombatSystem";
+import { ProjectileSystem } from "../ProjectileSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
 import { findFreePoint, rebuildNavGrid } from "./navigation";
+import { rebuildObstacles } from "./obstacles";
 import { ChunkStreamer } from "./ChunkStreamer";
 import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
 import { isBossDefeated } from "../../domain/defeatedBosses";
@@ -102,11 +104,14 @@ export class World {
         this.entityGroup.add(this.player.mesh);
         bindPlayerStats(this.player);
 
-        enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup);
+        // Shared by the archers that loose arrows and the combat system that lands them.
+        const projectiles = new ProjectileSystem(this.entityGroup);
+        enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup, projectiles);
 
         this.combat = new CombatSystem(
             this.entityGroup,
             this.player,
+            projectiles,
             (entity) => {
                 // CombatSystem already detached the mesh and pooled the entity;
                 // the chunk must forget it too or the next despawn releases it twice.
@@ -167,6 +172,7 @@ export class World {
      */
     public refreshFootprints(layout: MapEntity[]) {
         rebuildNavGrid(layout);
+        rebuildObstacles(layout);
         // Same reasoning: from the whole layout, so a patch grown before its
         // chunk's entities stream in is still bare under them.
         this.terrain.setGrassFootprints(buildGrassFootprints(layout));

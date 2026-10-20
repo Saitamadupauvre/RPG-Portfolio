@@ -10,18 +10,25 @@ import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { EnemyAIComponent } from './components/EnemyAIComponent';
 import { ComboAttacker, type EnemyAttacker } from './components/EnemyAttacker';
 import { LungeComponent, type LungeOptions } from './components/LungeComponent';
+import { ShootComponent, type ShootOptions } from './components/ShootComponent';
+import { ArcherAnimationDriver } from './components/ArcherAnimationDriver';
 import { DashTrailComponent } from './components/DashTrailComponent';
 import { XrayComponent } from './components/XrayComponent';
 import { XraySilhouette } from '../render/xraySilhouette';
 import type { TrailRendererOptions } from '../effects/TrailRenderer';
+import type { ProjectileSystem } from '../ProjectileSystem';
+import { AnimatorComponent } from '../animation/AnimatorComponent';
+import { collectRig } from '../animation/Rig';
+import { archerController } from './archerAnimation';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
-import { loadModel } from './loadModel';
+import { loadModel, type ModelFitOptions } from './loadModel';
 
-/** Stand and swing within `range`, or prepare and dash at the player. */
+/** Stand and swing within `range`, prepare and dash at the player, or keep away and shoot. */
 type EnemyAttack =
     | { kind: 'combo'; range: number; moves: ComboMove[] }
-    | { kind: 'lunge'; options: LungeOptions };
+    | { kind: 'lunge'; options: LungeOptions }
+    | { kind: 'shoot'; options: ShootOptions };
 
 interface EnemyLook {
     size: number;
@@ -34,8 +41,11 @@ interface EnemyLook {
     coins: number;
     attack: EnemyAttack;
     /** Blender model (tools/blender/make_enemies.py) that replaces the placeholder box; none yet for the boss. */
-    model?: { url: string; height: number };
+    model?: { url: string; height: number; anchor?: ModelFitOptions['anchor'] };
 }
+
+/** The node in the skeleton's rig that holds the nocked arrow: shots leave from it. */
+const ARCHER_MUZZLE = 'Arrow';
 
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
@@ -56,6 +66,21 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
             { options: { damage: 6, distance: 1, duration: 0.2, color: 0xffaa00 }, recovery: 0.25, windup: 0.3 },
             { options: { damage: 14, distance: 1.2, duration: 0.35, color: 0xff3300 }, recovery: 0.7, windup: 0.5 },
         ] },
+    },
+    archer: {
+        // Hollow bones: frail, two sword hits. The box is a little wider than the bones so hits feel fair.
+        size: 1, color: PALETTE.wheat, hp: 22,
+        // Anchored on its own origin, between its feet: the bow on one side would pull a bounding-box centre off its axis.
+        model: { url: 'models/enemy-skeleton.glb', height: 1.62, anchor: 'origin' },
+        moveSpeed: 2, aggroRadius: 13, deaggroRadius: 30, coins: 10,
+        attack: {
+            kind: 'shoot',
+            options: {
+                range: 10, draw: 1, lock: 0.18, recovery: 0.6, cooldown: 1.4, flinch: 0.45,
+                arrow: { speed: 15, damage: 8, lead: 0.6 },
+                retreat: 3.5, hop: { distance: 2.5, duration: 0.5, cooldown: 3 },
+            },
+        },
     },
     boss: {
         size: 1.4, color: PALETTE.bark, hp: 200,
@@ -110,7 +135,20 @@ type EnemyPoolDeps = {
     camera: THREE.Camera;
     player: THREE.Object3D;
     entityGroup: THREE.Object3D;
+    /** Where archers put their arrows. */
+    projectiles: ProjectileSystem;
 };
+
+function createAttacker(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComponent, health: HealthComponent, deps: EnemyPoolDeps): EnemyAttacker {
+    switch (look.attack.kind) {
+        case 'lunge':
+            return new LungeComponent(mesh, deps.player, attack, look.attack.options);
+        case 'combo':
+            return new ComboAttacker(new ComboComponent(attack, look.attack.moves), look.attack.range);
+        case 'shoot':
+            return new ShootComponent(mesh, deps.player, attack, health, deps.projectiles, look.attack.options);
+    }
+}
 
 /** The box is centred on its origin, so its feet sit half its height below it. */
 function bodyHeightOf(type: EnemyEntity['enemyType']): number {
@@ -121,14 +159,14 @@ export class EnemyPool {
     private free = new Map<EnemyEntity['enemyType'], Entity[]>();
     private deps: EnemyPoolDeps | null = null;
 
-    public init(camera: THREE.Camera, player: THREE.Object3D, entityGroup: THREE.Object3D) {
-        this.deps = { camera, player, entityGroup };
+    public init(camera: THREE.Camera, player: THREE.Object3D, entityGroup: THREE.Object3D, projectiles: ProjectileSystem) {
+        this.deps = { camera, player, entityGroup, projectiles };
     }
 
     private createEnemy(type: EnemyEntity['enemyType'], id: string): Entity {
         // Fail loudly: before this check, a missing init() quietly built enemies
         // with no AI and no health bar, which looks like a gameplay bug.
-        if (!this.deps) throw new Error('enemyPool.init(camera, player, entityGroup) must run before the first enemy spawns');
+        if (!this.deps) throw new Error('enemyPool.init(camera, player, entityGroup, projectiles) must run before the first enemy spawns');
         const { camera, player, entityGroup } = this.deps;
 
         const geometry = getGeometry(type);
@@ -144,9 +182,7 @@ export class EnemyPool {
 
         const health = new HealthComponent(look.hp);
         const attack = new AttackComponent(mesh);
-        const attacker: EnemyAttacker = look.attack.kind === 'lunge'
-            ? new LungeComponent(mesh, player, attack, look.attack.options)
-            : new ComboAttacker(new ComboComponent(attack, look.attack.moves), look.attack.range);
+        const attacker = createAttacker(look, mesh, attack, health, this.deps);
         // Origin is a placeholder; acquire() resets the AI onto the real one.
         const ai = new EnemyAIComponent(mesh, player, mesh.position, look.moveSpeed, look.aggroRadius, look.deaggroRadius, attacker);
 
@@ -166,21 +202,37 @@ export class EnemyPool {
         if (attacker instanceof LungeComponent) {
             entity.addComponent('dashTrail', new DashTrailComponent(mesh, entityGroup, () => attacker.isDashing, ENEMY_TRAIL));
         }
+        // The archer is the one enemy with clips. After the AI, so the driver reads this frame's shot.
+        let animator: AnimatorComponent | null = null;
+        if (attacker instanceof ShootComponent) {
+            animator = new AnimatorComponent(archerController);
+            entity
+                .addComponent('animationDriver', new ArcherAnimationDriver(animator, mesh, attacker))
+                .addComponent('animator', animator);
+        }
         entity.bodyHeight = height;
         entity.groundOffset = height / 2;
 
         if (look.model) {
             const hitFlash = entity.getComponent('hitFlash');
+            const { url, anchor } = look.model;
             // The root's origin is the body's centre, so the model's feet go half a body below it.
-            loadModel(look.model.url, { height: look.model.height, originY: -height / 2 })
-                .then(({ object, materials }) => {
+            loadModel(url, { height: look.model.height, originY: -height / 2, anchor })
+                .then(({ object, materials, animations }) => {
                     mesh.remove(placeholder);
                     material.dispose();
                     mesh.add(object);
                     hitFlash?.setMaterials(materials);
                     entity.getComponent('xray')?.refresh();
+                    if (attacker instanceof ShootComponent) attacker.setMuzzle(object.getObjectByName(ARCHER_MUZZLE) ?? null);
+                    if (!animator) return;
+                    try {
+                        animator.bind(collectRig(object), animations);
+                    } catch (error) {
+                        console.error(`[enemy] ${url}: animation setup failed, the model will stand still`, error);
+                    }
                 })
-                .catch((error) => console.error(`[enemy] ${look.model?.url} failed to load, keeping placeholder`, error));
+                .catch((error) => console.error(`[enemy] ${url} failed to load, keeping placeholder`, error));
         }
 
         return entity;
@@ -210,6 +262,8 @@ export class EnemyPool {
         entity.getComponent('hitFlash')?.reset();
         entity.getComponent('attack')?.reset();
         entity.getComponent('dashTrail')?.reset();
+        const driver = entity.getComponent('animationDriver');
+        if (driver instanceof ArcherAnimationDriver) driver.reset();
 
         applyTransform(entity.mesh, source, entity.groundOffset);
         // Origin is read after the transform so the AI returns to the point on

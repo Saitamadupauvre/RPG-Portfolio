@@ -7,6 +7,7 @@ import { defeatBoss } from '../domain/defeatedBosses';
 import { chunkKeyAt, type ChunkKey } from '../domain/chunks';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
+import type { ProjectileSystem } from './ProjectileSystem';
 
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;
@@ -19,6 +20,7 @@ export class CombatSystem {
     private screenShake = new ScreenShake();
     private entityGroup: THREE.Group;
     private player: Entity;
+    private projectiles: ProjectileSystem;
     private onKill: (entity: Entity) => void;
     private onSpawn: (entity: Entity) => void;
 
@@ -29,11 +31,13 @@ export class CombatSystem {
     constructor(
         entityGroup: THREE.Group,
         player: Entity,
+        projectiles: ProjectileSystem,
         onKill: (entity: Entity) => void,
         onSpawn: (entity: Entity) => void,
     ) {
         this.entityGroup = entityGroup;
         this.player = player;
+        this.projectiles = projectiles;
         this.onKill = onKill;
         this.onSpawn = onSpawn;
         this.hitParticles = new ParticleSystem(entityGroup);
@@ -42,6 +46,7 @@ export class CombatSystem {
     public clear() {
         this.enemies = [];
         this.sources = [];
+        this.projectiles.clear();
     }
 
     public addEnemy(entity: Entity, source: EnemyEntity) {
@@ -67,6 +72,8 @@ export class CombatSystem {
     }
 
     public resetEnemies() {
+        // Arrows in the air or planted around belong to the fight being reset.
+        this.projectiles.clear();
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;
 
@@ -85,6 +92,7 @@ export class CombatSystem {
     public update(dt: number, camera: THREE.Camera) {
         this.resolveAttack();
         this.resolveEnemyAttacks();
+        this.resolveArrows(dt);
         this.hitParticles.update(dt);
         camera.position.add(this.screenShake.getOffset(dt));
     }
@@ -103,11 +111,21 @@ export class CombatSystem {
             if (!hitbox || !hitbox.intersectsBox(playerBox)) continue;
             if (!attack.registerHit(this.player.id)) continue;
 
-            playerHealth.takeDamage(attack.damage);
-            this.player.getComponent('hitFlash')?.trigger();
-            this.hitParticles.spawnBurst(playerBox.getCenter(this.scratchCenter));
-            this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
+            this.hurtPlayer(attack.damage, playerBox.getCenter(this.scratchCenter));
         }
+    }
+
+    /** Arrows fly on even with every archer dead or unloaded, so they are resolved on their own. */
+    private resolveArrows(dt: number) {
+        const playerBox = hurtbox(this.player, this.scratchBoxA);
+        this.projectiles.update(dt, playerBox, (damage, point) => this.hurtPlayer(damage, point));
+    }
+
+    private hurtPlayer(damage: number, at: THREE.Vector3) {
+        this.player.getComponent('health')?.takeDamage(damage);
+        this.player.getComponent('hitFlash')?.trigger();
+        this.hitParticles.spawnBurst(at);
+        this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
     }
 
     private resolveAttack() {

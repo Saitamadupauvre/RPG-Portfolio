@@ -18,20 +18,16 @@ export interface LungeOptions {
     hit?: AttackHitboxOptions;
 }
 
-type LungeState = 'idle' | 'prepare' | 'dash' | 'recover';
+export type LungeState = 'idle' | 'prepare' | 'dash' | 'recover';
 
-const LEAN_BACK = -0.35;
-const LEAN_FORWARD = 0.3;
-const TREMBLE_ANGLE = 0.08;
-const TREMBLE_RATE = 55;
 /** A dash step that covers less than this share of its length ran into something. */
 const BLOCKED_RATIO = 0.3;
 
 /**
  * Prepare, then dash in a straight line through where the player stood when
  * the prepare ended. The hitbox rides along with the body for the whole dash.
- * The tell is a pose, not a clip: the root leans back and trembles, then
- * pitches forward into the dash.
+ * Gameplay owns every timing; LungeAnimationDriver scrubs the goblin's Lunge
+ * clip (crouch and tremble, leap, skid) to `state`/`progress`.
  */
 export class LungeComponent implements EnemyAttacker {
     public readonly name = 'lunge';
@@ -41,7 +37,7 @@ export class LungeComponent implements EnemyAttacker {
     private attack: AttackComponent;
     private options: LungeOptions;
 
-    private state: LungeState = 'idle';
+    private current: LungeState = 'idle';
     private timer = 0;
     private cooldown = 0;
     private travelled = 0;
@@ -54,40 +50,54 @@ export class LungeComponent implements EnemyAttacker {
         this.target = target;
         this.attack = attack;
         this.options = options;
-        // Yaw first, then pitch around the body's own sideways axis, so leaning
-        // follows the facing instead of always tipping along world X.
-        this.mesh.rotation.order = 'YXZ';
+    }
+
+    public get state(): LungeState {
+        return this.current;
+    }
+
+    /** 0..1 through the current state (0 when idle). */
+    public get progress(): number {
+        switch (this.current) {
+            case 'idle':
+                return 0;
+            case 'prepare':
+                return 1 - Math.max(0, this.timer) / this.options.prepare;
+            case 'dash':
+                return Math.min(1, this.travelled / this.options.distance);
+            case 'recover':
+                return 1 - Math.max(0, this.timer) / this.options.recovery;
+        }
     }
 
     /** True only while the body is flying; drives the dash trail. */
     public get isDashing(): boolean {
-        return this.state === 'dash';
+        return this.current === 'dash';
     }
 
     public engage(target: THREE.Vector3, distance: number): boolean {
-        if (this.state !== 'idle') return true;
+        if (this.current !== 'idle') return true;
         if (this.cooldown > 0 || distance > this.options.range) return false;
         // Behind a rock or across a cliff: keep chasing around it instead of
         // crouching for a dash that would stop dead against the obstacle.
         if (!this.hasLineTo(target)) return false;
 
-        this.state = 'prepare';
+        this.current = 'prepare';
         this.timer = this.options.prepare;
         return true;
     }
 
     public reset() {
-        this.state = 'idle';
+        this.current = 'idle';
         this.timer = 0;
         this.cooldown = 0;
-        this.setPose(0, 0);
         this.attack.reset();
     }
 
     public update(dt: number) {
         if (this.cooldown > 0) this.cooldown -= dt;
 
-        switch (this.state) {
+        switch (this.current) {
             case 'idle':
                 return;
             case 'prepare':
@@ -107,10 +117,6 @@ export class LungeComponent implements EnemyAttacker {
         // Keeps tracking the player while crouched; the aim locks only on release.
         this.attack.face(this.target.position);
 
-        const progress = 1 - Math.max(0, this.timer) / this.options.prepare;
-        const tremble = Math.sin(this.timer * TREMBLE_RATE) * TREMBLE_ANGLE * progress;
-        this.setPose(LEAN_BACK * progress, tremble);
-
         if (this.timer <= 0) this.startDash();
     }
 
@@ -123,8 +129,7 @@ export class LungeComponent implements EnemyAttacker {
         // The player ducked behind cover during the prepare: stand down, no cooldown,
         // so the next clear look starts a fresh lunge.
         if (!this.hasLineTo(this.target.position)) {
-            this.state = 'idle';
-            this.setPose(0, 0);
+            this.current = 'idle';
             return;
         }
 
@@ -133,9 +138,8 @@ export class LungeComponent implements EnemyAttacker {
         this.direction.normalize();
         this.aimPoint.copy(this.mesh.position).add(this.direction);
 
-        this.state = 'dash';
+        this.current = 'dash';
         this.travelled = 0;
-        this.setPose(LEAN_FORWARD, 0);
         this.attack.trigger(this.aimPoint, {
             ...this.options.hit,
             duration: this.options.distance / this.options.speed,
@@ -155,24 +159,16 @@ export class LungeComponent implements EnemyAttacker {
         if (blocked || this.travelled >= this.options.distance) {
             // A dash cut short by a wall must not leave a live hitbox hanging there.
             this.attack.reset();
-            this.state = 'recover';
+            this.current = 'recover';
             this.timer = this.options.recovery;
         }
     }
 
     private updateRecover(dt: number) {
         this.timer -= dt;
-        const progress = Math.max(0, this.timer) / this.options.recovery;
-        this.setPose(LEAN_FORWARD * progress, 0);
-
         if (this.timer <= 0) {
-            this.state = 'idle';
+            this.current = 'idle';
             this.cooldown = this.options.cooldown;
         }
-    }
-
-    private setPose(pitch: number, roll: number) {
-        this.mesh.rotation.x = pitch;
-        this.mesh.rotation.z = roll;
     }
 }

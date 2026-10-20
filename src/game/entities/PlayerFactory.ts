@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import { Entity } from './Entity';
 import { MovementComponent } from './components/MovementComponent';
 import { DashComponent } from './components/DashComponent';
@@ -33,8 +33,8 @@ const WEAPON_SOCKET = 'Socket_HandR';
 
 const COMBO_MOVES: ComboMove[] = [
     // Scaled off the Strength stat (base 10): 12 and 16 damage before any upgrade.
+    // One move for now: the overhead chop that followed it is out until it is redone.
     { options: { distance: 0.9, duration: 0.18, color: 0x66ccff }, damageScale: 1.2, recovery: 0.18, windup: 0.12 },
-    { options: { distance: 1.1, duration: 0.22, color: 0x3399ff }, damageScale: 1.6, recovery: 0.35, windup: 0.14 },
 ];
 
 export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Group): Entity {
@@ -60,12 +60,14 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const sword = createSwordMesh();
     const standInSocket = new THREE.Object3D();
     standInSocket.position.set(-0.45, -0.55, 0.2);
-    standInSocket.rotation.x = 0.45;
+    // Like the model's rest pose: twisted 35Â° about the blade (Euler XYZ applies Z, the blade
+    // axis, first), then raised 60Â° above level (rotating +Z about X tips it up).
+    standInSocket.rotation.set(-Math.PI / 3, 0, THREE.MathUtils.degToRad(60));
     standInSocket.add(sword);
     visual.add(standInSocket);
 
     // Base values come from the progression rules, so there is one source of
-    // truth for "how fast / how tough is the player" — bindPlayerStats keeps
+    // truth for "how fast / how tough is the player" â€” bindPlayerStats keeps
     // them in sync after every upgrade.
     const stats = getPlayerStats();
 

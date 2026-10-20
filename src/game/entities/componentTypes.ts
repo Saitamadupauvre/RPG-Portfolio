@@ -1,6 +1,6 @@
 import type { HealthComponent } from '../../domain/components/HealthComponent';
 import type { AnimatorComponent } from '../animation/AnimatorComponent';
-import type { ArcherAnimationDriver } from './components/ArcherAnimationDriver';
+import type { AnimationDriver } from './components/AnimationDriver';
 import type { AttackComponent } from './components/AttackComponent';
 import type { ComboComponent } from './components/ComboComponent';
 import type { DashComponent } from './components/DashComponent';
@@ -14,13 +14,12 @@ import type { HealthBarComponent } from './components/HealthBarComponent';
 import type { HitFlashComponent } from './components/HitFlashComponent';
 import type { InteractableComponent } from './components/InteractableComponent';
 import type { MovementComponent } from './components/MovementComponent';
-import type { PlayerAnimationDriver } from './components/PlayerAnimationDriver';
 import type { SwordTrailComponent } from './components/SwordTrailComponent';
 import type { XrayComponent } from './components/XrayComponent';
 
 export type ComponentMap = {
     /** Whatever feeds an animator its parameters: one driver per kind of character. */
-    animationDriver: PlayerAnimationDriver | ArcherAnimationDriver;
+    animationDriver: AnimationDriver;
     animator: AnimatorComponent;
     attack: AttackComponent;
     combo: ComboComponent;

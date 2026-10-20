@@ -35,6 +35,11 @@ export class MovementComponent implements Component {
     private onKeyDown = (event: KeyboardEvent) => this.keys.add(event.code);
     private onKeyUp = (event: KeyboardEvent) => this.keys.delete(event.code);
 
+    /** Walking speed in units/s (Agility), whether or not the body is moving right now. */
+    public get moveSpeed(): number {
+        return this.speed;
+    }
+
     public setSpeed(speed: number) {
         this.speed = speed;
     }

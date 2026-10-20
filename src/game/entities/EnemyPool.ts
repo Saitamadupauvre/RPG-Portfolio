@@ -12,6 +12,9 @@ import { ComboAttacker, type EnemyAttacker } from './components/EnemyAttacker';
 import { LungeComponent, type LungeOptions } from './components/LungeComponent';
 import { ShootComponent, type ShootOptions } from './components/ShootComponent';
 import { ArcherAnimationDriver } from './components/ArcherAnimationDriver';
+import { ComboAnimationDriver } from './components/ComboAnimationDriver';
+import { LungeAnimationDriver } from './components/LungeAnimationDriver';
+import type { AnimationDriver } from './components/AnimationDriver';
 import { DashTrailComponent } from './components/DashTrailComponent';
 import { XrayComponent } from './components/XrayComponent';
 import { XraySilhouette } from '../render/xraySilhouette';
@@ -19,7 +22,10 @@ import type { TrailRendererOptions } from '../effects/TrailRenderer';
 import type { ProjectileSystem } from '../ProjectileSystem';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
 import { collectRig } from '../animation/Rig';
+import type { AnimatorControllerDefinition } from '../../domain/animation/AnimatorController';
 import { archerController } from './archerAnimation';
+import { goblinController } from './goblinAnimation';
+import { soldierController } from './soldierAnimation';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
 import { loadModel, type ModelFitOptions } from './loadModel';
@@ -41,7 +47,13 @@ interface EnemyLook {
     coins: number;
     attack: EnemyAttack;
     /** Blender model (tools/blender/make_enemies.py) that replaces the placeholder box; none yet for the boss. */
-    model?: { url: string; height: number; anchor?: ModelFitOptions['anchor'] };
+    model?: {
+        url: string;
+        height: number;
+        anchor?: ModelFitOptions['anchor'];
+        /** The graph that plays the model's clips: they come with the model, so does what plays them. */
+        controller: AnimatorControllerDefinition;
+    };
 }
 
 /** The node in the skeleton's rig that holds the nocked arrow: shots leave from it. */
@@ -49,7 +61,7 @@ const ARCHER_MUZZLE = 'Arrow';
 
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
-        size: 0.6, color: PALETTE.berry, hp: 20, model: { url: 'models/enemy-goblin.glb', height: 1.05 },
+        size: 0.6, color: PALETTE.berry, hp: 20, model: { url: 'models/enemy-goblin.glb', height: 1.05, controller: goblinController },
         moveSpeed: 2, aggroRadius: 10, deaggroRadius: 28, coins: 5,
         attack: {
             kind: 'lunge',
@@ -60,7 +72,7 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
         },
     },
     elite: {
-        size: 0.9, color: PALETTE.autumn, hp: 50, model: { url: 'models/enemy-soldier.glb', height: 2 },
+        size: 0.9, color: PALETTE.autumn, hp: 50, model: { url: 'models/enemy-soldier.glb', height: 2, controller: soldierController },
         moveSpeed: 2.5, aggroRadius: 12, deaggroRadius: 30, coins: 18,
         attack: { kind: 'combo', range: 1.3, moves: [
             { options: { damage: 6, distance: 1, duration: 0.2, color: 0xffaa00 }, recovery: 0.25, windup: 0.3 },
@@ -71,7 +83,7 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
         // Hollow bones: frail, two sword hits. The box is a little wider than the bones so hits feel fair.
         size: 1, color: PALETTE.wheat, hp: 22,
         // Anchored on its own origin, between its feet: the bow on one side would pull a bounding-box centre off its axis.
-        model: { url: 'models/enemy-skeleton.glb', height: 1.62, anchor: 'origin' },
+        model: { url: 'models/enemy-skeleton.glb', height: 1.62, anchor: 'origin', controller: archerController },
         moveSpeed: 2, aggroRadius: 13, deaggroRadius: 30, coins: 10,
         attack: {
             kind: 'shoot',
@@ -139,14 +151,33 @@ type EnemyPoolDeps = {
     projectiles: ProjectileSystem;
 };
 
-function createAttacker(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComponent, health: HealthComponent, deps: EnemyPoolDeps): EnemyAttacker {
+/**
+ * An attacker and how to animate it. The driver reads the attacker's phases, so the two are
+ * built side by side here rather than matched up later with `instanceof`.
+ */
+type Fighter = {
+    attacker: EnemyAttacker;
+    /** Builds the driver playing this attacker on an animator, for an enemy whose model has clips. */
+    drive: (animator: AnimatorComponent) => AnimationDriver;
+};
+
+function createFighter(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComponent, health: HealthComponent, deps: EnemyPoolDeps): Fighter {
     switch (look.attack.kind) {
-        case 'lunge':
-            return new LungeComponent(mesh, deps.player, attack, look.attack.options);
-        case 'combo':
-            return new ComboAttacker(new ComboComponent(attack, look.attack.moves), look.attack.range);
-        case 'shoot':
-            return new ShootComponent(mesh, deps.player, attack, health, deps.projectiles, look.attack.options);
+        case 'lunge': {
+            const lunge = new LungeComponent(mesh, deps.player, attack, look.attack.options);
+            return { attacker: lunge, drive: (animator) => new LungeAnimationDriver(animator, mesh, lunge) };
+        }
+        case 'combo': {
+            const combo = new ComboComponent(attack, look.attack.moves);
+            return {
+                attacker: new ComboAttacker(combo, look.attack.range),
+                drive: (animator) => new ComboAnimationDriver(animator, mesh, combo, attack),
+            };
+        }
+        case 'shoot': {
+            const shoot = new ShootComponent(mesh, deps.player, attack, health, deps.projectiles, look.attack.options);
+            return { attacker: shoot, drive: (animator) => new ArcherAnimationDriver(animator, mesh, shoot) };
+        }
     }
 }
 
@@ -182,7 +213,7 @@ export class EnemyPool {
 
         const health = new HealthComponent(look.hp);
         const attack = new AttackComponent(mesh);
-        const attacker = createAttacker(look, mesh, attack, health, this.deps);
+        const { attacker, drive } = createFighter(look, mesh, attack, health, this.deps);
         // Origin is a placeholder; acquire() resets the AI onto the real one.
         const ai = new EnemyAIComponent(mesh, player, mesh.position, look.moveSpeed, look.aggroRadius, look.deaggroRadius, attacker);
 
@@ -202,12 +233,13 @@ export class EnemyPool {
         if (attacker instanceof LungeComponent) {
             entity.addComponent('dashTrail', new DashTrailComponent(mesh, entityGroup, () => attacker.isDashing, ENEMY_TRAIL));
         }
-        // The archer is the one enemy with clips. After the AI, so the driver reads this frame's shot.
+        // Every modelled enemy has clips; the boss has no model yet, so no animator either.
+        // After the AI, so the driver reads this frame's move, swing or shot.
         let animator: AnimatorComponent | null = null;
-        if (attacker instanceof ShootComponent) {
-            animator = new AnimatorComponent(archerController);
+        if (look.model) {
+            animator = new AnimatorComponent(look.model.controller);
             entity
-                .addComponent('animationDriver', new ArcherAnimationDriver(animator, mesh, attacker))
+                .addComponent('animationDriver', drive(animator))
                 .addComponent('animator', animator);
         }
         entity.bodyHeight = height;
@@ -262,8 +294,7 @@ export class EnemyPool {
         entity.getComponent('hitFlash')?.reset();
         entity.getComponent('attack')?.reset();
         entity.getComponent('dashTrail')?.reset();
-        const driver = entity.getComponent('animationDriver');
-        if (driver instanceof ArcherAnimationDriver) driver.reset();
+        entity.getComponent('animationDriver')?.reset();
 
         applyTransform(entity.mesh, source, entity.groundOffset);
         // Origin is read after the transform so the AI returns to the point on

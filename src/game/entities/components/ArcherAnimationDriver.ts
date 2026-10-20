@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
 import type { AnimatorComponent } from '../../animation/AnimatorComponent';
 import type { ShootComponent, ShootState } from './ShootComponent';
+import { GroundSpeed, type AnimationDriver } from './AnimationDriver';
 
 const LAYER = 'base';
 /** Ground speed above which the archer counts as walking rather than standing. */
@@ -15,34 +15,29 @@ const WALKING_SPEED = 0.3;
  *
  * Must update after the AI, which moves and shoots, and before the animator.
  */
-export class ArcherAnimationDriver implements Component {
+export class ArcherAnimationDriver implements AnimationDriver {
     public readonly name = 'animationDriver';
 
     private animator: AnimatorComponent;
-    private body: THREE.Object3D;
     private shooter: ShootComponent;
-    private last = new THREE.Vector3();
-    private hasLast = false;
+    private groundSpeed: GroundSpeed;
 
     constructor(animator: AnimatorComponent, body: THREE.Object3D, shooter: ShootComponent) {
         this.animator = animator;
-        this.body = body;
         this.shooter = shooter;
+        this.groundSpeed = new GroundSpeed(body);
     }
 
     /** Snaps back to standing: a pooled or rested archer must not come back mid-shot. */
     public reset() {
-        this.hasLast = false;
+        this.groundSpeed.reset();
         this.animator.play('idle', { crossfade: 0 });
     }
 
     public update(dt: number) {
         if (dt <= 0) return;
 
-        const { x, z } = this.body.position;
-        const speed = this.hasLast ? Math.hypot(x - this.last.x, z - this.last.z) / dt : 0;
-        this.last.copy(this.body.position);
-        this.hasLast = true;
+        const speed = this.groundSpeed.sample(dt);
 
         const state = this.shooter.state;
         this.animator.setBool('moving', state === 'idle' && speed > WALKING_SPEED);

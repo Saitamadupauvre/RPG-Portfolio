@@ -362,6 +362,9 @@ export class World {
 
         this.placeAtCheckpoint(camera);
         this.player.getComponent('health')?.refill();
+        // Died mid-swing: come back standing, not finishing the blow at the bonfire.
+        this.player.getComponent('combo')?.reset();
+        this.player.getComponent('animationDriver')?.reset();
         this.combat.resetEnemies();
 
         stateMachine.changeState('GAME');

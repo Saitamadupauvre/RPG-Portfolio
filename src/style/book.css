@@ -458,6 +458,190 @@
   border: 2px solid var(--book-ink-soft);
 }
 
+/* ---------- tutorial pages: screenshot, keycaps, tips ---------- */
+
+/* A snapshot pinned into the book: captured small and scaled up hard-edged,
+   so it reads as pixel art like the rest of the interface. */
+.book-figure {
+  position: relative;
+  align-self: center;
+  width: 100%;
+  max-width: 300px;
+  padding: calc(2 * var(--book-px));
+  background: var(--book-paper-shade);
+  border: 3px solid var(--book-ink);
+  box-shadow: 4px 4px 0 rgba(59, 38, 20, 0.35);
+  transform: rotate(-1.2deg);
+}
+
+/* Two strips of tape holding it down. */
+.book-figure::before,
+.book-figure::after {
+  content: '';
+  position: absolute;
+  top: calc(-3 * var(--book-px));
+  width: calc(14 * var(--book-px));
+  height: calc(5 * var(--book-px));
+  background: rgba(241, 226, 174, 0.8);
+  border: 2px solid var(--book-paper-edge);
+}
+
+.book-figure::before { left: calc(4 * var(--book-px)); transform: rotate(-8deg); }
+.book-figure::after { right: calc(4 * var(--book-px)); transform: rotate(7deg); }
+
+.book-figure-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  image-rendering: pixelated;
+  border: 2px solid var(--book-ink);
+}
+
+.book-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.4rem;
+  padding: 0.8rem 0;
+  border-top: 2px dashed var(--book-paper-edge);
+  border-bottom: 2px dashed var(--book-paper-edge);
+}
+
+.book-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.book-control-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--book-ink-soft);
+}
+
+.book-keys {
+  display: flex;
+  gap: calc(1 * var(--book-px));
+}
+
+/* W on top, A S D underneath: the shape the hand already knows. */
+.book-keys-cross {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+}
+
+.book-keys-cross > :first-child {
+  grid-column: 2;
+}
+
+.book-keys-cross > :not(:first-child) {
+  grid-row: 2;
+}
+
+/* A keycap: paper face, ink outline, a thick lower edge for depth. */
+.book-key {
+  --key-size: calc(9 * var(--book-px));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--key-size);
+  height: var(--key-size);
+  padding: 0 calc(1.5 * var(--book-px));
+  /* The display face: the body font draws Z almost like a 2, and AZERTY players need to tell them apart. */
+  font-family: var(--book-font-title);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--book-ink);
+  background: var(--book-paper);
+  border: 2px solid var(--book-ink);
+  border-bottom-width: calc(2 * var(--book-px));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* The display face has no left/right arrows; the body font draws all four alike. */
+.book-key-arrow {
+  font-family: var(--book-font);
+  font-size: 1.1rem;
+}
+
+.book-key-wide {
+  min-width: calc(30 * var(--book-px));
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* A little mouse, its left button lit in the accent colour. */
+.book-mouse {
+  position: relative;
+  display: inline-block;
+  width: calc(9 * var(--book-px));
+  height: calc(13 * var(--book-px));
+  background: var(--book-paper);
+  border: 2px solid var(--book-ink);
+  border-bottom-width: calc(2 * var(--book-px));
+  border-radius: calc(4 * var(--book-px)) calc(4 * var(--book-px)) calc(3 * var(--book-px)) calc(3 * var(--book-px));
+  overflow: hidden;
+}
+
+/* The split between the two buttons. */
+.book-mouse::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 45%;
+  background: var(--book-ink);
+}
+
+.book-mouse-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 45%;
+  background: var(--book-accent);
+  border-bottom: 2px solid var(--book-ink);
+  animation: book-mouse-click 1.4s steps(1) infinite;
+}
+
+/* Blinks like a click, so the page shows the gesture rather than describing it. */
+@keyframes book-mouse-click {
+  50% { background: var(--book-paper-shade); }
+}
+
+.book-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  list-style: none;
+}
+
+.book-tip {
+  position: relative;
+  padding-left: 1.3rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.book-tip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: calc(2 * var(--book-px));
+  height: calc(2 * var(--book-px));
+  background: var(--book-accent);
+  box-shadow: 1px 1px 0 var(--book-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-mouse-button { animation: none; }
+}
+
 .book-links {
   display: flex;
   flex-wrap: wrap;

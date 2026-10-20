@@ -1,3 +1,4 @@
+import type { BookPage, ControlHint } from '../../data/BookPage';
 import type { Project } from '../../data/Project';
 import { findProject } from '../../data/projects';
 import type { BookEntry, Lock } from '../../domain/book';
@@ -89,6 +90,63 @@ function renderTimeline(entry: BookEntry & { kind: 'timeline' }): HTMLElement[] 
     return parts;
 }
 
+const MOUSE_LEFT = 'MouseLeft';
+const ARROWS = new Set(['←', '↑', '→', '↓']);
+
+/** A keycap, or a little mouse with its left button lit. */
+function renderKey(key: string): HTMLElement {
+    if (key === MOUSE_LEFT) {
+        const mouse = el('span', 'book-mouse');
+        mouse.setAttribute('role', 'img');
+        mouse.setAttribute('aria-label', 'Left mouse button');
+        mouse.appendChild(el('span', 'book-mouse-button'));
+        return mouse;
+    }
+    const cap = el('kbd', 'book-key', key);
+    // Arrows and letters are square caps; a named key ('Space') gets a long one.
+    if ([...key].length > 1) cap.classList.add('book-key-wide');
+    if (ARROWS.has(key)) cap.classList.add('book-key-arrow');
+    return cap;
+}
+
+function renderControl(hint: ControlHint): HTMLElement {
+    const control = el('div', 'book-control');
+    const keys = el('div', hint.shape === 'cross' ? 'book-keys book-keys-cross' : 'book-keys');
+    keys.append(...hint.keys.map(renderKey));
+    control.append(keys, el('span', 'book-control-label', hint.label));
+    return control;
+}
+
+function renderPage(page: BookPage, kicker: string): HTMLElement[] {
+    const parts = [header(kicker, page.title)];
+
+    if (page.image) {
+        const figure = el('figure', 'book-figure');
+        const image = el('img', 'book-figure-image');
+        image.src = page.image.src;
+        image.alt = page.image.alt;
+        // Decoding off the main thread keeps the page turn smooth on first open.
+        image.decoding = 'async';
+        figure.appendChild(image);
+        parts.push(figure);
+    }
+
+    parts.push(el('p', 'book-entry-body', page.body));
+
+    if (page.controls?.length) {
+        const controls = el('div', 'book-controls');
+        controls.append(...page.controls.map(renderControl));
+        parts.push(controls);
+    }
+
+    if (page.tips?.length) {
+        const tips = el('ul', 'book-tips');
+        for (const tip of page.tips) tips.appendChild(el('li', 'book-tip', tip));
+        parts.push(tips);
+    }
+    return parts;
+}
+
 /** An entry this module draws; the Level page needs live stats and lives in renderLevelPage. */
 export type TextEntry = Exclude<BookEntry, { kind: 'level' }>;
 
@@ -109,7 +167,7 @@ export function renderBookEntry(entry: TextEntry | undefined): HTMLElement {
             page.append(...renderTimeline(entry));
             break;
         case 'page':
-            page.append(header(entry.sectionId, entry.page.title), el('p', 'book-entry-body', entry.page.body));
+            page.append(...renderPage(entry.page, entry.sectionId));
             break;
     }
     return page;

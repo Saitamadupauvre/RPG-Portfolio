@@ -254,6 +254,7 @@ export function initBookView() {
 
     events.on('projectShown', (project) => showEntry(entryKey('project', project.id)));
     events.on('levelUpRequested', () => showEntry(LEVEL_KEY));
+    events.on('tutorialShown', (tutorialId) => showEntry(entryKey('page', tutorialId)));
 
     // Anything the Level spread shows: redraw it in place when it changes.
     const refreshLevel = () => {

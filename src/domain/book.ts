@@ -4,6 +4,7 @@ import type { TimelineEvent } from '../data/TimelineEvent';
 import { pages } from '../data/pages';
 import { findProject, projects } from '../data/projects';
 import { timeline } from '../data/timeline';
+import { TUTORIAL_IDS } from '../data/tutorials';
 import { isDiscovered } from './discovery';
 
 export type BookMode = 'game' | 'classic';
@@ -39,6 +40,12 @@ export const SECTIONS: readonly SectionDefinition[] = [
 ];
 
 export function validateBook() {
+    // A trigger opens the tutorial page of the same id; a missing page would open the book on nothing.
+    for (const tutorialId of TUTORIAL_IDS) {
+        if (!pages.some((page) => page.section === 'tutorial' && page.id === tutorialId)) {
+            throw new Error(`Tutorial "${tutorialId}" has no page in data/pages.ts`);
+        }
+    }
     for (const event of timeline) {
         for (const projectId of event.projectIds) {
             if (!findProject(projectId)) {

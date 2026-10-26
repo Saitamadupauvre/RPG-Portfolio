@@ -73,6 +73,9 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
     const object = cloneSkinned(scene);
 
     const materials: TintableMaterial[] = [];
+    // One copy per material of the file, not per mesh: meshes the file paints alike (a chest's
+    // body and lid both in "Trim") keep sharing it, so a glow or tint on it reaches them all.
+    const converted = new Map<THREE.Material, THREE.Material>();
     object.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         child.castShadow = true;
@@ -86,9 +89,13 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
         // step. Converting here rather than in the caller means every model in the game
         // is lit the same way by construction, with no factory left to forget it.
         const convert = (material: THREE.Material): THREE.Material => {
+            const known = converted.get(material);
+            if (known) return known;
+
             const lit = material instanceof THREE.MeshStandardMaterial
                 ? fromGltfMaterial(material)
                 : material.clone();
+            converted.set(material, lit);
             if ('color' in lit) materials.push(lit as TintableMaterial);
             return lit;
         };

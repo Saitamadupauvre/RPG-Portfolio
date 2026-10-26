@@ -1,13 +1,14 @@
 import type { AppState } from './StateMachine';
 import type { MapEntity } from '../data/MapEntity';
 import type { Project } from '../data/Project';
+import type { InputAction, Settings } from '../data/settings';
 import type { PlayerStats } from '../data/stats';
 import type { TutorialId } from '../data/tutorials';
 import { EventEmitter } from './EventEmitter';
 import type { ScatterSettings, ScreenRect } from './editorTools';
 
-/** What the interact prompt shows: a key and what pressing it does. */
-export type PromptAction = { key: string; label: string };
+/** What the interact prompt shows: an input (drawn with whatever key is bound to it) and what it does. */
+export type PromptAction = { input: InputAction; label: string };
 
 export type AppEvents = {
     stateChange: [newState: AppState, oldState: AppState];
@@ -18,9 +19,24 @@ export type AppEvents = {
     interactPromptChange: [actions: readonly PromptAction[] | null];
     playerHealthChanged: [hp: number, maxHp: number];
 
-    playerDied: [screenX: number, screenY: number];
+    playerDied: [coinsLost: number];
+    /** The death screen has gone black: the world may move the player to their bonfire now. */
+    respawnRequested: [];
+    /** Back on their bonfire, behind a black screen: open it around the player. */
     playerRespawned: [screenX: number, screenY: number];
-    bonfireRested: [];
+    /** The world is ready after leaving the menu, behind a black screen: open it around the player. */
+    gameEntered: [screenX: number, screenY: number];
+    /** Game mode boot, 0 to 1. */
+    loadingProgress: [progress: number];
+    settingsChanged: [settings: Settings];
+    /** The player chose to rest at a bonfire; its checkpoint is already saved. */
+    restRequested: [];
+    /** The world is frozen for the rest: close the screen onto the player. */
+    restStarted: [screenX: number, screenY: number];
+    /** The rest transition has gone black: the world may heal the player and reset the enemies now. */
+    restCovered: [];
+    /** Rested, behind a black screen: open it around the player. */
+    playerRested: [screenX: number, screenY: number];
     coinsChanged: [coins: number];
     chestOpened: [messages: string[]];
     playerStatsChanged: [stats: PlayerStats];

@@ -34,15 +34,15 @@ export function createBonfire(entity: BonfireEntity): Entity {
 
     const interactable = new InteractableComponent(INTERACT_RADIUS, [
         {
-            key: 'KeyE',
+            input: 'interact',
             label: 'Rest at bonfire',
             run: () => {
                 setCheckpoint(entity.position);
-                events.emit('bonfireRested');
+                events.emit('restRequested');
             },
         },
         {
-            key: 'KeyF',
+            input: 'levelUp',
             label: 'Level up',
             run: () => events.emit('levelUpRequested'),
         },

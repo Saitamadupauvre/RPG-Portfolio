@@ -3,9 +3,11 @@ import type { Experience } from "../Experience";
 import { Environment } from "./Environment";
 import { events } from "../../core/events";
 import { stateMachine, type AppState } from "../../core/StateMachine";
+import { setPaused } from "../../core/pause";
 import { mapLayout } from "../../data/mapLayout";
 import type { MapEntity } from "../../data/MapEntity";
 import { getCheckpoint } from "../../domain/checkpoint";
+import { loseAllCoins } from "../../domain/playerProgress";
 import type { Entity } from "../entities/Entity";
 import { createMapEntity } from "../entities/entityFactories";
 import { createPlayer } from "../entities/PlayerFactory";
@@ -13,6 +15,7 @@ import { bindPlayerStats } from "../playerStats";
 import { enemyPool } from "../entities/EnemyPool";
 import { CombatSystem } from "../CombatSystem";
 import { ProjectileSystem } from "../ProjectileSystem";
+import { FireSystem } from "../FireSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
 import { findFreePoint, rebuildNavGrid } from "./navigation";
@@ -45,7 +48,6 @@ function cameraEye(target: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     return out;
 }
 
-const RESPAWN_DELAY_MS = 1200;
 /**
  * How much wider than its body a mover parts the grass. At exactly the
  * collision radius the parted ring hides under the body itself and barely shows.
@@ -76,6 +78,8 @@ export class World {
     private collision = new EntityCollisionSystem();
     private interaction = new InteractionSystem();
     private paused = false;
+    /** Between `restRequested` and `restCovered`: the world is held paused under the closing iris. */
+    private resting = false;
     // One full-ratio tier: Terrain already grows far patches sparser, and a draw
     // LOD on top would thin them a second time.
     public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
@@ -104,14 +108,16 @@ export class World {
         this.entityGroup.add(this.player.mesh);
         bindPlayerStats(this.player);
 
-        // Shared by the archers that loose arrows and the combat system that lands them.
+        // Shared by the archers and dragons that loose arrows and flames, and the combat system that lands them.
         const projectiles = new ProjectileSystem(this.entityGroup);
-        enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup, projectiles);
+        const fire = new FireSystem(this.entityGroup);
+        enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup, projectiles, fire);
 
         this.combat = new CombatSystem(
             this.entityGroup,
             this.player,
             projectiles,
+            fire,
             (entity) => {
                 // CombatSystem already detached the mesh and pooled the entity;
                 // the chunk must forget it too or the next despawn releases it twice.
@@ -140,10 +146,12 @@ export class World {
 
             if (paused) this.stopPlayerInput();
         });
-        events.on('bonfireRested', () => {
-            this.player.getComponent('health')?.refill();
-            this.combat.resetEnemies();
-        });
+        // Resting is a handshake like dying: the screen goes black first, so
+        // enemies reset where nobody can see them pop back.
+        events.on('restRequested', () => this.startRest());
+        events.on('restCovered', () => this.finishRest());
+        // The death screen decides when the player may be moved: once it hides the world.
+        events.on('respawnRequested', () => this.respawn(this.experience.camera));
 
         // After loadLayout: findFreePoint reads the nav grid, which only exists
         // once the layout has been rebuilt.
@@ -262,7 +270,8 @@ export class World {
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.environment.followShadows(this.player.mesh.position);
 
-        if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
+        // Not only DEAD and EDITOR: quitting to the menu leaves the world loaded, and it must not play on unseen.
+        if (this.paused || state !== 'GAME') return;
 
         for (const entity of this.entities) {
             entity.update(dt);
@@ -281,7 +290,7 @@ export class World {
         this.updateGhosts(camera);
         this.combat.update(dt, camera);
 
-        if (this.player.getComponent('health')?.isDead()) this.die(camera);
+        if (this.player.getComponent('health')?.isDead()) this.die();
     }
 
     /**
@@ -356,29 +365,68 @@ export class World {
         this.followPlayer(this.experience.camera);
     }
 
-    private die(camera: THREE.PerspectiveCamera) {
+    /** Call once the world is on screen after leaving the menu: the transition opens on the player. */
+    public reveal() {
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('gameEntered', x, y);
+    }
+
+    public setShadows(enabled: boolean) {
+        this.environment.setShadows(enabled);
+    }
+
+    private die() {
         stateMachine.changeState('DEAD');
         this.stopPlayerInput();
-        const [x, y] = this.toScreen(this.player.mesh.position, camera);
-        events.emit('playerDied', x, y);
-
-        window.setTimeout(() => this.respawn(camera), RESPAWN_DELAY_MS);
+        events.emit('playerDied', loseAllCoins());
     }
 
     private respawn(camera: THREE.PerspectiveCamera) {
         if (stateMachine.getState() !== 'DEAD') return;
 
         this.placeAtCheckpoint(camera);
+        this.restore();
+        stateMachine.changeState('GAME');
+
+        const [x, y] = this.playerOnScreen(camera);
+        events.emit('playerRespawned', x, y);
+    }
+
+    /**
+     * Freezes the world (same pause as the book: enemies and arrows stop, the
+     * player's input drops) while the screen closes onto the player.
+     */
+    private startRest() {
+        if (this.resting || stateMachine.getState() !== 'GAME') return;
+
+        this.resting = true;
+        setPaused('rest', true);
+        // The circle closes onto the player: "Rest at bonfire" must not sit inside it.
+        this.interaction.hidePrompt();
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('restStarted', x, y);
+    }
+
+    private finishRest() {
+        if (!this.resting) return;
+
+        this.resting = false;
+        this.restore();
+        setPaused('rest', false);
+        // Left for the menu under the black screen: nothing to open onto.
+        if (stateMachine.getState() !== 'GAME') return;
+
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('playerRested', x, y);
+    }
+
+    /** What a respawn and a rest share: full health, standing still, every non-boss enemy back home. */
+    private restore() {
         this.player.getComponent('health')?.refill();
-        // Died mid-swing: come back standing, not finishing the blow at the bonfire.
+        // Died (or sat down) mid-swing: come back standing, not finishing the blow.
         this.player.getComponent('combo')?.reset();
         this.player.getComponent('animationDriver')?.reset();
         this.combat.resetEnemies();
-
-        stateMachine.changeState('GAME');
-
-        const [x, y] = this.toScreen(this.player.mesh.position, camera);
-        events.emit('playerRespawned', x, y);
     }
 
     /** Drop the player on the last rested bonfire and snap the camera to them. */
@@ -396,8 +444,11 @@ export class World {
         this.followPlayer(camera);
     }
 
-    private toScreen(position: THREE.Vector3, camera: THREE.PerspectiveCamera): [number, number] {
-        const ndc = position.clone().project(camera);
+    /** The middle of the player's body, not their feet: what a transition circle should frame. */
+    private playerOnScreen(camera: THREE.PerspectiveCamera): [number, number] {
+        const ndc = this.player.mesh.position.clone();
+        ndc.y += (this.player.bodyHeight ?? 0) / 2 - this.player.groundOffset;
+        ndc.project(camera);
         return [
             (ndc.x + 1) / 2 * window.innerWidth,
             (1 - ndc.y) / 2 * window.innerHeight,

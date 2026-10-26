@@ -10,16 +10,12 @@
   <link rel="stylesheet" href="./src/style.css">
   <link rel="stylesheet" href="./src/style/pixel-ui.css">
   <link rel="stylesheet" href="./src/style/book.css">
+  <link rel="stylesheet" href="./src/style/hud.css">
+  <link rel="stylesheet" href="./src/style/screens.css">
 </head>
 <body>
   <canvas class="webgl"></canvas>
   <div id="ui-container" class="state-loading pixel-ui">
-    <div class="screen" id="loading-screen">
-      <h1>Loading Universe...</h1>
-      <div class="progress-bar">
-        <div id="progress-fill"></div>
-      </div>
-    </div>
     <div class="screen" id="menu-screen">
       <h1 class="title">SOLDIER'S PORTFOLIO</h1>
       <div class="menu-actions">
@@ -27,15 +23,24 @@
         <button class="btn" id="btn-enter-classic">Fast Portfolio</button>
       </div>
     </div>
+    <div id="low-hp-vignette"></div>
     <div id="hud">
-      <div id="hp-bar" class="pixel-panel">
-        <div id="hp-fill"></div>
+      <div class="hud-health" id="hud-health">
+        <span class="hud-heart" id="hud-heart"></span>
+        <div class="hud-bar" id="hp-bar">
+          <div class="hud-bar-trail" id="hp-trail"></div>
+          <div class="hud-bar-fill" id="hp-fill"></div>
+          <div class="hud-bar-ticks"></div>
+          <span class="hud-bar-label" id="hp-label">100 / 100</span>
+        </div>
       </div>
-      <span id="hp-label" class="pixel-text">100 / 100</span>
-      <span id="coin-count" class="pixel-text">0 coins</span>
+      <div class="hud-coins" id="hud-coins">
+        <span class="hud-coin" id="hud-coin"></span>
+        <span class="hud-coin-count" id="coin-count">0</span>
+      </div>
+      <div class="hud-toast" id="loot-toast"></div>
     </div>
-    <div id="loot-toast" class="pixel-panel pixel-text"></div>
-    <div id="interact-prompt" class="pixel-panel"></div>
+    <div id="interact-prompt"></div>
     <div class="book-overlay" id="book">
       <div class="book-backdrop"></div>
       <div class="book" id="book-body">
@@ -56,8 +61,31 @@
       </div>
     </div>
   </div>
+  <div id="death-screen" class="pixel-ui">
+    <div class="death-band">
+      <h2 class="death-title">YOU DIED</h2>
+      <p class="death-loss" id="death-loss"></p>
+    </div>
+  </div>
+  <div id="death-flash"></div>
   <div id="iris"></div>
-  <div id="death-text" class="pixel-text">YOU DIED</div>
+  <div class="screen pixel-ui" id="loading-screen">
+    <div class="loading-embers" id="loading-embers"></div>
+    <div class="loading-center">
+      <h1 class="loading-title">SOLDIER'S PORTFOLIO</h1>
+      <p class="loading-tip" id="loading-tip"></p>
+    </div>
+    <div class="loading-corner" role="status" aria-label="Loading">
+      <span class="loading-fire" id="loading-fire"></span>
+      <div class="loading-meter">
+        <div class="loading-label">
+          <span>Loading<span class="loading-dots"></span></span>
+          <span id="loading-percent">0%</span>
+        </div>
+        <div class="loading-bar"><div id="progress-fill"></div></div>
+      </div>
+    </div>
+  </div>
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

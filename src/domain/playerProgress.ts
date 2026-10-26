@@ -107,6 +107,17 @@ export function addCoins(amount: number) {
     events.emit('coinsChanged', state.coins);
 }
 
+/** Death takes every coin carried. Returns how many were lost. */
+export function loseAllCoins(): number {
+    const lost = state.coins;
+    if (lost === 0) return 0;
+
+    state.coins = 0;
+    save();
+    events.emit('coinsChanged', state.coins);
+    return lost;
+}
+
 export function getStatLevel(id: StatId): number {
     return state.levels[id];
 }

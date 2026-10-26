@@ -61,18 +61,10 @@ body {
   pointer-events: none;
 }
 
-.state-loading #loading-screen,
+
 .state-menu #menu-screen {
   visibility: visible;
   transition-delay: 0s;
-}
-
-.state-loading #loading-screen {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.state-menu #menu-screen {
   opacity: 1;
   pointer-events: auto;
   background:
@@ -127,91 +119,6 @@ body {
 #btn-enter-classic:hover {
   border-color: var(--accent-gold);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(230, 184, 58, 0.7);
-}
-
-#hud {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  display: none;
-  align-items: center;
-  gap: 0.6rem;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.state-game #hud,
-.state-dead #hud {
-  display: flex;
-}
-
-#loot-toast {
-  position: fixed;
-  top: 4rem;
-  left: 1rem;
-  padding: 6px 12px;
-  font-size: 0.75rem;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: 2;
-  transition: opacity 160ms linear;
-}
-
-#loot-toast.visible {
-  opacity: 1;
-  visibility: visible;
-}
-
-#hp-bar {
-  width: 220px;
-  height: 18px;
-  background: #2a0d12;
-  border-color: #7a2233;
-}
-
-#hp-fill {
-  width: 100%;
-  height: 100%;
-  background: var(--accent-crimson);
-  transition: width 120ms linear;
-}
-
-#hp-label {
-  font-size: 0.75rem;
-  color: var(--pixel-ink);
-  text-shadow: 2px 2px 0 #000;
-}
-
-#iris {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  visibility: hidden;
-  z-index: 8;
-}
-
-#iris.active {
-  visibility: visible;
-}
-
-#death-text {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  color: var(--accent-crimson);
-  text-shadow: 4px 4px 0 #000;
-  opacity: 0;
-  transition: opacity 600ms ease-in;
-  pointer-events: none;
-  z-index: 9;
-}
-
-#death-text.visible {
-  opacity: 1;
 }
 
 #editor-panel {
@@ -326,45 +233,6 @@ body {
   font-size: 0.62rem;
   opacity: 0.6;
   line-height: 1.4;
-}
-
-#coin-count {
-  font-size: 0.75rem;
-  color: var(--accent-gold);
-  text-shadow: 2px 2px 0 #000;
-}
-
-/* Shown while game mode boots (Three.js chunk download + world build), on top
-   of the game state, which is already active underneath. */
-.booting #loading-screen {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-  transition-delay: 0s;
-  background: var(--pixel-bg);
-  z-index: 10;
-}
-
-.progress-bar {
-  width: 240px;
-  height: 12px;
-  margin-top: 1rem;
-  border: 2px solid var(--accent-teal);
-  overflow: hidden;
-}
-
-/* Indeterminate: nothing reports real progress, so the bar sweeps instead of
-   pretending to fill. */
-#progress-fill {
-  width: 30%;
-  height: 100%;
-  background: var(--accent-teal);
-  animation: progress-sweep 1s steps(8) infinite;
-}
-
-@keyframes progress-sweep {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(340%); }
 }
 
 .editor-btn:disabled {

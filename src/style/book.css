@@ -298,6 +298,7 @@
 .book-tab-about { --tab-color: #3c4f8f; }
 .book-tab-tutorial { --tab-color: #8a6a1c; }
 .book-tab-level { --tab-color: #5b2f6e; }
+.book-tab-settings { --tab-color: #4b5160; }
 
 /* ---------- left page: contents ---------- */
 
@@ -726,14 +727,27 @@
   align-self: stretch;
 }
 
-/* player.png is 32x40 art pixels. */
+/* The live knight: the game draws it into a transparent canvas, so it stands on the paper.
+   Short screens shrink it rather than scroll the page. */
 .book-player {
   flex: none;
-  width: calc(32 * var(--book-px));
-  height: calc(40 * var(--book-px));
+  height: min(calc(96 * var(--book-px)), 46vh);
+  max-width: 100%;
+  aspect-ratio: 4 / 5;
   margin: auto 0;
-  background: url('../assets/book/player.png') 0 0 / 100% 100%;
-  image-rendering: pixelated;
+}
+
+.book-portrait {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  /* Sideways drags turn the knight; up and down still scroll the page on a touch screen. */
+  touch-action: pan-y;
+}
+
+.book-portrait:active {
+  cursor: grabbing;
 }
 
 .book-player-coins {
@@ -815,6 +829,131 @@
   display: none;
 }
 
+/* ---------- settings spread ---------- */
+
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.settings-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: calc(9 * var(--book-px));
+}
+
+/* Shown for completeness, not changeable. */
+.settings-row.fixed {
+  opacity: 0.6;
+}
+
+.settings-label {
+  font-size: 1.05rem;
+}
+
+.settings-heading {
+  padding-bottom: 0.35rem;
+  font-family: var(--book-font-title);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--book-accent);
+  border-bottom: 2px dashed var(--book-paper-edge);
+}
+
+.settings-hint {
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--book-ink-soft);
+}
+
+/* Buttons sharing their borders, one lit: a pixel radio group. */
+.settings-choice {
+  display: flex;
+}
+
+.settings-option {
+  margin-left: -2px;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--book-font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--book-ink);
+  background: var(--book-paper-shade);
+  border: 2px solid var(--book-ink);
+  cursor: pointer;
+}
+
+.settings-option:first-child {
+  margin-left: 0;
+}
+
+.settings-option:hover {
+  background: var(--book-paper);
+}
+
+.settings-option.active {
+  color: var(--book-paper);
+  background: var(--book-ink);
+}
+
+.settings-key {
+  cursor: pointer;
+}
+
+.settings-key:hover {
+  background: #fff8de;
+}
+
+.settings-key.listening {
+  color: var(--book-paper);
+  background: var(--book-accent);
+  animation: settings-listen 0.8s steps(1) infinite;
+}
+
+/* Refused key: a shake, then back to blinking. */
+.settings-key.listening.refused {
+  animation: settings-refuse 300ms steps(1), settings-listen 0.8s steps(1) 300ms infinite;
+}
+
+@keyframes settings-listen {
+  50% { background: var(--book-ink); }
+}
+
+@keyframes settings-refuse {
+  0% { transform: translateX(-3px); }
+  33% { transform: translateX(3px); }
+  66% { transform: translateX(-2px); }
+  100% { transform: none; }
+}
+
+button.book-link {
+  cursor: pointer;
+}
+
+.settings-reset-keys {
+  align-self: flex-start;
+}
+
+.settings-danger.armed {
+  filter: hue-rotate(-25deg) saturate(1.8) brightness(1.15);
+  animation: settings-armed 0.6s steps(1) infinite;
+}
+
+@keyframes settings-armed {
+  50% { filter: none; }
+}
+
 /* ---------- page flip ---------- */
 
 .book-flipper {
@@ -892,9 +1031,11 @@
   animation: book-cover-unclip 1ms linear 1000ms both;
 }
 
+/* `backwards`, not `both`: a value an animation holds after it ends beats every normal rule,
+   and would keep the left page visible under the phone layout's other page. */
 .book-page-left,
 .book-stack-left {
-  animation: book-left-show 1ms linear 1000ms both;
+  animation: book-left-show 1ms linear 1000ms backwards;
 }
 
 /* ---------- keyframes ---------- */

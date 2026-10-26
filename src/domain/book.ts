@@ -25,7 +25,9 @@ export type BookSection =
     | { id: 'timeline'; label: string; years: TimelineYear[] }
     | { id: PageSectionId; label: string; pages: BookPage[] }
     /** The player and their stats: one spread, drawn from `playerProgress` at render time. */
-    | { id: 'level'; label: string };
+    | { id: 'level'; label: string }
+    /** Controls on the left, everything else on the right: one spread, drawn from `settings` at render time. */
+    | { id: 'settings'; label: string };
 
 export type SectionId = BookSection['id'];
 
@@ -37,6 +39,7 @@ export const SECTIONS: readonly SectionDefinition[] = [
     { id: 'about', label: 'About', gameOnly: false },
     { id: 'tutorial', label: 'Tutorial', gameOnly: true },
     { id: 'level', label: 'Level', gameOnly: true },
+    { id: 'settings', label: 'Settings', gameOnly: true },
 ];
 
 export function validateBook() {
@@ -109,6 +112,7 @@ const builders: SectionBuilders = {
     about: pageSection('about'),
     tutorial: pageSection('tutorial'),
     level: (label) => ({ id: 'level', label }),
+    settings: (label) => ({ id: 'settings', label }),
 };
 
 export function getBook(mode: BookMode): BookSection[] {
@@ -124,12 +128,21 @@ export type BookEntry =
     | { kind: 'project'; key: string; sectionId: 'projects'; project: Project; lock: Lock }
     | { kind: 'timeline'; key: string; sectionId: 'timeline'; event: TimelineEvent; lock: Lock }
     | { kind: 'page'; key: string; sectionId: PageSectionId; page: BookPage }
-    | { kind: 'level'; key: string; sectionId: 'level' };
+    | { kind: 'level'; key: string; sectionId: 'level' }
+    | { kind: 'settings'; key: string; sectionId: 'settings' };
 
 export const entryKey = (kind: BookEntry['kind'], id: string) => `${kind}:${id}`;
 
 /** The Level section's only entry. */
 export const LEVEL_KEY = entryKey('level', 'player');
+
+/** The Settings section's only entry. */
+export const SETTINGS_KEY = entryKey('settings', 'main');
+
+/** Sections drawn as one spread, whose left page is not a table of contents. */
+export function isSpreadSection(id: SectionId): id is 'level' | 'settings' {
+    return id === 'level' || id === 'settings';
+}
 
 /** Every entry of every section, in the order the pages sit in the book. */
 export function flattenBook(sections: BookSection[]): BookEntry[] {
@@ -158,6 +171,9 @@ export function flattenBook(sections: BookSection[]): BookEntry[] {
         }
         if (section.id === 'level') {
             return [{ kind: 'level', key: LEVEL_KEY, sectionId: 'level' }];
+        }
+        if (section.id === 'settings') {
+            return [{ kind: 'settings', key: SETTINGS_KEY, sectionId: 'settings' }];
         }
         return section.pages.map((page) => ({
             kind: 'page',

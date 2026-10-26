@@ -3,7 +3,10 @@ import type { Project } from '../../data/Project';
 import { findProject } from '../../data/projects';
 import type { BookEntry, Lock } from '../../domain/book';
 import { projectToUICardStyle } from '../../domain/CardStyle';
+import { bindingFor } from '../../domain/settings';
 import { formatDate } from './formatDate';
+import { keyName } from './printedKeys';
+import { renderKey } from './renderKey';
 import { renderLockIcon } from './renderBookToc';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {
@@ -90,29 +93,12 @@ function renderTimeline(entry: BookEntry & { kind: 'timeline' }): HTMLElement[] 
     return parts;
 }
 
-const MOUSE_LEFT = 'MouseLeft';
-const ARROWS = new Set(['←', '↑', '→', '↓']);
-
-/** A keycap, or a little mouse with its left button lit. */
-function renderKey(key: string): HTMLElement {
-    if (key === MOUSE_LEFT) {
-        const mouse = el('span', 'book-mouse');
-        mouse.setAttribute('role', 'img');
-        mouse.setAttribute('aria-label', 'Left mouse button');
-        mouse.appendChild(el('span', 'book-mouse-button'));
-        return mouse;
-    }
-    const cap = el('kbd', 'book-key', key);
-    // Arrows and letters are square caps; a named key ('Space') gets a long one.
-    if ([...key].length > 1) cap.classList.add('book-key-wide');
-    if (ARROWS.has(key)) cap.classList.add('book-key-arrow');
-    return cap;
-}
-
 function renderControl(hint: ControlHint): HTMLElement {
     const control = el('div', 'book-control');
     const keys = el('div', hint.shape === 'cross' ? 'book-keys book-keys-cross' : 'book-keys');
-    keys.append(...hint.keys.map(renderKey));
+    // A rebound key shows as the player set it, not as the page was written.
+    const labels = hint.actions ? hint.actions.map((action) => keyName(bindingFor(action))) : hint.keys;
+    keys.append(...labels.map(renderKey));
     control.append(keys, el('span', 'book-control-label', hint.label));
     return control;
 }
@@ -147,8 +133,11 @@ function renderPage(page: BookPage, kicker: string): HTMLElement[] {
     return parts;
 }
 
-/** An entry this module draws; the Level page needs live stats and lives in renderLevelPage. */
-export type TextEntry = Exclude<BookEntry, { kind: 'level' }>;
+/**
+ * An entry this module draws. The Level and Settings spreads draw live state
+ * and live in renderLevelPage / renderSettingsPage.
+ */
+export type TextEntry = Exclude<BookEntry, { kind: 'level' | 'settings' }>;
 
 /** Content of the right-hand page. `undefined` = an empty section. */
 export function renderBookEntry(entry: TextEntry | undefined): HTMLElement {

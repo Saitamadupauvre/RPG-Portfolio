@@ -3,9 +3,13 @@ import { World } from './world/World';
 import { PlayerAttackInteraction } from './PlayerAttackInteraction';
 import { EditorSystem } from './editor/EditorSystem';
 import { stateMachine } from '../core/StateMachine';
+import { events } from '../core/events';
+import { getSettings, type Quality } from '../domain/settings';
 import { WaterDepthPrepass } from './world/water/depthPrepass';
 import { PerfOverlay } from './debug/PerfOverlay';
 import { GRASS_LAYER } from './render/layers';
+import { applyColorGrading } from './render/grading';
+import { PlayerPortrait } from './portrait/PlayerPortrait';
 
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;
@@ -16,6 +20,19 @@ const MAX_FRAME_DELTA = 0.1;
  * is hard to see.
  */
 const MAX_PIXEL_RATIO = 1.5;
+
+type GraphicsPreset = { pixelRatio: number; shadows: boolean; grass: boolean };
+
+/**
+ * What each quality setting turns on. Shadows (a second render of the scene
+ * from the sun) and grass (tens of thousands of instanced blades) are the two
+ * costs worth dropping on a weak GPU; past that, only resolution is left.
+ */
+const QUALITY: Record<Quality, GraphicsPreset> = {
+    low: { pixelRatio: 1, shadows: false, grass: false },
+    medium: { pixelRatio: 1, shadows: true, grass: true },
+    high: { pixelRatio: MAX_PIXEL_RATIO, shadows: true, grass: true },
+};
 
 export class Experience {
     private static instance: Experience;
@@ -33,7 +50,7 @@ export class Experience {
     private waterDepthPrepass: WaterDepthPrepass;
     private drawingSize = new THREE.Vector2();
 
-    private constructor(canvas: HTMLCanvasElement) {
+    private constructor(canvas: HTMLCanvasElement, portraitCanvas: HTMLCanvasElement) {
         this.canvas = canvas;
 
         this.scene = new THREE.Scene();
@@ -51,7 +68,6 @@ export class Experience {
             stencil: true,
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
         this.renderer.shadowMap.enabled = true;
         // PCF is the soft filter since r182 (PCFSoftShadowMap is deprecated);
         // the blur width is set per light with shadow.radius.
@@ -60,12 +76,7 @@ export class Experience {
         // real pass). Each render() redraws the shadow map unless told not to,
         // so shadows are flagged for exactly one redraw per tick instead.
         this.renderer.shadowMap.autoUpdate = false;
-        // Without tone mapping, anything the lights push past 1.0 clips channel
-        // by channel and slides toward white — which is what made the greens
-        // look washed out. Neutral rolls highlights off while keeping
-        // saturation, unlike ACESFilmic which deliberately desaturates them.
-        this.renderer.toneMapping = THREE.NeutralToneMapping;
-        this.renderer.toneMappingExposure = 1.12;
+        applyColorGrading(this.renderer);
         // The scene renders twice per tick; by default info resets on every
         // render() and would only ever show the second one. Reset per tick instead.
         this.renderer.info.autoReset = false;
@@ -81,9 +92,17 @@ export class Experience {
         this.world = new World(this);
         new PlayerAttackInteraction(this);
 
+        // A second, small WebGL context, for the book's Level page. A browser that refuses
+        // one only costs that page its knight, never the game.
+        try {
+            new PlayerPortrait(portraitCanvas);
+        } catch (error) {
+            console.error('[portrait] no WebGL context for the Level page knight', error);
+        }
+
         if (import.meta.env.DEV) {
             this.editor = new EditorSystem(this);
-            this.perf = new PerfOverlay(() => this.applyPerfToggles());
+            this.perf = new PerfOverlay(() => this.applyGraphics());
             window.addEventListener('keydown', (event) => {
                 if (event.code !== 'F1') return;
                 // Browsers open their help window on F1 unless we claim the key.
@@ -93,17 +112,20 @@ export class Experience {
         }
 
         window.addEventListener('resize', () => this.resize());
+        this.applyGraphics();
+        events.on('settingsChanged', () => this.applyGraphics());
 
         this.tick();
     }
 
-    public static init(canvas: HTMLCanvasElement): Experience {
-        if (!Experience.instance) Experience.instance = new Experience(canvas);
+    /** `portraitCanvas`: where the book's Level page shows the live knight (the book places it, the game draws it). */
+    public static init(canvas: HTMLCanvasElement, portraitCanvas: HTMLCanvasElement): Experience {
+        if (!Experience.instance) Experience.instance = new Experience(canvas, portraitCanvas);
         return Experience.instance;
     }
 
     public static getInstance(): Experience {
-        if (!Experience.instance) throw new Error('Experience.init(canvas) must be called before getInstance()');
+        if (!Experience.instance) throw new Error('Experience.init(canvas, portraitCanvas) must be called before getInstance()');
         return Experience.instance;
     }
 
@@ -120,17 +142,25 @@ export class Experience {
         }
     }
 
-    /** Pushes the overlay's switches into the renderer and world. Dev only. */
-    private applyPerfToggles() {
-        if (!this.perf) return;
-        const { toggles } = this.perf;
+    /**
+     * Pushes the quality setting into the renderer and world. In dev the perf
+     * overlay's switches can only turn more things off on top of it.
+     */
+    private applyGraphics() {
+        const preset = QUALITY[getSettings().quality];
+        const toggles = this.perf?.toggles;
 
-        this.world.grass.enabled = toggles.grass;
-        this.world.water.mesh.visible = toggles.water;
-        // Flipping this changes every lit material's shader, so three
-        // recompiles them once — expect one hitch on the toggle itself.
-        this.renderer.shadowMap.enabled = toggles.shadows;
-        this.renderer.setPixelRatio(toggles.lowPixelRatio ? 1 : Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+        this.world.grass.enabled = preset.grass && (toggles?.grass ?? true);
+        this.world.water.mesh.visible = toggles?.water ?? true;
+        // Changes every lit material's shader, so three recompiles them once:
+        // expect one hitch on the switch itself.
+        this.world.setShadows(preset.shadows && (toggles?.shadows ?? true));
+
+        // Every settings change lands here, rebinding a key included: only resize
+        // when the ratio really moved, since resizing reallocates the buffers.
+        const pixelRatio = Math.min(window.devicePixelRatio, toggles?.lowPixelRatio ? 1 : preset.pixelRatio);
+        if (pixelRatio === this.renderer.getPixelRatio()) return;
+        this.renderer.setPixelRatio(pixelRatio);
         this.resize();
     }
 
@@ -144,7 +174,13 @@ export class Experience {
     }
 
     private tick() {
+        window.requestAnimationFrame(() => this.tick());
         this.timer.update();
+
+        // Back in the menu or the classic book the canvas is hidden: drawing it would only heat the GPU.
+        const state = stateMachine.getState();
+        if (state !== 'GAME' && state !== 'DEAD' && state !== 'EDITOR') return;
+
         this.renderer.info.reset();
 
         // Even with the tab-visibility fix, a long GC pause or a slow frame can
@@ -175,7 +211,5 @@ export class Experience {
                 `      ${k(grass.drawnBlades)} drawn / ${k(grass.grownBlades)} grown`,
             ]);
         }
-
-        window.requestAnimationFrame(() => this.tick());
     }
 }

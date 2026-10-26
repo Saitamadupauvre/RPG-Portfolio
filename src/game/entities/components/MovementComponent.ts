@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { slideMove } from '../movement';
-import { getMovementBindings } from '../../input/keyboardLayout';
+import type { MoveAction } from '../../../data/settings';
+import { ARROW_KEYS } from '../../../domain/input';
+import { keyFor } from '../../../domain/settings';
 
 export class MovementComponent implements Component {
     public readonly name = 'movement';
@@ -67,8 +69,9 @@ export class MovementComponent implements Component {
         this.frozenBy.delete(reason);
     }
 
-    private isDown(codes: readonly string[]): boolean {
-        return codes.some((code) => this.keys.has(code));
+    /** The move's bound key, read every frame so a rebind applies at once, or its arrow. */
+    private isDown(move: MoveAction): boolean {
+        return this.keys.has(keyFor(move)) || this.keys.has(ARROW_KEYS[move]);
     }
 
     /**
@@ -76,13 +79,11 @@ export class MovementComponent implements Component {
      * The next call overwrites it.
      */
     public getInputDirection(): THREE.Vector3 | null {
-        const bindings = getMovementBindings();
-
         this.moveDirection.set(0, 0, 0);
-        if (this.isDown(bindings.forward)) this.moveDirection.add(this.forward);
-        if (this.isDown(bindings.back)) this.moveDirection.sub(this.forward);
-        if (this.isDown(bindings.right)) this.moveDirection.add(this.right);
-        if (this.isDown(bindings.left)) this.moveDirection.sub(this.right);
+        if (this.isDown('up')) this.moveDirection.add(this.forward);
+        if (this.isDown('down')) this.moveDirection.sub(this.forward);
+        if (this.isDown('right')) this.moveDirection.add(this.right);
+        if (this.isDown('left')) this.moveDirection.sub(this.right);
 
         return this.moveDirection.lengthSq() > 0 ? this.moveDirection.normalize() : null;
     }

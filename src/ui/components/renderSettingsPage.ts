@@ -1,0 +1,241 @@
+import { stateMachine } from '../../core/StateMachine';
+import { INPUT_ACTIONS, MOVE_ACTIONS, type InputAction, type Quality } from '../../data/settings';
+import { labelForKey } from '../../domain/input';
+import { clearSave } from '../../domain/persistence';
+import {
+    bindingFor,
+    getSettings,
+    rebind,
+    resetKeys,
+    setQuality,
+    setScreenShake,
+} from '../../domain/settings';
+import { keyName } from './printedKeys';
+import { renderKey } from './renderKey';
+
+const ACTION_LABELS: Record<InputAction, string> = {
+    up: 'Move up',
+    left: 'Move left',
+    down: 'Move down',
+    right: 'Move right',
+    dash: 'Dash',
+    interact: 'Interact',
+    levelUp: 'Level up',
+    book: 'Open book',
+};
+
+const QUALITIES: Choice<Quality>[] = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+];
+
+const QUALITY_HINTS: Record<Quality, string> = {
+    low: 'No shadows, no grass: for older computers.',
+    medium: 'Shadows and grass at standard resolution.',
+    high: 'Everything, sharper on high-density screens.',
+};
+
+const SWITCH: Choice<boolean>[] = [
+    { value: true, label: 'On' },
+    { value: false, label: 'Off' },
+];
+
+const KEYS_HINT = 'Click a key to change it. The arrow keys move too.';
+
+/** The reset button asks twice; the second click must come within this. */
+const CONFIRM_MS = 3000;
+
+type Choice<T> = { value: T; label: string };
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {
+    const element = document.createElement(tag);
+    element.className = className;
+    if (text !== undefined) element.textContent = text;
+    return element;
+}
+
+function replay(element: HTMLElement, className: string) {
+    element.classList.remove(className);
+    void element.offsetWidth;
+    element.classList.add(className);
+}
+
+function row(label: string, control: HTMLElement, fixed = false): HTMLElement {
+    const line = el('div', fixed ? 'settings-row fixed' : 'settings-row');
+    line.append(el('span', 'settings-label', label), control);
+    return line;
+}
+
+/** A row of buttons, one lit: the pixel version of a radio group. */
+function renderChoice<T>(choices: Choice<T>[], current: T, onPick: (value: T) => void): HTMLElement {
+    const group = el('div', 'settings-choice');
+    group.setAttribute('role', 'group');
+    for (const choice of choices) {
+        const button = el('button', 'settings-option', choice.label);
+        const active = choice.value === current;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+        button.addEventListener('click', () => onPick(choice.value));
+        group.appendChild(button);
+    }
+    return group;
+}
+
+// ---------- key capture ----------
+
+/** At most one key listens at a time; this ends it, restoring its label. */
+let endCapture: (() => void) | null = null;
+
+/** Drops a capture in progress, e.g. because the book is closing. */
+export function cancelKeyCapture() {
+    endCapture?.();
+}
+
+/**
+ * Waits for the next key and binds it to `action`. Listens on `window` in the
+ * capture phase and stops the event there, so the key never also reaches the
+ * book (Escape would close it) or the game (B would toggle the book).
+ */
+function captureKey(action: InputAction, button: HTMLElement, hint: HTMLElement) {
+    cancelKeyCapture();
+
+    const label = button.textContent ?? '';
+    button.textContent = '...';
+    button.classList.add('listening');
+    // A focused button would also "click" on Space or Enter, restarting the capture.
+    button.blur();
+    hint.textContent = 'Press the new key. Esc cancels.';
+
+    const onKey = (event: KeyboardEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.repeat) return;
+
+        if (event.code === 'Escape') {
+            stop();
+            return;
+        }
+        if (rebind(action, { code: event.code, label: labelForKey(event) }) === 'reserved') {
+            hint.textContent = 'Reserved: the arrows, Esc, Tab and the F keys.';
+            replay(button, 'refused');
+            return;
+        }
+        // Bound: the settings change redraws the page with the new key.
+        stop(false);
+    };
+    const onPointer = (event: PointerEvent) => {
+        if (event.target !== button) stop();
+    };
+
+    function stop(restore = true) {
+        window.removeEventListener('keydown', onKey, true);
+        window.removeEventListener('pointerdown', onPointer, true);
+        endCapture = null;
+        if (!restore) return;
+        button.textContent = label;
+        button.classList.remove('listening', 'refused');
+        hint.textContent = KEYS_HINT;
+    }
+
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onPointer, true);
+    endCapture = stop;
+}
+
+// ---------- pages ----------
+
+/** A keycap button showing the action's key; clicking it waits for a new one. */
+function renderKeyButton(action: InputAction, hint: HTMLElement): HTMLElement {
+    const key = el('button', 'book-key settings-key', keyName(bindingFor(action)));
+    if ([...(key.textContent ?? '')].length > 1) key.classList.add('book-key-wide');
+    key.setAttribute('aria-label', `${ACTION_LABELS[action]}: ${key.textContent}. Click to change.`);
+    key.addEventListener('click', () => captureKey(action, key, hint));
+    return key;
+}
+
+const isMove = (action: InputAction) => (MOVE_ACTIONS as readonly InputAction[]).includes(action);
+
+/** Left page of the Settings spread: every key. */
+export function renderControlsPage(): HTMLElement {
+    const page = el('div', 'settings-page');
+    page.appendChild(el('h2', 'book-page-title', 'Controls'));
+
+    const hint = el('p', 'settings-hint', KEYS_HINT);
+    const rows = el('div', 'settings-rows');
+
+    // The four moves laid out as on the keyboard, each one its own button.
+    const cross = el('div', 'book-keys book-keys-cross');
+    cross.append(...MOVE_ACTIONS.map((action) => renderKeyButton(action, hint)));
+    rows.appendChild(row('Movement', cross));
+
+    for (const action of INPUT_ACTIONS) {
+        if (!isMove(action)) rows.appendChild(row(ACTION_LABELS[action], renderKeyButton(action, hint)));
+    }
+
+    rows.append(
+        row('Attack', renderKey('MouseLeft'), true),
+        row('Settings', renderKey('Esc'), true),
+    );
+
+    const reset = el('button', 'book-link settings-reset-keys', 'Reset keys');
+    reset.addEventListener('click', resetKeys);
+
+    page.append(rows, hint, reset);
+    return page;
+}
+
+function renderResetProgress(): HTMLElement {
+    const button = el('button', 'book-link settings-danger', 'Reset progress');
+    let armed = false;
+
+    button.addEventListener('click', () => {
+        if (armed) {
+            clearSave();
+            // Every module holds its progress in memory: a reload is the one way to start clean.
+            location.reload();
+            return;
+        }
+        armed = true;
+        button.textContent = 'Click again to erase';
+        button.classList.add('armed');
+        window.setTimeout(() => {
+            armed = false;
+            button.textContent = 'Reset progress';
+            button.classList.remove('armed');
+        }, CONFIRM_MS);
+    });
+    return button;
+}
+
+/** Right page of the Settings spread: graphics and the game itself. */
+export function renderOptionsPage(): HTMLElement {
+    const settings = getSettings();
+    const page = el('article', 'book-entry settings-page');
+
+    const head = el('header', 'book-entry-header');
+    head.append(el('span', 'book-entry-kicker', 'Settings'), el('h2', 'book-entry-title', 'Options'));
+
+    const graphics = el('div', 'settings-rows');
+    graphics.append(
+        row('Quality', renderChoice(QUALITIES, settings.quality, setQuality)),
+        el('p', 'settings-hint', QUALITY_HINTS[settings.quality]),
+        row('Screen shake', renderChoice(SWITCH, settings.screenShake, setScreenShake)),
+    );
+
+    const quit = el('button', 'book-link', 'Quit to menu');
+    quit.addEventListener('click', () => stateMachine.changeState('MENU'));
+
+    const actions = el('div', 'book-links');
+    actions.append(quit, renderResetProgress());
+
+    page.append(
+        head,
+        el('h3', 'settings-heading', 'Graphics'),
+        graphics,
+        el('h3', 'settings-heading', 'Game'),
+        actions,
+        el('p', 'settings-hint', 'Reset erases coins, stats, discoveries and your bonfire. Settings stay.'),
+    );
+    return page;
+}

@@ -15,13 +15,12 @@ export const pages: BookPage[] = [
         body: 'Walk anywhere you like: the world is open and the camera follows you. Head toward whatever catches your eye.',
         image: { src: 'tutorial/movement.png', alt: 'The hero walking across the meadow' },
         controls: [
-            { keys: ['W', 'A', 'S', 'D'], label: 'QWERTY', shape: 'cross' },
-            { keys: ['Z', 'Q', 'S', 'D'], label: 'AZERTY', shape: 'cross' },
+            { keys: ['W', 'A', 'S', 'D'], label: 'Your keys', shape: 'cross', actions: ['up', 'left', 'down', 'right'] },
             { keys: ['↑', '←', '↓', '→'], label: 'Arrows', shape: 'cross' },
         ],
         tips: [
             'Hold two keys at once to walk diagonally.',
-            'Press B at any time to open this book.',
+            'Press B at any time to open this book, Escape for the settings.',
             'Raise Agility at a bonfire to walk faster.',
         ],
     },
@@ -31,7 +30,7 @@ export const pages: BookPage[] = [
         title: 'Dash',
         body: 'A quick burst in the direction you are walking. Use it to close in on an enemy, or to get out of the way of a blow.',
         image: { src: 'tutorial/dash.png', alt: 'The hero dashing, a trail streaking behind' },
-        controls: [{ keys: ['Space'], label: 'Dash' }],
+        controls: [{ keys: ['Space'], label: 'Dash', actions: ['dash'] }],
         tips: [
             'Hold a direction while you press it: standing still, you go nowhere.',
             'Dashing toward a narrow gap leaps across it.',

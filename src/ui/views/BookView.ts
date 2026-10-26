@@ -5,21 +5,32 @@ import {
     entryKey,
     flattenBook,
     getBook,
+    isSpreadSection,
     LEVEL_KEY,
+    SETTINGS_KEY,
     type BookEntry,
     type BookMode,
     type BookSection,
     type SectionId,
 } from '../../domain/book';
 import { buyUpgrade } from '../../domain/playerProgress';
+import { keyFor } from '../../domain/settings';
+import { getIris } from '../components/iris';
 import { flipPages, type FlipDirection, type PageFlip } from '../components/pageFlip';
 import { renderBookEntry } from '../components/renderBookEntry';
 import { renderBookTabs, renderBookToc } from '../components/renderBookToc';
 import { renderPlayerPage, renderStatsPage } from '../components/renderLevelPage';
+import { loadPrintedKeys } from '../components/printedKeys';
+import { cancelKeyCapture, renderControlsPage, renderOptionsPage } from '../components/renderSettingsPage';
 
-const TOGGLE_KEY = 'KeyB';
 /** Cap on leaves turned at once: past this, more paper reads as noise. */
 const MAX_LEAVES = 14;
+
+/** Mobile back button on a spread's second page, back to its first. */
+const BACK_LABELS: Partial<Record<SectionId, string>> = {
+    level: '← Player',
+    settings: '← Controls',
+};
 
 /** The app state each mode lives in. Leaving it closes the book. */
 const MODE_STATE: Record<BookMode, AppState> = { game: 'GAME', classic: 'CLASSIC' };
@@ -33,7 +44,8 @@ function requireElement(id: string): HTMLElement {
     return element;
 }
 
-export function initBookView() {
+/** `portrait`: the canvas the game draws the live knight into, placed on the Level page. */
+export function initBookView(portrait: HTMLCanvasElement) {
     const overlay = requireElement('book');
     const book = requireElement('book-body');
     const tabs = requireElement('book-tabs');
@@ -73,9 +85,10 @@ export function initBookView() {
 
     const buy: typeof buyUpgrade = (id) => canLevelUp && buyUpgrade(id);
 
-    /** Left page: the section's contents, or the player on the Level spread. */
+    /** Left page: the section's contents, or the first half of a spread (player, controls). */
     const renderLeft = (section: BookSection) => {
-        if (section.id === 'level') return renderPlayerPage();
+        if (section.id === 'level') return renderPlayerPage(portrait);
+        if (section.id === 'settings') return renderControlsPage();
         return renderBookToc(section, {
             indexOf: (key) => indexByKey.get(key) ?? -1,
             current,
@@ -86,6 +99,7 @@ export function initBookView() {
 
     const renderRight = (entry: BookEntry | undefined) => {
         if (entry?.kind === 'level') return renderStatsPage({ canLevelUp, onBuy: buy });
+        if (entry?.kind === 'settings') return renderOptionsPage();
         return renderBookEntry(entry);
     };
 
@@ -103,7 +117,7 @@ export function initBookView() {
         const progress = entries.length > 1 ? current / (entries.length - 1) : 0;
         book.style.setProperty('--progress', String(progress));
         book.classList.toggle('show-entry', showingEntry);
-        backButton.textContent = section.id === 'level' ? '← Player' : '← Contents';
+        backButton.textContent = BACK_LABELS[section.id] ?? '← Contents';
     };
 
     /** The page on a given side of the spine; on mobile there is only the one on screen. */
@@ -155,8 +169,8 @@ export function initBookView() {
     function selectSection(id: SectionId) {
         const first = entries.findIndex((entry) => entry.sectionId === id);
         if (first !== -1) {
-            // Level has no contents to pick from: on mobile, go straight to the stats.
-            goTo(first, id === 'level');
+            // A spread has no contents to pick from: on mobile, go straight to its second page.
+            goTo(first, isSpreadSection(id));
             return;
         }
         // Empty section: nothing to read, just show its (empty) contents page.
@@ -193,6 +207,7 @@ export function initBookView() {
     };
 
     function finishClose() {
+        cancelKeyCapture();
         flip?.finish();
         flip = null;
         overlay.classList.remove('open', 'closing');
@@ -216,17 +231,23 @@ export function initBookView() {
     requireElement('btn-close-book').addEventListener('click', close);
     backButton.addEventListener('click', () => goTo(current, false));
 
+    // Not behind the iris (a rest or a respawn in progress): the book would open
+    // unseen under the black screen and greet the player once it clears.
+    const canOpenFromKey = () => stateMachine.getState() === 'GAME' && !getIris().active;
+
     window.addEventListener('keydown', (event) => {
-        if (event.code === 'Escape' && isOpen()) {
-            close();
+        if (event.code === 'Escape') {
+            // Escape closes whatever page is open, and from the game opens straight on the settings.
+            if (isOpen()) close();
+            else if (canOpenFromKey() && !event.repeat) open('game', SETTINGS_KEY);
             return;
         }
 
-        if (event.code !== TOGGLE_KEY || event.repeat) return;
+        if (event.code !== keyFor('book') || event.repeat) return;
         if (stateMachine.getState() !== 'GAME') return;
 
         if (isOpen() && !isClosing()) close();
-        else open('game');
+        else if (canOpenFromKey()) open('game');
     });
 
     events.on('stateChange', (state) => {
@@ -266,4 +287,12 @@ export function initBookView() {
     });
     events.on('coinsChanged', refreshLevel);
     events.on('playerStatsChanged', refreshLevel);
+    // The keyboard layout arrives late (an async browser API): redraw the keys it names.
+    loadPrintedKeys(() => {
+        if (isOpen() && !isClosing()) render();
+    });
+    // Not only the settings spread: tutorial pages draw the player's own keys too.
+    events.on('settingsChanged', () => {
+        if (isOpen() && !isClosing()) render();
+    });
 }

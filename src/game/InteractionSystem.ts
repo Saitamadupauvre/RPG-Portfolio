@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { events } from '../core/events';
 import { isGameplayActive } from '../core/pause';
+import { keyFor } from '../domain/settings';
 import type { Entity } from './entities/Entity';
 import type { InteractAction } from './entities/components/InteractableComponent';
 
@@ -15,7 +16,7 @@ export class InteractionSystem {
             // unrelated presses never queue up between frames.
             // An E pressed behind an open modal must not queue up and fire on close.
             if (event.repeat || !isGameplayActive()) return;
-            if (!this.currentActions?.some((action) => action.key === event.code)) return;
+            if (!this.currentActions?.some((action) => keyFor(action.input) === event.code)) return;
 
             this.pressedKeys.add(event.code);
         });
@@ -32,6 +33,14 @@ export class InteractionSystem {
             target?.getComponent('interactable')?.interact(key);
         }
         this.pressedKeys.clear();
+    }
+
+    /**
+     * Clears the prompt now instead of on the next update, which a paused world
+     * never runs. The next live frame brings it back if the target is still there.
+     */
+    public hidePrompt() {
+        this.setPrompt(null);
     }
 
     private findNearest(entities: Entity[], playerPosition: THREE.Vector3): Entity | null {

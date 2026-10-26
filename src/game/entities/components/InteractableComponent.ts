@@ -1,7 +1,8 @@
 import type { Component } from '../../../domain/components/Component';
 import type { PromptAction } from '../../../core/events';
+import { keyFor } from '../../../domain/settings';
 
-/** A prompt line plus the code it runs. `key` is a KeyboardEvent.code. */
+/** A prompt line plus the code it runs, fired by whatever key is bound to its `input`. */
 export interface InteractAction extends PromptAction {
     run: () => void;
 }
@@ -23,8 +24,9 @@ export class InteractableComponent implements Component {
         this.allowsLevelUp = options.allowsLevelUp ?? false;
     }
 
-    public interact(key: string): boolean {
-        const action = this.actions.find((candidate) => candidate.key === key);
+    /** `code` is a `KeyboardEvent.code`. */
+    public interact(code: string): boolean {
+        const action = this.actions.find((candidate) => keyFor(candidate.input) === code);
         if (!action) return false;
 
         action.run();

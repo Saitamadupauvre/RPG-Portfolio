@@ -1,3 +1,5 @@
+import type { InputAction } from './settings';
+
 /**
  * One input on a tutorial page, drawn as keycaps. A key is its printed label
  * ('W', 'Space', '↑'), or 'MouseLeft' for the left mouse button.
@@ -5,6 +7,8 @@
 export interface ControlHint {
     keys: string[];
     label: string;
+    /** Rebindable inputs, one per key: the player's current keys are drawn instead of `keys`. */
+    actions?: InputAction[];
     /** Four keys laid out like a keyboard's movement block: the first on top, the other three below. */
     shape?: 'cross';
 }

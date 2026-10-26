@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { isGameplayActive } from '../../../core/pause';
+import { keyFor } from '../../../domain/settings';
 import { planGapLeap, slideMove, type GapLeap } from '../movement';
 import { groundHeight } from '../../world/terrainField';
 import type { MovementComponent } from './MovementComponent';
 
-const DASH_KEY = 'Space';
 const DASH_SPEED = 14;
 const DASH_DURATION = 0.18;
 const DASH_COOLDOWN = 0.8;
@@ -36,7 +36,7 @@ export class DashComponent implements Component {
     }
 
     private onKeyDown = (event: KeyboardEvent) => {
-        if (event.code !== DASH_KEY || event.repeat) return;
+        if (event.code !== keyFor('dash') || event.repeat) return;
         // Listeners are global, so a Space pressed while dead, paused or in a
         // menu would otherwise arm a dash that fires the moment play resumes.
         if (!isGameplayActive()) return;

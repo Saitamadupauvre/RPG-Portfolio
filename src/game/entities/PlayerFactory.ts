@@ -22,6 +22,8 @@ import { createLitMaterial } from '../render/materials';
 import { getPlayerStats } from '../../domain/playerProgress';
 
 const PLAYER_RADIUS = 0.4;
+/** How far in front of the root the dash trail starts, so the roll never shows its head. */
+const DASH_TRAIL_AHEAD = 0.4;
 
 /** Root sits at y = 0.9, so the model's feet must be half a body below its own origin. */
 const PLAYER_MODEL_ORIGIN_Y = -PLAYER_HEIGHT / 2;
@@ -115,7 +117,8 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     return entity
         .addComponent('movement', movement)
         .addComponent('dash', dash)
-        // Right after the dash moves the root, so the trail's head sits on the body.
+        // Right after the dash moves the root, so the trail's head follows the body. The head
+        // sits in front of the body (root faces +Z): the dash roll would show it otherwise.
         .addComponent('dashTrail', new DashTrailComponent(root, entityGroup, () => dash.isDashing, {
             time: 0.2,
             width: 0.7,
@@ -123,7 +126,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
                 { t: 0, color: PALETTE.cream, alpha: 0.9 },
                 { t: 1, color: LIGHT.sky, alpha: 0 },
             ],
-        }))
+        }, new THREE.Vector3(0, 0, DASH_TRAIL_AHEAD)))
         .addComponent('attack', attack)
         .addComponent('combo', combo)
         .addComponent('animationDriver', new PlayerAnimationDriver(animator, visual, movement, { dash, attack, combo }))

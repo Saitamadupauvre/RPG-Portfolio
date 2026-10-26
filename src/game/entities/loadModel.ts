@@ -68,7 +68,7 @@ export interface LoadedModel {
  * cache safe; it goes through SkeletonUtils because a plain clone() leaves a skinned mesh
  * pointing at the original's bones.
  */
-export async function loadModel(url: string, fit: ModelFitOptions): Promise<LoadedModel> {
+export async function loadModel(url: string, fit?: ModelFitOptions): Promise<LoadedModel> {
     const { scene, animations } = await load(url);
     const object = cloneSkinned(scene);
 
@@ -104,6 +104,9 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
             ? child.material.map(convert)
             : convert(child.material);
     });
+
+    // No fit: kept as built, origin and units straight from Blender (a sword whose origin is its grip).
+    if (!fit) return { object, materials, animations };
 
     const box = new THREE.Box3().setFromObject(object);
     const size = new THREE.Vector3();

@@ -3,11 +3,13 @@ import type { Entity } from './entities/Entity';
 import type { EnemyEntity } from '../data/MapEntity';
 import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
+import { getSettings } from '../domain/settings';
 import { defeatBoss } from '../domain/defeatedBosses';
 import { chunkKeyAt, type ChunkKey } from '../domain/chunks';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
 import type { ProjectileSystem } from './ProjectileSystem';
+import type { FireSystem } from './FireSystem';
 
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;
@@ -21,6 +23,7 @@ export class CombatSystem {
     private entityGroup: THREE.Group;
     private player: Entity;
     private projectiles: ProjectileSystem;
+    private fire: FireSystem;
     private onKill: (entity: Entity) => void;
     private onSpawn: (entity: Entity) => void;
 
@@ -32,12 +35,14 @@ export class CombatSystem {
         entityGroup: THREE.Group,
         player: Entity,
         projectiles: ProjectileSystem,
+        fire: FireSystem,
         onKill: (entity: Entity) => void,
         onSpawn: (entity: Entity) => void,
     ) {
         this.entityGroup = entityGroup;
         this.player = player;
         this.projectiles = projectiles;
+        this.fire = fire;
         this.onKill = onKill;
         this.onSpawn = onSpawn;
         this.hitParticles = new ParticleSystem(entityGroup);
@@ -47,6 +52,7 @@ export class CombatSystem {
         this.enemies = [];
         this.sources = [];
         this.projectiles.clear();
+        this.fire.clear();
     }
 
     public addEnemy(entity: Entity, source: EnemyEntity) {
@@ -72,8 +78,9 @@ export class CombatSystem {
     }
 
     public resetEnemies() {
-        // Arrows in the air or planted around belong to the fight being reset.
+        // Arrows and flames in the air or planted around belong to the fight being reset.
         this.projectiles.clear();
+        this.fire.clear();
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;
 
@@ -93,8 +100,11 @@ export class CombatSystem {
         this.resolveAttack();
         this.resolveEnemyAttacks();
         this.resolveArrows(dt);
+        this.resolveFire(dt);
         this.hitParticles.update(dt);
-        camera.position.add(this.screenShake.getOffset(dt));
+        // Advanced even when switched off, so switching it back on cannot replay a stale shake.
+        const shake = this.screenShake.getOffset(dt);
+        if (getSettings().screenShake) camera.position.add(shake);
     }
 
     private resolveEnemyAttacks() {
@@ -119,6 +129,12 @@ export class CombatSystem {
     private resolveArrows(dt: number) {
         const playerBox = hurtbox(this.player, this.scratchBoxA);
         this.projectiles.update(dt, playerBox, (damage, point) => this.hurtPlayer(damage, point));
+    }
+
+    /** Like arrows: a breath already poured keeps burning after its dragon is gone. */
+    private resolveFire(dt: number) {
+        const playerBox = hurtbox(this.player, this.scratchBoxA);
+        this.fire.update(dt, playerBox, (damage, point) => this.hurtPlayer(damage, point));
     }
 
     private hurtPlayer(damage: number, at: THREE.Vector3) {

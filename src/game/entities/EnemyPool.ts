@@ -8,10 +8,14 @@ import { HealthBarComponent } from './components/HealthBarComponent';
 import { AttackComponent } from './components/AttackComponent';
 import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { EnemyAIComponent } from './components/EnemyAIComponent';
-import { ComboAttacker, type EnemyAttacker } from './components/EnemyAttacker';
+import { ComboAttacker, type EnemyAttacker, type RoamingAttacker } from './components/EnemyAttacker';
+import type { EnemyBrain } from './components/EnemyBrain';
+import { RoamAIComponent, type RoamOptions } from './components/RoamAIComponent';
 import { LungeComponent, type LungeOptions } from './components/LungeComponent';
 import { ShootComponent, type ShootOptions } from './components/ShootComponent';
 import { ArcherAnimationDriver } from './components/ArcherAnimationDriver';
+import { BreathComponent, type BreathOptions } from './components/BreathComponent';
+import { BreathAnimationDriver } from './components/BreathAnimationDriver';
 import { ComboAnimationDriver } from './components/ComboAnimationDriver';
 import { LungeAnimationDriver } from './components/LungeAnimationDriver';
 import type { AnimationDriver } from './components/AnimationDriver';
@@ -20,21 +24,24 @@ import { XrayComponent } from './components/XrayComponent';
 import { XraySilhouette } from '../render/xraySilhouette';
 import type { TrailRendererOptions } from '../effects/TrailRenderer';
 import type { ProjectileSystem } from '../ProjectileSystem';
+import type { FireSystem } from '../FireSystem';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
 import { collectRig } from '../animation/Rig';
 import type { AnimatorControllerDefinition } from '../../domain/animation/AnimatorController';
 import { archerController } from './archerAnimation';
+import { dragonController } from './dragonAnimation';
 import { goblinController } from './goblinAnimation';
 import { soldierController } from './soldierAnimation';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
 import { loadModel, type ModelFitOptions } from './loadModel';
 
-/** Stand and swing within `range`, prepare and dash at the player, or keep away and shoot. */
+/** Stand and swing within `range`, prepare and dash at the player, keep away and shoot, or breathe fire. */
 type EnemyAttack =
     | { kind: 'combo'; range: number; moves: ComboMove[] }
     | { kind: 'lunge'; options: LungeOptions }
-    | { kind: 'shoot'; options: ShootOptions };
+    | { kind: 'shoot'; options: ShootOptions }
+    | { kind: 'breath'; options: BreathOptions };
 
 interface EnemyLook {
     size: number;
@@ -46,6 +53,8 @@ interface EnemyLook {
     deaggroRadius: number;
     coins: number;
     attack: EnemyAttack;
+    /** Roams a patch of the map around its spawn instead of hunting the player down (RoamAIComponent). */
+    roam?: RoamOptions;
     /** Blender model (tools/blender/make_enemies.py) that replaces the placeholder box; none yet for the boss. */
     model?: {
         url: string;
@@ -53,11 +62,10 @@ interface EnemyLook {
         anchor?: ModelFitOptions['anchor'];
         /** The graph that plays the model's clips: they come with the model, so does what plays them. */
         controller: AnimatorControllerDefinition;
+        /** The node in the rig a ranged attack leaves from (the archer's nocked arrow, the dragon's snout). */
+        muzzle?: string;
     };
 }
-
-/** The node in the skeleton's rig that holds the nocked arrow: shots leave from it. */
-const ARCHER_MUZZLE = 'Arrow';
 
 const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
     grunt: {
@@ -83,7 +91,7 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
         // Hollow bones: frail, two sword hits. The box is a little wider than the bones so hits feel fair.
         size: 1, color: PALETTE.wheat, hp: 22,
         // Anchored on its own origin, between its feet: the bow on one side would pull a bounding-box centre off its axis.
-        model: { url: 'models/enemy-skeleton.glb', height: 1.62, anchor: 'origin', controller: archerController },
+        model: { url: 'models/enemy-skeleton.glb', height: 1.62, anchor: 'origin', controller: archerController, muzzle: 'Arrow' },
         moveSpeed: 2, aggroRadius: 13, deaggroRadius: 30, coins: 10,
         attack: {
             kind: 'shoot',
@@ -91,6 +99,24 @@ const enemyLook: Record<EnemyEntity['enemyType'], EnemyLook> = {
                 range: 10, draw: 1, lock: 0.18, recovery: 0.6, cooldown: 1.4, flinch: 0.45,
                 arrow: { speed: 15, damage: 8, lead: 0.6 },
                 retreat: 3.5, hop: { distance: 2.5, duration: 0.5, cooldown: 3 },
+            },
+        },
+    },
+    dragon: {
+        // A small critter, faster than the player: it never chases, it darts about and now and then breathes
+        // fire. Frail once caught, and a blow breaks off its breath and sends it running.
+        size: 0.7, color: PALETTE.ember, hp: 30,
+        // Anchored on its origin, between its legs: the bushy tail would pull a bounding-box centre backward.
+        // Fit to 1, the height its run cycle's planted paws were measured at (dragonAnimation.ts).
+        model: { url: 'models/enemy-dragon.glb', height: 1, anchor: 'origin', controller: dragonController, muzzle: 'Mouth' },
+        moveSpeed: 5.5, aggroRadius: 7, deaggroRadius: 14, coins: 12,
+        roam: { zone: 6, pause: { calm: [0.6, 1.6], alert: [0.15, 0.4] }, orbit: [2.6, 4], startle: 1.8, attackChance: 0.35 },
+        attack: {
+            kind: 'breath',
+            options: {
+                range: 4, windup: 0.45, breathe: 0.8, recovery: 0.4, cooldown: 4,
+                turnRate: 1.8, rate: 30, spread: 0.14,
+                flame: { speed: 9, life: 0.6, damage: 4, size: 0.55 },
             },
         },
     },
@@ -149,6 +175,8 @@ type EnemyPoolDeps = {
     entityGroup: THREE.Object3D;
     /** Where archers put their arrows. */
     projectiles: ProjectileSystem;
+    /** Where dragons put their flames. */
+    fire: FireSystem;
 };
 
 /**
@@ -157,8 +185,12 @@ type EnemyPoolDeps = {
  */
 type Fighter = {
     attacker: EnemyAttacker;
+    /** The same attacker, when a roaming brain can drive it: only attacks it can break off. */
+    roamer?: RoamingAttacker;
     /** Builds the driver playing this attacker on an animator, for an enemy whose model has clips. */
     drive: (animator: AnimatorComponent) => AnimationDriver;
+    /** Hands a ranged attacker the model's `muzzle` node once it has loaded. */
+    setMuzzle?: (node: THREE.Object3D | null) => void;
 };
 
 function createFighter(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComponent, health: HealthComponent, deps: EnemyPoolDeps): Fighter {
@@ -176,9 +208,31 @@ function createFighter(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComp
         }
         case 'shoot': {
             const shoot = new ShootComponent(mesh, deps.player, attack, health, deps.projectiles, look.attack.options);
-            return { attacker: shoot, drive: (animator) => new ArcherAnimationDriver(animator, mesh, shoot) };
+            return {
+                attacker: shoot,
+                drive: (animator) => new ArcherAnimationDriver(animator, mesh, shoot),
+                setMuzzle: (node) => shoot.setMuzzle(node),
+            };
+        }
+        case 'breath': {
+            const breath = new BreathComponent(mesh, deps.player, attack, deps.fire, look.attack.options);
+            return {
+                attacker: breath,
+                roamer: breath,
+                drive: (animator) => new BreathAnimationDriver(animator, mesh, breath),
+                setMuzzle: (node) => breath.setMuzzle(node),
+            };
         }
     }
+}
+
+/** A roaming critter's brain when the look has `roam`, a hunter's otherwise. */
+function createBrain(look: EnemyLook, mesh: THREE.Object3D, health: HealthComponent, fighter: Fighter, player: THREE.Object3D): EnemyBrain {
+    // Origin is a placeholder; acquire() resets the AI onto the real one.
+    const { moveSpeed, aggroRadius, deaggroRadius, roam } = look;
+    if (!roam) return new EnemyAIComponent(mesh, player, mesh.position, moveSpeed, aggroRadius, deaggroRadius, fighter.attacker);
+    if (!fighter.roamer) throw new Error(`a roaming enemy needs an attack it can break off, not '${look.attack.kind}'`);
+    return new RoamAIComponent(mesh, player, health, mesh.position, moveSpeed, aggroRadius, deaggroRadius, fighter.roamer, roam);
 }
 
 /** The box is centred on its origin, so its feet sit half its height below it. */
@@ -190,14 +244,14 @@ export class EnemyPool {
     private free = new Map<EnemyEntity['enemyType'], Entity[]>();
     private deps: EnemyPoolDeps | null = null;
 
-    public init(camera: THREE.Camera, player: THREE.Object3D, entityGroup: THREE.Object3D, projectiles: ProjectileSystem) {
-        this.deps = { camera, player, entityGroup, projectiles };
+    public init(camera: THREE.Camera, player: THREE.Object3D, entityGroup: THREE.Object3D, projectiles: ProjectileSystem, fire: FireSystem) {
+        this.deps = { camera, player, entityGroup, projectiles, fire };
     }
 
     private createEnemy(type: EnemyEntity['enemyType'], id: string): Entity {
         // Fail loudly: before this check, a missing init() quietly built enemies
         // with no AI and no health bar, which looks like a gameplay bug.
-        if (!this.deps) throw new Error('enemyPool.init(camera, player, entityGroup, projectiles) must run before the first enemy spawns');
+        if (!this.deps) throw new Error('enemyPool.init(camera, player, entityGroup, projectiles, fire) must run before the first enemy spawns');
         const { camera, player, entityGroup } = this.deps;
 
         const geometry = getGeometry(type);
@@ -213,9 +267,9 @@ export class EnemyPool {
 
         const health = new HealthComponent(look.hp);
         const attack = new AttackComponent(mesh);
-        const { attacker, drive } = createFighter(look, mesh, attack, health, this.deps);
-        // Origin is a placeholder; acquire() resets the AI onto the real one.
-        const ai = new EnemyAIComponent(mesh, player, mesh.position, look.moveSpeed, look.aggroRadius, look.deaggroRadius, attacker);
+        const fighter = createFighter(look, mesh, attack, health, this.deps);
+        const { attacker, drive, setMuzzle } = fighter;
+        const ai = createBrain(look, mesh, health, fighter, player);
 
         const entity = new Entity(id, mesh, look.size / 2)
             .addComponent('health', health)
@@ -247,7 +301,7 @@ export class EnemyPool {
 
         if (look.model) {
             const hitFlash = entity.getComponent('hitFlash');
-            const { url, anchor } = look.model;
+            const { url, anchor, muzzle } = look.model;
             // The root's origin is the body's centre, so the model's feet go half a body below it.
             loadModel(url, { height: look.model.height, originY: -height / 2, anchor })
                 .then(({ object, materials, animations }) => {
@@ -256,7 +310,7 @@ export class EnemyPool {
                     mesh.add(object);
                     hitFlash?.setMaterials(materials);
                     entity.getComponent('xray')?.refresh();
-                    if (attacker instanceof ShootComponent) attacker.setMuzzle(object.getObjectByName(ARCHER_MUZZLE) ?? null);
+                    if (muzzle) setMuzzle?.(object.getObjectByName(muzzle) ?? null);
                     if (!animator) return;
                     try {
                         animator.bind(collectRig(object), animations);

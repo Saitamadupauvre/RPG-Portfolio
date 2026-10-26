@@ -123,6 +123,15 @@ function cannotReach(grid: Grid, fromX: number, fromZ: number, toX: number, toZ:
     );
 }
 
+/**
+ * Turns `mesh` toward the heading `angle` (radians, as `Math.atan2(x, z)` gives it) the
+ * shortest way round, by at most `maxStep`.
+ */
+export function turnToward(mesh: THREE.Object3D, angle: number, maxStep: number) {
+    const delta = Math.atan2(Math.sin(angle - mesh.rotation.y), Math.cos(angle - mesh.rotation.y));
+    mesh.rotation.y = Math.abs(delta) <= maxStep ? angle : mesh.rotation.y + Math.sign(delta) * maxStep;
+}
+
 export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distance: number) {
     const grid = getNavGrid();
     const { x, z } = mesh.position;

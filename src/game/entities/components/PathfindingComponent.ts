@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { findPath } from '../../../domain/pathfinding/AStar';
 import { getNavGrid } from '../../world/navigation';
+import { turnToward } from '../movement';
 
 const REPATH_INTERVAL = 0.4;
 const WAYPOINT_RADIUS = 0.15;
@@ -83,18 +84,6 @@ export class PathfindingComponent implements Component {
 
         toWaypoint.normalize();
         this.mesh.position.addScaledVector(toWaypoint, this.speed * dt);
-        this.rotateTowards(Math.atan2(toWaypoint.x, toWaypoint.z), dt);
-    }
-
-    private rotateTowards(targetAngle: number, dt: number) {
-        let delta = targetAngle - this.mesh.rotation.y;
-        delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-
-        const maxStep = this.turnSpeed * dt;
-        if (Math.abs(delta) <= maxStep) {
-            this.mesh.rotation.y = targetAngle;
-        } else {
-            this.mesh.rotation.y += Math.sign(delta) * maxStep;
-        }
+        turnToward(this.mesh, Math.atan2(toWaypoint.x, toWaypoint.z), this.turnSpeed * dt);
     }
 }

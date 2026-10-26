@@ -6,7 +6,7 @@ import type { ComboComponent } from './components/ComboComponent';
 import type { DashComponent } from './components/DashComponent';
 import type { DashTrailComponent } from './components/DashTrailComponent';
 import type { DustEmitterComponent } from './components/DustEmitterComponent';
-import type { EnemyAIComponent } from './components/EnemyAIComponent';
+import type { EnemyBrain } from './components/EnemyBrain';
 import type { FireComponent } from './components/FireComponent';
 import type { GhostComponent } from './components/GhostComponent';
 import type { GlowComponent } from './components/GlowComponent';
@@ -27,7 +27,8 @@ export type ComponentMap = {
     dash: DashComponent;
     dashTrail: DashTrailComponent;
     dust: DustEmitterComponent;
-    enemyAI: EnemyAIComponent;
+    /** A hunter (EnemyAIComponent) or a roaming critter (RoamAIComponent). */
+    enemyAI: EnemyBrain;
     fire: FireComponent;
     ghost: GhostComponent;
     glow: GlowComponent;

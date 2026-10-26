@@ -15,7 +15,7 @@ export interface MapEntityTransform {
 export interface EnemyEntity extends MapEntityTransform {
     kind: 'enemy';
     id: string;
-    enemyType: 'grunt' | 'elite' | 'archer' | 'boss';
+    enemyType: 'grunt' | 'elite' | 'archer' | 'dragon' | 'boss';
 }
 
 /**

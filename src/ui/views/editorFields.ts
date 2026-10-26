@@ -22,6 +22,7 @@ export const palette: PaletteEntry[] = [
     { kind: 'enemy', variant: 'grunt', label: 'Grunt' },
     { kind: 'enemy', variant: 'elite', label: 'Elite' },
     { kind: 'enemy', variant: 'archer', label: 'Archer' },
+    { kind: 'enemy', variant: 'dragon', label: 'Dragon' },
     { kind: 'enemy', variant: 'boss', label: 'Boss' },
     { kind: 'prop', variant: 'tree', label: 'Tree (random)' },
     { kind: 'prop', variant: 'bush', label: 'Bush (random)' },
@@ -46,7 +47,7 @@ function options(...values: string[]) {
 
 /** Fields specific to each entity kind. Shared transform fields are rendered separately. */
 export const fieldsByKind: Record<MapEntity['kind'], readonly FieldSpec[]> = {
-    enemy: [{ control: 'select', key: 'enemyType', label: 'type', options: options('grunt', 'elite', 'archer', 'boss') }],
+    enemy: [{ control: 'select', key: 'enemyType', label: 'type', options: options('grunt', 'elite', 'archer', 'dragon', 'boss') }],
     chest: [{ control: 'select', key: 'chestTier', label: 'tier', options: options('wood', 'silver', 'gold') }],
     item: [
         { control: 'text', key: 'itemType', label: 'itemType' },

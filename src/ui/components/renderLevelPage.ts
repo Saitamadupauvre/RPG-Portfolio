@@ -18,12 +18,20 @@ function playerLevel(views: StatView[]): number {
     return 1 + views.reduce((sum, view) => sum + view.level, 0);
 }
 
-/** Left-hand page of the Level section: the player instead of a table of contents. */
-export function renderPlayerPage(): HTMLElement {
+/**
+ * Left-hand page of the Level section: the player instead of a table of contents. `portrait` is
+ * the one canvas the game draws the live knight into: appending it moves it here from the page
+ * the last render built, it is never copied.
+ */
+export function renderPlayerPage(portrait: HTMLCanvasElement): HTMLElement {
+    portrait.className = 'book-portrait';
+    const frame = el('div', 'book-player');
+    frame.appendChild(portrait);
+
     const page = el('div', 'book-player-page');
     page.append(
         el('h2', 'book-page-title', `Level ${playerLevel(getStatViews())}`),
-        el('div', 'book-player'),
+        frame,
         el('p', 'book-player-coins', `${getCoins()} coins`),
     );
     return page;

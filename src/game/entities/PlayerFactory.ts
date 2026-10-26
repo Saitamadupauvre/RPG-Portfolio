@@ -13,23 +13,17 @@ import { XraySilhouette } from '../render/xraySilhouette';
 import { HitFlashComponent } from './components/HitFlashComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
-import { collectRig, equip } from '../animation/Rig';
 import { playerController } from './playerAnimation';
 import { createSwordMesh } from './SwordFactory';
-import { loadModel } from './loadModel';
+import { loadPlayerModel, PLAYER_HEIGHT } from './playerModel';
 import { events } from '../../core/events';
 import { createLitMaterial } from '../render/materials';
 import { getPlayerStats } from '../../domain/playerProgress';
 
 const PLAYER_RADIUS = 0.4;
 
-const PLAYER_MODEL_URL = 'player/player.glb';
-const PLAYER_HEIGHT = 1.8;
 /** Root sits at y = 0.9, so the model's feet must be half a body below its own origin. */
 const PLAYER_MODEL_ORIGIN_Y = -PLAYER_HEIGHT / 2;
-
-/** The Empty in the Blender file that marks where the sword's grip goes. */
-const WEAPON_SOCKET = 'Socket_HandR';
 
 const COMBO_MOVES: ComboMove[] = [
     // Scaled off the Strength stat (base 10): 12 and 16 damage before any upgrade.
@@ -95,30 +89,17 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     // Grey ghost wherever anything hides the player.
     const xray = new XraySilhouette(root, PALETTE.stone);
 
-    loadModel(PLAYER_MODEL_URL, { height: PLAYER_HEIGHT, originY: PLAYER_MODEL_ORIGIN_Y })
-        .then(({ object, materials, animations }) => {
+    // Takes the sword out of the stand-in socket into the model's hand, and hooks up the animator.
+    loadPlayerModel({ originY: PLAYER_MODEL_ORIGIN_Y, sword, animator })
+        .then(({ object, materials }) => {
             visual.remove(body);
             geometry.dispose();
             material.dispose();
 
             visual.add(object);
             hitFlash.setMaterials(materials);
-
-            if (!equip(object, WEAPON_SOCKET, sword)) {
-                console.warn(`[player] model has no "${WEAPON_SOCKET}" empty; the sword stays at the stand-in position`);
-            }
             // The placeholder's twin left with it; the model's meshes get theirs now.
             xray.refresh();
-
-            if (animations.length === 0) {
-                console.warn('[player] model has no animations; export the Actions from Blender to bring it to life');
-                return;
-            }
-            try {
-                animator.bind(collectRig(object), animations);
-            } catch (error) {
-                console.error('[player] animation setup failed, the model will stand still', error);
-            }
         })
         .catch((error) => console.error('[player] model failed to load, keeping placeholder', error));
 

@@ -38,6 +38,14 @@ function createLeaf(): { leaf: HTMLElement; front: HTMLElement; back: HTMLElemen
 
 function copyPage(page: HTMLElement, face: HTMLElement) {
     face.replaceChildren(...[...page.children].map((child) => child.cloneNode(true)));
+
+    // cloneNode copies a canvas element but not its pixels: paint each copy from its original,
+    // so a live picture (the Level page's knight) turns with its page instead of going blank.
+    const originals = page.querySelectorAll('canvas');
+    face.querySelectorAll('canvas').forEach((copy, index) => {
+        const original = originals[index];
+        if (original && original.width > 0 && original.height > 0) copy.getContext('2d')?.drawImage(original, 0, 0);
+    });
 }
 
 /**

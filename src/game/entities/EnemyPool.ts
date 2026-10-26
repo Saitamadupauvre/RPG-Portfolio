@@ -4,6 +4,7 @@ import { Entity } from './Entity';
 import { applyTransform } from './applyTransform';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { HitFlashComponent } from './components/HitFlashComponent';
+import { DeathFadeComponent } from './components/DeathFadeComponent';
 import { HealthBarComponent } from './components/HealthBarComponent';
 import { AttackComponent } from './components/AttackComponent';
 import { ComboComponent, type ComboMove } from './components/ComboComponent';
@@ -282,7 +283,9 @@ export class EnemyPool {
         // Aggro only drops far from home, so a chase the player outran would otherwise stay lit across the map.
         const xray = new XraySilhouette(mesh, PALETTE.berry, false);
         const isHunting = () => ai.isAggroed && mesh.position.distanceTo(player.position) <= look.aggroRadius;
-        entity.addComponent('xray', new XrayComponent(xray, isHunting));
+        entity
+            .addComponent('xray', new XrayComponent(xray, isHunting))
+            .addComponent('deathFade', new DeathFadeComponent(mesh, xray));
         // Only lungers dash; the trail runs after the AI so its head is where the body ended up.
         if (attacker instanceof LungeComponent) {
             entity.addComponent('dashTrail', new DashTrailComponent(mesh, entityGroup, () => attacker.isDashing, ENEMY_TRAIL));
@@ -345,6 +348,7 @@ export class EnemyPool {
         const health = entity.getComponent('health');
         if (health) health.hp = health.maxHp;
         entity.getComponent('healthBar')?.reset();
+        entity.getComponent('deathFade')?.reset();
         entity.getComponent('hitFlash')?.reset();
         entity.getComponent('attack')?.reset();
         entity.getComponent('dashTrail')?.reset();

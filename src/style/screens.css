@@ -1,103 +1,6 @@
-/* Full-screen moments: the loading screen, death, and the iris transition.
-   Stacked above the UI container (z-index 2): death screen 7, iris 8,
-   death flash 9, loading 20 (it covers the black iris while the game boots). */
-
-/* ---------- world under death ---------- */
-
-/* Leaving DEAD uses this rule's transition: colour comes back quicker than it left. */
-.webgl {
-  transition: filter 600ms ease;
-}
-
-.state-dead .webgl {
-  filter: grayscale(0.85) brightness(0.72);
-  transition: filter 1.4s ease-out;
-}
-
-/* ---------- death ---------- */
-
-/* White at the moment of death, fading back to nothing (TransitionView animates it). */
-#death-flash {
-  position: fixed;
-  inset: 0;
-  z-index: 9;
-  background: #fffaf0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* The band sits a little below the middle, so the fallen hero stays in view above it. */
-#death-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 22vh;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 500ms ease, visibility 0s linear 500ms;
-}
-
-/* Fades in once the flash has mostly cleared. */
-#death-screen.visible {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 900ms ease 250ms, visibility 0s;
-}
-
-.death-band {
-  width: 100%;
-  padding: 30px 16px 26px;
-  text-align: center;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(10, 4, 7, 0.8) 24%,
-    rgba(10, 4, 7, 0.8) 76%,
-    transparent
-  );
-}
-
-.death-title {
-  font-family: var(--pixel-font-display);
-  font-size: clamp(1.5rem, 5vw, 3rem);
-  font-weight: 400;
-  line-height: 1.2;
-  color: #c4283d;
-  text-shadow: 4px 4px 0 #1a0508, 0 0 26px rgba(196, 40, 61, 0.45);
-}
-
-/* Spreads out slowly while it sits there, the way the Souls games hold it. */
-#death-screen.visible .death-title {
-  animation: death-title 3.2s cubic-bezier(0.2, 0.6, 0.3, 1) both;
-}
-
-.death-loss {
-  min-height: 1.3em;
-  margin-top: 14px;
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #e8c068;
-  text-shadow: 2px 2px 0 #000;
-}
-
-#death-screen.visible .death-loss {
-  animation: death-loss 1.2s ease 900ms both;
-}
-
-@keyframes death-title {
-  from { letter-spacing: 0.04em; transform: scale(0.94); }
-  to { letter-spacing: 0.2em; transform: scale(1); }
-}
-
-@keyframes death-loss {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
+/* Full-screen moments: the loading screen and the iris transition.
+   Stacked above the UI container (z-index 2): iris 8, loading 20
+   (it covers the black iris while the game boots). */
 
 /* ---------- iris ---------- */
 
@@ -285,8 +188,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .loading-ember,
-  .loading-dots::after,
-  #death-screen.visible .death-title {
+  .loading-dots::after {
     animation: none;
   }
 }

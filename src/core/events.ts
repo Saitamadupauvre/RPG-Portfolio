@@ -20,7 +20,9 @@ export type AppEvents = {
     playerHealthChanged: [hp: number, maxHp: number];
 
     playerDied: [coinsLost: number];
-    /** The death screen has gone black: the world may move the player to their bonfire now. */
+    /** The dead player's body has faded out, here on screen: close the screen onto that spot. */
+    playerFaded: [screenX: number, screenY: number];
+    /** The screen has gone black after a death: the world may move the player to their bonfire now. */
     respawnRequested: [];
     /** Back on their bonfire, behind a black screen: open it around the player. */
     playerRespawned: [screenX: number, screenY: number];

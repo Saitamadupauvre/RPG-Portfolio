@@ -5,6 +5,7 @@ import type { AttackComponent } from './components/AttackComponent';
 import type { ComboComponent } from './components/ComboComponent';
 import type { DashComponent } from './components/DashComponent';
 import type { DashTrailComponent } from './components/DashTrailComponent';
+import type { DeathFadeComponent } from './components/DeathFadeComponent';
 import type { DustEmitterComponent } from './components/DustEmitterComponent';
 import type { EnemyBrain } from './components/EnemyBrain';
 import type { FireComponent } from './components/FireComponent';
@@ -26,6 +27,7 @@ export type ComponentMap = {
     combo: ComboComponent;
     dash: DashComponent;
     dashTrail: DashTrailComponent;
+    deathFade: DeathFadeComponent;
     dust: DustEmitterComponent;
     /** A hunter (EnemyAIComponent) or a roaming critter (RoamAIComponent). */
     enemyAI: EnemyBrain;

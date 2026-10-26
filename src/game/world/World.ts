@@ -80,6 +80,8 @@ export class World {
     private paused = false;
     /** Between `restRequested` and `restCovered`: the world is held paused under the closing iris. */
     private resting = false;
+    /** `playerFaded` went out for this death. */
+    private deathReported = false;
     // One full-ratio tier: Terrain already grows far patches sparser, and a draw
     // LOD on top would thin them a second time.
     public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
@@ -119,7 +121,7 @@ export class World {
             projectiles,
             fire,
             (entity) => {
-                // CombatSystem already detached the mesh and pooled the entity;
+                // CombatSystem owns the body now (it fades, then goes back to the pool);
                 // the chunk must forget it too or the next despawn releases it twice.
                 this.forgetEntity(entity);
                 this.entities = this.entities.filter((e) => e !== entity);
@@ -270,6 +272,8 @@ export class World {
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.environment.followShadows(this.player.mesh.position);
 
+        if (state === 'DEAD') this.updateDeath(dt);
+
         // Not only DEAD and EDITOR: quitting to the menu leaves the world loaded, and it must not play on unseen.
         if (this.paused || state !== 'GAME') return;
 
@@ -378,7 +382,22 @@ export class World {
     private die() {
         stateMachine.changeState('DEAD');
         this.stopPlayerInput();
+        // Before the fade reads the materials, so it starts from their real colours.
+        this.player.getComponent('hitFlash')?.reset();
+        this.player.getComponent('deathFade')?.start();
+        this.deathReported = false;
         events.emit('playerDied', loseAllCoins());
+    }
+
+    /** The world stands still while dead; only the player's body whitens and fades, then the screen may close on it. */
+    private updateDeath(dt: number) {
+        const fade = this.player.getComponent('deathFade');
+        fade?.update(dt);
+        if (this.deathReported || fade?.done === false) return;
+
+        this.deathReported = true;
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('playerFaded', x, y);
     }
 
     private respawn(camera: THREE.PerspectiveCamera) {
@@ -423,6 +442,7 @@ export class World {
     /** What a respawn and a rest share: full health, standing still, every non-boss enemy back home. */
     private restore() {
         this.player.getComponent('health')?.refill();
+        this.player.getComponent('deathFade')?.reset();
         // Died (or sat down) mid-swing: come back standing, not finishing the blow.
         this.player.getComponent('combo')?.reset();
         this.player.getComponent('animationDriver')?.reset();

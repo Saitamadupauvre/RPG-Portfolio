@@ -11,6 +11,7 @@ import { DashTrailComponent } from './components/DashTrailComponent';
 import { LIGHT, PALETTE } from '../render/palette';
 import { XraySilhouette } from '../render/xraySilhouette';
 import { HitFlashComponent } from './components/HitFlashComponent';
+import { DeathFadeComponent } from './components/DeathFadeComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
 import { playerController } from './playerAnimation';
@@ -130,5 +131,6 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
         .addComponent('dust', new DustEmitterComponent(root, movement, entityGroup))
         .addComponent('swordTrail', new SwordTrailComponent(sword, attack, entityGroup))
         .addComponent('health', health)
-        .addComponent('hitFlash', hitFlash);
+        .addComponent('hitFlash', hitFlash)
+        .addComponent('deathFade', new DeathFadeComponent(root, xray));
 }

@@ -16,6 +16,8 @@ const HIT_SHAKE_DURATION = 0.15;
 
 export class CombatSystem {
     private enemies: { entity: Entity; source: EnemyEntity }[] = [];
+    /** Killed enemies fading out: out of the fight already, back to the pool once gone. */
+    private dying: { entity: Entity; source: EnemyEntity }[] = [];
 
     private sources: EnemyEntity[] = [];
     private hitParticles: ParticleSystem;
@@ -49,6 +51,7 @@ export class CombatSystem {
     }
 
     public clear() {
+        this.finishDying();
         this.enemies = [];
         this.sources = [];
         this.projectiles.clear();
@@ -81,6 +84,8 @@ export class CombatSystem {
         // Arrows and flames in the air or planted around belong to the fight being reset.
         this.projectiles.clear();
         this.fire.clear();
+        // Under the black screen: a body still fading would stand beside its revived self.
+        this.finishDying();
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;
 
@@ -101,6 +106,7 @@ export class CombatSystem {
         this.resolveEnemyAttacks();
         this.resolveArrows(dt);
         this.resolveFire(dt);
+        this.updateDying(dt);
         this.hitParticles.update(dt);
         // Advanced even when switched off, so switching it back on cannot replay a stale shake.
         const shake = this.screenShake.getOffset(dt);
@@ -138,9 +144,13 @@ export class CombatSystem {
     }
 
     private hurtPlayer(damage: number, at: THREE.Vector3) {
-        this.player.getComponent('health')?.takeDamage(damage);
-        this.player.getComponent('hitFlash')?.trigger();
-        this.hitParticles.spawnBurst(at);
+        const health = this.player.getComponent('health');
+        health?.takeDamage(damage);
+        // Same as an enemy: the fatal hit leaves the burst and the flash to the death fade.
+        if (!health?.isDead()) {
+            this.player.getComponent('hitFlash')?.trigger();
+            this.hitParticles.spawnBurst(at);
+        }
         this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
     }
 
@@ -159,21 +169,55 @@ export class CombatSystem {
             const health = entity.getComponent('health');
             health?.takeDamage(attack.damage);
 
-            entity.getComponent('hitFlash')?.trigger();
-            this.hitParticles.spawnBurst(enemyBox.getCenter(this.scratchCenter));
             this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
 
-            if (health?.isDead()) this.killEnemy(entity, source);
+            // The killing blow has no burst: the body turning white is the hit.
+            if (health?.isDead()) {
+                this.killEnemy(entity, source);
+            } else {
+                entity.getComponent('hitFlash')?.trigger();
+                this.hitParticles.spawnBurst(enemyBox.getCenter(this.scratchCenter));
+            }
         }
     }
 
+    /**
+     * Out of the fight at once (no more hits either way) and paid for, but the
+     * body stays where it fell, frozen mid-pose, while it whitens and fades.
+     */
     private killEnemy(entity: Entity, source: EnemyEntity) {
-        this.entityGroup.remove(entity.mesh);
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
-        enemyPool.release(entity, source.enemyType);
         if (source.enemyType === 'boss') defeatBoss(source.id);
         addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
+
+        // Before the fade reads the materials, so it starts from their real colours.
+        entity.getComponent('hitFlash')?.reset();
+        entity.getComponent('healthBar')?.hide();
+        entity.getComponent('dashTrail')?.reset();
+        entity.getComponent('deathFade')?.start();
+        this.dying.push({ entity, source });
+    }
+
+    private updateDying(dt: number) {
+        if (this.dying.length === 0) return;
+
+        for (const { entity } of this.dying) entity.getComponent('deathFade')?.update(dt);
+        this.dying = this.dying.filter(({ entity, source }) => {
+            if (entity.getComponent('deathFade')?.done === false) return true;
+            this.removeBody(entity, source);
+            return false;
+        });
+    }
+
+    private finishDying() {
+        for (const { entity, source } of this.dying) this.removeBody(entity, source);
+        this.dying = [];
+    }
+
+    private removeBody(entity: Entity, source: EnemyEntity) {
+        this.entityGroup.remove(entity.mesh);
+        enemyPool.release(entity, source.enemyType);
     }
 }
 

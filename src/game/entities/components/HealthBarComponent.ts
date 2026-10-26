@@ -50,6 +50,11 @@ export class HealthBarComponent implements Component {
         this.drainRatio = -1;
     }
 
+    /** Off until the next update: a dying body takes no bar into its fade. */
+    public hide() {
+        this.group.visible = false;
+    }
+
     public update(dt: number) {
         this.ownerMesh.getWorldQuaternion(this.ownerWorldQuat);
         this.group.quaternion.copy(this.ownerWorldQuat.invert()).multiply(this.camera.quaternion);

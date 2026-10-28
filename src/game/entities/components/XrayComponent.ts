@@ -18,6 +18,11 @@ export class XrayComponent implements Component {
         this.silhouette.refresh();
     }
 
+    /** Off until the next `update` decides again: for frames where enemies do not update (the menu). */
+    public hide() {
+        this.silhouette.setEnabled(false);
+    }
+
     public update() {
         this.silhouette.setEnabled(this.isShown());
     }

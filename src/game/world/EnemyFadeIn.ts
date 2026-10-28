@@ -35,7 +35,11 @@ export class EnemyFadeIn {
     public hold(entities: readonly Entity[]) {
         this.elapsed = -1;
         for (const entity of entities) {
-            if (isEnemy(entity)) this.collect(entity.mesh);
+            if (!isEnemy(entity)) continue;
+            this.collect(entity.mesh);
+            // The twin is a basic material, left out of `collect`; and with no enemy update in the
+            // menu, one quit mid-hunt would keep its silhouette on over an invisible body.
+            entity.getComponent('xray')?.hide();
         }
         for (const material of this.saved.keys()) material.opacity = 0;
     }

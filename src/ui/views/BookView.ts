@@ -23,17 +23,21 @@ import { renderBookTabs, renderBookToc } from '../components/renderBookToc';
 import { renderPlayerPage, renderStatsPage } from '../components/renderLevelPage';
 import { loadPrintedKeys } from '../components/printedKeys';
 import { cancelKeyCapture, renderControlsPage, renderOptionsPage } from '../components/renderSettingsPage';
+import { renderSprite } from '../components/pixelSprite';
+import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
 
 /** Cap on leaves turned at once: past this, more paper reads as noise. */
 const MAX_LEAVES = 14;
 /** When the front cover starts to swing open: `book-cover-open`'s delay in book.css. */
 const COVER_OPEN_DELAY_S = 0.65;
 
-/** Mobile back button on a spread's second page, back to its first. */
-const BACK_LABELS: Partial<Record<SectionId, string>> = {
-    level: '← Player',
-    settings: '← Controls',
-};
+/** Phone layout: one page of the spread slides in instead of a leaf turning. */
+const SLIDE_MS = 260;
+const SLIDE_PX = 28;
+/** A horizontal drag this long, and mostly sideways, turns to the other page. */
+const SWIPE_PX = 50;
+
+type Side = 'left' | 'right';
 
 /** The app state each mode lives in. Leaving it closes the book. */
 const MODE_STATE: Record<BookMode, AppState> = { game: 'GAME', classic: 'CLASSIC' };
@@ -57,7 +61,10 @@ export function initBookView(portrait: HTMLCanvasElement) {
     const toc = requireElement('book-toc');
     const entryHost = requireElement('book-entry');
     const flipper = requireElement('book-flipper');
-    const backButton = requireElement('btn-book-back');
+    const prevButton = requireElement('btn-book-prev');
+    const nextButton = requireElement('btn-book-next');
+    prevButton.appendChild(renderSprite(ARROW_POINT_LEFT));
+    nextButton.appendChild(renderSprite(ARROW_POINT_RIGHT));
 
     let mode: BookMode = 'game';
     let sections: BookSection[] = [];
@@ -65,8 +72,8 @@ export function initBookView(portrait: HTMLCanvasElement) {
     let indexByKey = new Map<string, number>();
     let current = 0;
     let activeSection: SectionId = 'projects';
-    /** Mobile only: one page at a time, TOC or entry. */
-    let showingEntry = false;
+    /** Phone layout only: the page of the spread on screen, contents (left) or entry (right). */
+    let side: Side = 'left';
     let flip: PageFlip | null = null;
     const openGroups = new Set<string>();
     /** Set by the game: the player stands at a bonfire. */
@@ -114,19 +121,29 @@ export function initBookView(portrait: HTMLCanvasElement) {
         toc.replaceChildren(renderLeft(section));
 
         const entry = entries[current];
-        entryHost.replaceChildren(renderRight(entry?.sectionId === section.id ? entry : undefined));
+        const hasEntry = entry?.sectionId === section.id;
+        entryHost.replaceChildren(renderRight(hasEntry ? entry : undefined));
 
         // Drives the thickness of the two page stacks: the further in, the thicker the left one.
         const progress = entries.length > 1 ? current / (entries.length - 1) : 0;
         book.style.setProperty('--progress', String(progress));
-        book.classList.toggle('show-entry', showingEntry);
-        backButton.textContent = BACK_LABELS[section.id] ?? '← Contents';
+        // Phone layout: which page shows, and whether there is a right page to go to.
+        book.classList.toggle('show-entry', side === 'right');
+        book.classList.toggle('has-entry', hasEntry);
     };
 
-    /** The page on a given side of the spine; on mobile there is only the one on screen. */
-    const visiblePage = (side: 'left' | 'right') => {
-        if (mobileQuery.matches) return showingEntry ? rightPage : leftPage;
-        return side === 'left' ? leftPage : rightPage;
+    /** Phone layout: the new page slides in from the side it lies on, cover and page edges with it. */
+    const slidePages = (direction: FlipDirection, apply: () => void) => {
+        apply();
+        render();
+        playSound('pageTurn');
+        const offset = direction === 'forward' ? SLIDE_PX : -SLIDE_PX;
+        for (const part of book.querySelectorAll('.book-cover, .book-stack, .book-page')) {
+            part.animate(
+                [{ transform: `translateX(${offset}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
+                { duration: SLIDE_MS, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+            );
+        }
     };
 
     const turnPages = (count: number, direction: FlipDirection, apply: () => void) => {
@@ -136,11 +153,16 @@ export function initBookView(portrait: HTMLCanvasElement) {
             render();
             return;
         }
+        // One page on screen: no spine for a leaf to turn around.
+        if (mobileQuery.matches) {
+            slidePages(direction, apply);
+            return;
+        }
         flip = flipPages(flipper, {
             count,
             direction,
-            from: visiblePage(direction === 'forward' ? 'right' : 'left'),
-            to: () => visiblePage(direction === 'forward' ? 'left' : 'right'),
+            from: direction === 'forward' ? rightPage : leftPage,
+            to: () => (direction === 'forward' ? leftPage : rightPage),
             onSwap: () => {
                 apply();
                 render();
@@ -148,43 +170,78 @@ export function initBookView(portrait: HTMLCanvasElement) {
         });
     };
 
+    const sectionIndex = (id: SectionId) => sections.findIndex((s) => s.id === id);
+    /** Phone layout: every page in reading order, two per section (contents, then entry). */
+    const pagePosition = (id: SectionId, pageSide: Side) => sectionIndex(id) * 2 + (pageSide === 'right' ? 1 : 0);
+
     function goTo(index: number, showEntry: boolean) {
         const target = entries[index];
         if (!target) return;
 
         const mobile = mobileQuery.matches;
+        const targetSide: Side = showEntry ? 'right' : 'left';
         const samePlace = index === current && target.sectionId === activeSection;
-        if (samePlace && (!mobile || showEntry === showingEntry)) return;
+        if (samePlace && (!mobile || targetSide === side)) return;
 
-        // On mobile the TOC and the entry are two separate pages: one leaf each way.
-        const direction: FlipDirection = mobile
-            ? showEntry ? 'forward' : 'backward'
-            : index >= current ? 'forward' : 'backward';
-        const count = mobile ? 1 : Math.min(MAX_LEAVES, Math.max(1, Math.abs(index - current)));
+        let direction: FlipDirection = index >= current ? 'forward' : 'backward';
+        if (mobile) {
+            const from = pagePosition(activeSection, side);
+            const to = pagePosition(target.sectionId, targetSide);
+            if (from !== to) direction = to > from ? 'forward' : 'backward';
+        }
+        const count = Math.min(MAX_LEAVES, Math.max(1, Math.abs(index - current)));
 
         turnPages(count, direction, () => {
             current = index;
             activeSection = target.sectionId;
-            showingEntry = showEntry;
+            side = targetSide;
         });
     }
 
     function selectSection(id: SectionId) {
         const first = entries.findIndex((entry) => entry.sectionId === id);
         if (first !== -1) {
-            // A spread has no contents to pick from: on mobile, go straight to its second page.
+            // A spread has no contents to pick from: on the phone, go straight to its second page.
             goTo(first, isSpreadSection(id));
             return;
         }
         // Empty section: nothing to read, just show its (empty) contents page.
         if (id === activeSection) return;
-        const sectionIndex = (sid: SectionId) => sections.findIndex((s) => s.id === sid);
         const direction = sectionIndex(id) > sectionIndex(activeSection) ? 'forward' : 'backward';
-        turnPages(mobileQuery.matches ? 1 : MAX_LEAVES / 2, direction, () => {
+        turnPages(MAX_LEAVES / 2, direction, () => {
             activeSection = id;
-            showingEntry = false;
+            side = 'left';
         });
     }
+
+    /** Phone layout: the other page of the spread on screen. */
+    const showSide = (next: Side) => {
+        if (next === side || !mobileQuery.matches) return;
+        if (next === 'right' && !book.classList.contains('has-entry')) return;
+        goTo(current, next === 'right');
+    };
+
+    prevButton.addEventListener('click', () => showSide('left'));
+    nextButton.addEventListener('click', () => showSide('right'));
+
+    // Swipe toward the other page: left swipe brings the right page in. Not on the knight
+    // (dragging turns it) or a slider; up and down stay the page's own scrolling.
+    let swipeStart: { x: number; y: number } | null = null;
+    book.addEventListener('pointerdown', (event) => {
+        const target = event.target as Element;
+        swipeStart = target.closest('canvas, input') ? null : { x: event.clientX, y: event.clientY };
+    });
+    book.addEventListener('pointerup', (event) => {
+        if (!swipeStart) return;
+        const dx = event.clientX - swipeStart.x;
+        const dy = event.clientY - swipeStart.y;
+        swipeStart = null;
+        if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        showSide(dx < 0 ? 'right' : 'left');
+    });
+    book.addEventListener('pointercancel', () => {
+        swipeStart = null;
+    });
 
     /** Opens the book, on the entry `key` when given, else where the reader left it. */
     const open = (nextMode: BookMode, key?: string) => {
@@ -194,14 +251,14 @@ export function initBookView(portrait: HTMLCanvasElement) {
             void book.offsetWidth;
         }
         load(nextMode);
-        showingEntry = false;
+        side = 'left';
 
         const index = key === undefined ? undefined : indexByKey.get(key);
         const target = index === undefined ? undefined : entries[index];
         if (index !== undefined && target) {
             current = index;
             activeSection = target.sectionId;
-            showingEntry = true;
+            side = 'right';
         }
         // No leaf turns on the way in: the cover swinging open stands for one.
         playSound('pageTurn', { delay: reducedMotionQuery.matches ? 0 : COVER_OPEN_DELAY_S });
@@ -234,7 +291,6 @@ export function initBookView(portrait: HTMLCanvasElement) {
     });
 
     requireElement('btn-close-book').addEventListener('click', close);
-    backButton.addEventListener('click', () => goTo(current, false));
 
     // Not behind the iris (a rest or a respawn in progress): the book would open
     // unseen under the black screen and greet the player once it clears.

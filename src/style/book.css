@@ -825,7 +825,8 @@
   color: var(--book-ink-soft);
 }
 
-.book-back {
+/* Phone layout only: the arrows under the book that swap its two pages. */
+.book-turn {
   display: none;
 }
 
@@ -1130,8 +1131,11 @@ button.book-link {
   100% { transform: perspective(2400px) rotateY(-180deg); visibility: hidden; }
 }
 
-/* ---------- mobile: one page at a time ---------- */
+/* ---------- phone: one page of the spread at a time ---------- */
 
+/* The spread is still there, seen one half at a time: the left page has the spine on its
+   right, the right page on its left, each with its own half of the cover and page edges.
+   The arrows under the book (or a swipe) swap the two halves (BookView slides them). */
 @media (max-width: 700px) {
   :root {
     --book-px: 3px;
@@ -1139,22 +1143,38 @@ button.book-link {
   }
 
   .book {
-    width: calc(100vw - 32px - 24px);
-    height: min(78vh, 640px);
-    margin-top: 2.5rem;
+    --page-width: calc(100vw - 32px - 2 * var(--book-margin));
+    width: var(--page-width);
+    /* A page's proportions, but never taller than the screen minus the tabs and the arrows. */
+    height: min(calc(100vh - 10rem), calc(var(--page-width) * 1.5));
+    height: min(calc(100dvh - 10rem), calc(var(--page-width) * 1.5));
+    margin-top: 1rem;
   }
 
-  /* One page, bound on the left: only the right half of the cover, full width. */
+  /* The opening reveals the left half late, for the spread's cover; one page has no such half. */
+  .book-cover,
+  .book-page-left,
+  .book-stack-left {
+    animation: none;
+  }
+
   .book-cover::before {
+    width: 100%;
+  }
+
+  .book-cover::after,
+  .book.show-entry .book-cover::before {
     display: none;
   }
 
-  .book-cover::after {
+  .book.show-entry .book-cover::after {
+    display: block;
     width: 100%;
   }
 
   .book-stack-left {
-    display: none;
+    right: 0;
+    width: calc(100% + var(--t));
   }
 
   .book-stack-right {
@@ -1162,14 +1182,19 @@ button.book-link {
     width: calc(100% + var(--t));
   }
 
+  .book-stack-right,
+  .book.show-entry .book-stack-left {
+    display: none;
+  }
+
+  .book.show-entry .book-stack-right {
+    display: block;
+  }
+
   .book-page {
     left: 0;
     width: 100%;
     padding: 1.4rem 1.2rem 1rem;
-  }
-
-  .book-page-left {
-    border-image-source: url('../assets/book/page-right.png');
   }
 
   .book-page-right,
@@ -1179,6 +1204,42 @@ button.book-link {
 
   .book.show-entry .book-page-right {
     visibility: visible;
+  }
+
+  .book-turn {
+    position: absolute;
+    bottom: calc(-1 * var(--book-margin) - 3.6rem);
+    width: 3.2rem;
+    height: 3.2rem;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.6));
+  }
+
+  .book-turn .sprite {
+    --px: 4px;
+    display: block;
+  }
+
+  .book-turn:active .sprite {
+    transform: translateY(2px);
+  }
+
+  /* Each arrow sits on the side of the page it brings in. */
+  .book-turn-prev {
+    left: calc(-1 * var(--book-margin));
+  }
+
+  .book-turn-next {
+    right: calc(-1 * var(--book-margin));
+  }
+
+  .book.has-entry:not(.show-entry) .book-turn-next,
+  .book.show-entry .book-turn-prev {
+    display: flex;
   }
 
   .book-tabs {
@@ -1200,23 +1261,6 @@ button.book-link {
   .book-tab:hover,
   .book-tab.active {
     transform: translateY(0);
-  }
-
-  .book-back {
-    display: inline-block;
-    margin-bottom: 1rem;
-    padding: 0.2rem 0.5rem;
-    font-family: var(--book-font);
-    font-size: 0.9rem;
-    color: var(--book-ink);
-    background: none;
-    border: 2px solid var(--book-ink-soft);
-    cursor: pointer;
-  }
-
-  .book-leaf {
-    left: 0;
-    width: 100%;
   }
 
   .book-front-cover {

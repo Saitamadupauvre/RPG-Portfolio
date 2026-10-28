@@ -26,6 +26,7 @@ import { isBossDefeated } from "../../domain/defeatedBosses";
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { Terrain } from "./Terrain";
 import { buildGrassFootprints } from "./grass/grassFootprints";
+import { WindStreaks } from "./windStreaks";
 import { Water } from "./water/Water";
 import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
@@ -88,6 +89,7 @@ export class World {
     private grassColliders: GrassCollider[] = [];
     public terrain: Terrain;
     public water: Water;
+    public readonly windStreaks: WindStreaks;
     public player: Entity;
 
     constructor(experience: Experience) {
@@ -104,6 +106,10 @@ export class World {
         // the world when the game is not the visible state.
         this.water = new Water(tileMap.waterLevel ?? 0);
         this.entityGroup.add(this.water.mesh);
+
+        // Read at spawn time, not now: the editor can move the sea level.
+        this.windStreaks = new WindStreaks((x, z) => Math.max(groundHeight(x, z), this.water.getLevel()));
+        this.entityGroup.add(this.windStreaks.mesh);
 
         this.player = createPlayer(CAMERA_OFFSET, this.entityGroup);
         this.player.mesh.castShadow = true;
@@ -270,6 +276,7 @@ export class World {
         // Same reasoning: the sea should keep moving while paused, dead or being
         // sculpted, instead of freezing mid-swell.
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
+        this.windStreaks.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.environment.followShadows(this.player.mesh.position);
 
         if (state === 'DEAD') this.updateDeath(dt);

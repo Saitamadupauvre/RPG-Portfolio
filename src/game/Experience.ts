@@ -7,9 +7,10 @@ import { events } from '../core/events';
 import { getSettings, type Quality } from '../domain/settings';
 import { WaterDepthPrepass } from './world/water/depthPrepass';
 import { PerfOverlay } from './debug/PerfOverlay';
-import { GRASS_LAYER } from './render/layers';
+import { GRASS_LAYER, WIND_LAYER } from './render/layers';
 import { applyColorGrading } from './render/grading';
 import { PlayerPortrait } from './portrait/PlayerPortrait';
+import { MAX_STREAKS } from './world/windStreaks';
 
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;
@@ -21,7 +22,7 @@ const MAX_FRAME_DELTA = 0.1;
  */
 const MAX_PIXEL_RATIO = 1.5;
 
-type GraphicsPreset = { pixelRatio: number; shadows: boolean; grass: boolean };
+type GraphicsPreset = { pixelRatio: number; shadows: boolean; grass: boolean; windStreaks: number };
 
 /**
  * What each quality setting turns on. Shadows (a second render of the scene
@@ -29,9 +30,9 @@ type GraphicsPreset = { pixelRatio: number; shadows: boolean; grass: boolean };
  * costs worth dropping on a weak GPU; past that, only resolution is left.
  */
 const QUALITY: Record<Quality, GraphicsPreset> = {
-    low: { pixelRatio: 1, shadows: false, grass: false },
-    medium: { pixelRatio: 1, shadows: true, grass: true },
-    high: { pixelRatio: MAX_PIXEL_RATIO, shadows: true, grass: true },
+    low: { pixelRatio: 1, shadows: false, grass: false, windStreaks: 0 },
+    medium: { pixelRatio: 1, shadows: true, grass: true, windStreaks: MAX_STREAKS / 2 },
+    high: { pixelRatio: MAX_PIXEL_RATIO, shadows: true, grass: true, windStreaks: MAX_STREAKS },
 };
 
 export class Experience {
@@ -60,6 +61,7 @@ export class Experience {
         // Cameras only see layer 0 by default; grass sits on its own layer so
         // the water depth prepass can skip it.
         this.camera.layers.enable(GRASS_LAYER);
+        this.camera.layers.enable(WIND_LAYER);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -152,6 +154,7 @@ export class Experience {
 
         this.world.grass.enabled = preset.grass && (toggles?.grass ?? true);
         this.world.water.mesh.visible = toggles?.water ?? true;
+        this.world.windStreaks.setCount(preset.windStreaks);
         // Changes every lit material's shader, so three recompiles them once:
         // expect one hitch on the switch itself.
         this.world.setShadows(preset.shadows && (toggles?.shadows ?? true));

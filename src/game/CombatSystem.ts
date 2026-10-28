@@ -13,6 +13,11 @@ import type { FireSystem } from './FireSystem';
 
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;
+/**
+ * Every blow, arrow and flame the player takes, on top of each enemy's own
+ * damage in EnemyPool: one knob for the overall difficulty.
+ */
+const ENEMY_DAMAGE_SCALE = 1.5;
 
 export class CombatSystem {
     private enemies: { entity: Entity; source: EnemyEntity }[] = [];
@@ -145,7 +150,8 @@ export class CombatSystem {
 
     private hurtPlayer(damage: number, at: THREE.Vector3) {
         const health = this.player.getComponent('health');
-        health?.takeDamage(damage);
+        // Rounded: the HUD's HP and damage trail stay whole numbers.
+        health?.takeDamage(Math.round(damage * ENEMY_DAMAGE_SCALE));
         // Same as an enemy: the fatal hit leaves the burst and the flash to the death fade.
         if (!health?.isDead()) {
             this.player.getComponent('hitFlash')?.trigger();

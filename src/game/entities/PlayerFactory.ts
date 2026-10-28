@@ -31,7 +31,13 @@ const PLAYER_MODEL_ORIGIN_Y = -PLAYER_HEIGHT / 2;
 const COMBO_MOVES: ComboMove[] = [
     // Scaled off the Strength stat (base 10): 12 and 16 damage before any upgrade.
     // One move for now: the overhead chop that followed it is out until it is redone.
-    { options: { distance: 0.9, duration: 0.18, color: 0x66ccff }, damageScale: 1.2, recovery: 0.18, windup: 0.12 },
+    // Wider than the 0.6 default so a slash catches what stands beside its aim too.
+    {
+        options: { size: new THREE.Vector3(1.2, 0.9, 1.2), distance: 1, duration: 0.18, color: 0x66ccff },
+        damageScale: 1.2,
+        recovery: 0.18,
+        windup: 0.12,
+    },
 ];
 
 export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Group): Entity {

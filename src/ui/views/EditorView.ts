@@ -43,7 +43,7 @@ const PANEL_HTML = `
       <span id="editor-count" class="pixel-text">0 entities</span>
       <button class="btn editor-btn" id="btn-editor-copy">Copy JSON</button>
       <button class="btn editor-btn" id="btn-editor-copy-terrain">Copy tiles</button>
-      <button class="btn editor-btn" id="btn-editor-export">Export JSON</button>
+      <button class="btn editor-btn" id="btn-editor-export">Export map</button>
       <button class="btn editor-btn" id="btn-editor-reset">Reset</button>
     </div>
     <p class="editor-hint">F1 toggle · right-drag orbit, middle-drag pan, wheel zoom · click entity to select, ctrl-click to add/remove, drag a box to select (ctrl adds) · Edit tiles: click or box tiles (shift/ctrl adds), Brush paints tiles (ctrl erases), drag the arrow to change level (1 level = walkable step, 2+ = cliff) · click ground to place · click palette again to unarm · Scatter: drag to paint, ctrl-drag erases what the brush paints · W/E/R gizmo · hold Shift for free (unsnapped) placement · Ctrl+D duplicate · X or Del remove · Ctrl+Z undo, Ctrl+Y redo</p>

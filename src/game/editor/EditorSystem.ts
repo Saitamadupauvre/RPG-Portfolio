@@ -12,6 +12,7 @@ import {
     copyLayout,
     copyTiles,
     downloadLayout,
+    downloadTiles,
     loadWorkingLayout,
     loadWorkingTiles,
     saveWorkingLayout,
@@ -152,7 +153,11 @@ export class EditorSystem {
             this.select([]);
         });
         events.on('editorGizmoChanged', (mode) => this.gizmo.setMode(mode));
-        events.on('editorExportRequested', () => downloadLayout(this.layout));
+        // Both halves of the map: the terrain only lives in this browser's storage until exported.
+        events.on('editorExportRequested', () => {
+            downloadLayout(this.layout);
+            downloadTiles(this.tiles);
+        });
         events.on('editorCopyRequested', () => copyLayout(this.layout));
         events.on('editorResetRequested', () => this.resetToSource());
         events.on('editorEntityEdited', (edited) => this.applyEdit(edited));

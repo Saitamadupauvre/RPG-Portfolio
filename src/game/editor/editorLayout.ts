@@ -45,13 +45,23 @@ export function sourceLayout(): MapEntity[] {
     return structuredClone(mapLayout);
 }
 
+/** Saves as `src/data/mapLayout.json`: drop the file over that one to commit the map. */
 export function downloadLayout(layout: MapEntity[]) {
-    const blob = new Blob([serialize(layout)], { type: 'application/json' });
+    downloadJson('mapLayout.json', serialize(layout));
+}
+
+/** Saves as `src/data/tileMap.json`, the terrain half of the map. */
+export function downloadTiles(map: TileMap) {
+    downloadJson('tileMap.json', JSON.stringify(map));
+}
+
+function downloadJson(fileName: string, text: string) {
+    const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'mapLayout.json';
+    link.download = fileName;
     link.click();
 
     URL.revokeObjectURL(url);

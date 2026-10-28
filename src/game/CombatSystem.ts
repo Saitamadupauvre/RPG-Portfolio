@@ -5,6 +5,7 @@ import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
 import { getSettings } from '../domain/settings';
 import { defeatBoss } from '../domain/defeatedBosses';
+import { reviveEnemies, slayEnemy } from '../domain/slainEnemies';
 import { chunkKeyAt, type ChunkKey } from '../domain/chunks';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
@@ -68,6 +69,14 @@ export class CombatSystem {
         this.sources.push(source);
     }
 
+    /**
+     * An enemy killed before its chunk last loaded: no body, but its source is
+     * kept so the next rest brings it back where it stands.
+     */
+    public addSlain(source: EnemyEntity) {
+        this.sources.push(source);
+    }
+
     /** Stops tracking a live enemy whose mesh is going away. */
     public removeEnemy(entity: Entity) {
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
@@ -85,12 +94,14 @@ export class CombatSystem {
         this.sources = this.sources.filter((source) => chunkKeyAt(source.position[0], source.position[2]) !== key);
     }
 
+    /** A rest or a death: every non-boss enemy back home at full health, the slain ones included. */
     public resetEnemies() {
         // Arrows and flames in the air or planted around belong to the fight being reset.
         this.projectiles.clear();
         this.fire.clear();
         // Under the black screen: a body still fading would stand beside its revived self.
         this.finishDying();
+        reviveEnemies();
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;
 
@@ -194,6 +205,7 @@ export class CombatSystem {
     private killEnemy(entity: Entity, source: EnemyEntity) {
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
         if (source.enemyType === 'boss') defeatBoss(source.id);
+        else slayEnemy(source.id);
         addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
 

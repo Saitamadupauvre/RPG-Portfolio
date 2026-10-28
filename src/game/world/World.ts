@@ -23,6 +23,7 @@ import { rebuildObstacles } from "./obstacles";
 import { ChunkStreamer } from "./ChunkStreamer";
 import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
 import { isBossDefeated } from "../../domain/defeatedBosses";
+import { isEnemySlain } from '../../domain/slainEnemies';
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { Terrain } from "./Terrain";
 import { buildGrassFootprints } from "./grass/grassFootprints";
@@ -213,9 +214,13 @@ export class World {
     }
 
     private spawnEntity(mapEntity: MapEntity, key: ChunkKey) {
-        // Regular enemies are meant to come back when their chunk reloads; a
-        // boss is a one-time fight, so a recorded kill keeps it from respawning.
+        // A boss is a one-time fight: a recorded kill keeps it from respawning.
         if (mapEntity.kind === 'enemy' && mapEntity.enemyType === 'boss' && isBossDefeated(mapEntity.id)) return;
+        // A regular enemy killed since the last rest or death stays dead, however often its chunk reloads.
+        if (mapEntity.kind === 'enemy' && isEnemySlain(mapEntity.id)) {
+            this.combat.addSlain(mapEntity);
+            return;
+        }
 
         const entity = createMapEntity(mapEntity);
         this.trackEntity(entity, key);

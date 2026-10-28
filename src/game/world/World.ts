@@ -32,6 +32,7 @@ import { Water } from "./water/Water";
 import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
 import { aimMenuShot, CameraBlend, GAME_FOV, pickMenuYaw, planSpawn, setFov } from "./menuShot";
+import { EnemyFadeIn } from "./EnemyFadeIn";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 /** Keeps the camera from burying itself in a hill or cliff behind the player. */
@@ -90,6 +91,8 @@ export class World {
     private menuFeet = new THREE.Vector3();
     /** The angle round the knight the menu shot was planned at: on spawning, or on quitting back to the menu. */
     private menuYaw = 0;
+    /** Enemies stay out of the menu backdrop and fade in once the game starts. */
+    private enemyFade = new EnemyFadeIn();
     // One full-ratio tier: Terrain already grows far patches sparser, and a draw
     // LOD on top would thin them a second time.
     public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
@@ -162,6 +165,7 @@ export class World {
                 // Planned once from where they stand, not every frame from their facing.
                 this.menuYaw = pickMenuYaw(this.feet(), this.player.mesh.rotation.y, this.experience.camera.aspect);
             }
+            if (oldState === 'MENU' && newState === 'GAME') this.enemyFade.start(this.entities);
         });
 
         this.loadLayout(mapLayout);
@@ -328,6 +332,7 @@ export class World {
         camera.updateMatrixWorld();
         this.updateGhosts(camera);
         this.combat.update(dt, camera);
+        this.enemyFade.update(dt);
 
         if (this.player.getComponent('health')?.isDead()) this.die();
     }
@@ -413,6 +418,7 @@ export class World {
         for (const entity of this.entities) {
             entity.getComponent('animator')?.update(dt);
         }
+        this.enemyFade.hold(this.entities);
 
         aimMenuShot(camera, this.feet(), this.menuYaw, this.experience.timer.getElapsed());
         this.cameraBlend.apply(camera, dt, this.player.mesh.position);
@@ -431,10 +437,16 @@ export class World {
         this.followPlayer(this.experience.camera);
     }
 
-    /** Call once the world is on screen after leaving the menu: the transition opens on the player. */
+    /**
+     * Call once the world is on screen after leaving the menu under a black
+     * screen (the boot was not done yet): no glide there, the camera already
+     * stands in its gameplay shot when the black fades, and the enemies fade in then.
+     */
     public reveal() {
-        const [x, y] = this.playerOnScreen(this.experience.camera);
-        events.emit('gameEntered', x, y);
+        this.cameraBlend.stop();
+        this.followPlayer(this.experience.camera);
+        this.enemyFade.start(this.entities);
+        events.emit('gameEntered');
     }
 
     public setShadows(enabled: boolean) {

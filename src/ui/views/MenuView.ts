@@ -4,13 +4,13 @@ import { getIris } from '../components/iris';
 import { renderSprite } from '../components/pixelSprite';
 import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
 
-/** The circle closing onto the Game button before the world loads behind it. */
-const ENTER_CLOSE_MS = 650;
+/** The fade to black before the world loads behind it. */
+const ENTER_COVER_MS = 500;
 
 export function initMenuView() {
     const enterGame = document.getElementById('btn-enter-game');
     let entering = false;
-    // Until the world stands behind the menu, entering the game means a load: the iris covers it.
+    // Until the world stands behind the menu, entering the game means a load: a fade to black covers it.
     let worldReady = false;
 
     for (const slot of document.querySelectorAll('#menu-screen [data-arrow]')) {
@@ -25,7 +25,7 @@ export function initMenuView() {
     });
 
     enterGame?.addEventListener('click', async () => {
-        // A second click while the circle closes would start a second entry.
+        // A second click while the screen fades would start a second entry.
         if (entering) return;
 
         // Loaded: the menu fades out while the camera glides down into the game.
@@ -35,8 +35,11 @@ export function initMenuView() {
         }
 
         entering = true;
-        const { left, top, width, height } = enterGame.getBoundingClientRect();
-        await getIris().close(left + width / 2, top + height / 2, ENTER_CLOSE_MS);
+        // A fade, not the circle: the circle would open on the camera mid-glide.
+        await getIris().cover(ENTER_COVER_MS);
+        // Even if the world got ready during the fade: the screen is black, so the
+        // game cuts to its gameplay shot and fades in, rather than glide.
+        events.emit('gameEntryCovered');
         stateMachine.changeState('GAME');
         entering = false;
     });

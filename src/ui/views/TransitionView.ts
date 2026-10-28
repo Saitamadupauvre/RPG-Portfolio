@@ -9,6 +9,8 @@ const REST_CLOSE_MS = 600;
 const RESPAWN_BLACK_MS = 250;
 const REST_BLACK_MS = 300;
 const ENTER_BLACK_MS = 450;
+/** Game entry after a load: the black fades out rather than opening as a circle. */
+const ENTER_FADE_MS = 700;
 
 /**
  * Every full-screen transition of game mode, in one place because they hand
@@ -18,8 +20,10 @@ const ENTER_BLACK_MS = 450;
  *   lay, then `respawnRequested` lets the world move the player;
  * - rest: the iris closes onto the player, then `restCovered` lets the world
  *   heal them and reset the enemies;
- * - respawn, rest and game entry: from black, the iris peeks at the player,
- *   then opens onto the whole screen.
+ * - respawn and rest: from black, the iris peeks at the player, then opens
+ *   onto the whole screen;
+ * - game entry after a load: the black fades out, the camera already in its
+ *   gameplay shot.
  */
 export function initTransitionView() {
     const iris = getIris();
@@ -46,7 +50,7 @@ export function initTransitionView() {
         void iris.reveal(x, y, REST_BLACK_MS);
     });
 
-    events.on('gameEntered', (x, y) => {
-        void iris.reveal(x, y, ENTER_BLACK_MS);
+    events.on('gameEntered', () => {
+        void iris.uncover(ENTER_FADE_MS, ENTER_BLACK_MS);
     });
 }

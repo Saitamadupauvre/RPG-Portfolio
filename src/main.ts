@@ -100,6 +100,12 @@ async function bootGame(): Promise<Experience> {
 
 let game: Promise<Experience> | null = null;
 let ready = false;
+/** The menu faded to black before this entry: it reveals with a cut, even if the world got ready meanwhile. */
+let coveredEntry = false;
+
+events.on('gameEntryCovered', () => {
+    coveredEntry = true;
+});
 
 function startBoot(): Promise<Experience> {
     game ??= bootGame().then(
@@ -120,10 +126,13 @@ function startBoot(): Promise<Experience> {
 events.on('stateChange', (newState, oldState) => {
     // Every way in from the menu. Once the world stands behind the menu, the
     // camera glides from the menu shot into the game: nothing to wait for.
-    if (newState !== 'GAME' || oldState !== 'MENU' || ready) return;
+    if (newState !== 'GAME' || oldState !== 'MENU') return;
+    const covered = coveredEntry;
+    coveredEntry = false;
+    if (ready && !covered) return;
 
     // Picked before the background boot was done: cover the rest of the wait.
-    document.body.classList.add('booting');
+    if (!ready) document.body.classList.add('booting');
     startBoot()
         .then((experience) => experience.world.reveal())
         .catch((error: unknown) => console.error('[game] failed to start', error))

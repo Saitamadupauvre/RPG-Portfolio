@@ -26,8 +26,10 @@ export type AppEvents = {
     respawnRequested: [];
     /** Back on their bonfire, behind a black screen: open it around the player. */
     playerRespawned: [screenX: number, screenY: number];
-    /** The world is ready after leaving the menu, behind a black screen: open it around the player. */
-    gameEntered: [screenX: number, screenY: number];
+    /** Game was picked before the world finished loading: the screen faded to black first, so no glide, a cut and a fade back in. */
+    gameEntryCovered: [];
+    /** The world is ready after leaving the menu, behind a black screen, the camera in its gameplay shot: fade the black out. */
+    gameEntered: [];
     /** The world finished loading behind the menu: show it as the backdrop; Game now starts without a loading screen. */
     worldReady: [];
     /** Game mode boot, 0 to 1. */

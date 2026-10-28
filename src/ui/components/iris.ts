@@ -60,6 +60,18 @@ class Iris {
         });
     }
 
+    /** From black, after `delayMs`, fades the whole screen back in: no circle to follow a camera that just cut. */
+    public async uncover(durationMs: number, delayMs = 0): Promise<boolean> {
+        this.interrupt();
+        this.show(this.centerX, this.centerY, 0, 1);
+        const finished = (await this.wait(delayMs))
+            && (await this.step(durationMs, (t) => {
+                this.element.style.opacity = String(1 - t);
+            }));
+        if (finished) this.hide();
+        return finished;
+    }
+
     /** From black, peek at (x, y), hold, then open onto the whole screen. */
     public async reveal(x: number, y: number, delayMs = 0): Promise<boolean> {
         this.interrupt();

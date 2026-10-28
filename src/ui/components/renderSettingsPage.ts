@@ -1,5 +1,12 @@
+import { playSound } from '../../audio/audio';
 import { stateMachine } from '../../core/StateMachine';
-import { INPUT_ACTIONS, MOVE_ACTIONS, type InputAction, type Quality } from '../../data/settings';
+import {
+    INPUT_ACTIONS,
+    MOVE_ACTIONS,
+    type InputAction,
+    type Quality,
+    type VolumeChannel,
+} from '../../data/settings';
 import { labelForKey } from '../../domain/input';
 import { clearSave } from '../../domain/persistence';
 import {
@@ -9,6 +16,7 @@ import {
     resetKeys,
     setQuality,
     setScreenShake,
+    setVolume,
 } from '../../domain/settings';
 import { keyName } from './printedKeys';
 import { renderKey } from './renderKey';
@@ -80,6 +88,44 @@ function renderChoice<T>(choices: Choice<T>[], current: T, onPick: (value: T) =>
         group.appendChild(button);
     }
     return group;
+}
+
+/** Slider steps: 5% each, 20 positions, enough to hear a difference per step. */
+const VOLUME_STEP = 0.05;
+
+/**
+ * A range input with its percentage beside it. Moves the volume on every step
+ * (`input`), so the change is heard while dragging; `setVolume` does not
+ * redraw the book, which would swap the slider out from under the pointer.
+ */
+function renderVolume(channel: VolumeChannel, current: number, label: string): HTMLElement {
+    const wrap = el('div', 'settings-volume');
+    const slider = el('input', 'settings-slider');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '1';
+    slider.step = String(VOLUME_STEP);
+    slider.value = String(current);
+    slider.setAttribute('aria-label', `${label} volume`);
+
+    const readout = el('span', 'settings-volume-value');
+    const show = () => {
+        const percent = Math.round(Number(slider.value) * 100);
+        readout.textContent = `${percent}%`;
+        // The filled part of the track, read by the CSS (range inputs have no cross-browser "fill").
+        slider.style.setProperty('--fill', `${percent}%`);
+    };
+    show();
+
+    slider.addEventListener('input', () => {
+        setVolume(channel, Number(slider.value));
+        show();
+    });
+    // On release only: a sample per drag step would be a stutter.
+    if (channel === 'sfx') slider.addEventListener('change', () => playSound('swordSwing'));
+
+    wrap.append(slider, readout);
+    return wrap;
 }
 
 // ---------- key capture ----------
@@ -223,6 +269,12 @@ export function renderOptionsPage(): HTMLElement {
         row('Screen shake', renderChoice(SWITCH, settings.screenShake, setScreenShake)),
     );
 
+    const sound = el('div', 'settings-rows');
+    sound.append(
+        row('Music', renderVolume('music', settings.volume.music, 'Music')),
+        row('Effects', renderVolume('sfx', settings.volume.sfx, 'Effects')),
+    );
+
     const quit = el('button', 'book-link', 'Quit to menu');
     quit.addEventListener('click', () => stateMachine.changeState('MENU'));
 
@@ -233,6 +285,8 @@ export function renderOptionsPage(): HTMLElement {
         head,
         el('h3', 'settings-heading', 'Graphics'),
         graphics,
+        el('h3', 'settings-heading', 'Sound'),
+        sound,
         el('h3', 'settings-heading', 'Game'),
         actions,
         el('p', 'settings-hint', 'Reset erases coins, stats, discoveries and your bonfire. Settings stay.'),

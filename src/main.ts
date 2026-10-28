@@ -10,10 +10,24 @@ import { initHudView } from './ui/views/HudView';
 import { initTransitionView } from './ui/views/TransitionView';
 import { initLoadingView } from './ui/views/LoadingView';
 import { initEditorView } from './ui/views/EditorView';
-import { initAudio } from './audio/audio';
+import { initAudio, setVolume } from './audio/audio';
+import { getSettings } from './domain/settings';
+import { VOLUME_CHANNELS, type VolumeChannel } from './data/settings';
+import type { AudioBus } from './data/sounds';
 
 validateBook();
 initAudio();
+
+/** Which buses each volume slider drives: UI sounds follow the effects. */
+const CHANNEL_BUSES: Record<VolumeChannel, readonly AudioBus[]> = {
+    music: ['music'],
+    sfx: ['sfx', 'ui'],
+};
+const applyVolume = (channel: VolumeChannel, volume: number) => {
+    for (const bus of CHANNEL_BUSES[channel]) setVolume(bus, volume);
+};
+for (const channel of VOLUME_CHANNELS) applyVolume(channel, getSettings().volume[channel]);
+events.on('volumeChanged', applyVolume);
 
 /**
  * The live knight on the book's Level page. Shared like the game's own canvas: the book places

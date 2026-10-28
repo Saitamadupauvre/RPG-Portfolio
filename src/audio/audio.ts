@@ -151,10 +151,17 @@ function trackVoice(id: SoundId, voice: Voice, maxVoices = Infinity) {
     }
 }
 
-/** 0..1. `'master'` scales every bus. */
+/**
+ * 0..1, a slider position. `'master'` scales every bus. Squared into a gain:
+ * the ear hears loudness roughly on a log scale, so a linear gain crams every
+ * audible change into the slider's bottom fifth and leaves the rest near-full.
+ */
 export function setVolume(target: AudioBus | 'master', volume: number) {
     const node = target === 'master' ? master : buses.get(target);
-    if (node) node.gain.value = Math.max(0, Math.min(1, volume));
+    if (!node || !context) return;
+    const level = Math.max(0, Math.min(1, volume));
+    // A short ramp, not a jump: a gain step mid-sound clicks.
+    node.gain.setTargetAtTime(level * level, context.currentTime, 0.015);
 }
 
 function random(min: number, max: number): number {

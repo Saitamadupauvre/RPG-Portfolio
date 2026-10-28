@@ -937,6 +937,55 @@
   100% { transform: none; }
 }
 
+/* Volume: a flat ink track filled up to the thumb, a square knob, no rounding anywhere. */
+.settings-volume {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.settings-slider {
+  --fill: 50%;
+  width: 9rem;
+  height: calc(3 * var(--book-px));
+  margin: 0;
+  appearance: none;
+  background: linear-gradient(to right, var(--book-ink) var(--fill), var(--book-paper-shade) var(--fill));
+  border: 2px solid var(--book-ink);
+  cursor: pointer;
+}
+
+.settings-slider:focus-visible {
+  outline: 2px dashed var(--book-accent);
+  outline-offset: 3px;
+}
+
+/* Same rules twice: one selector list with both pseudo-elements would be dropped whole by each engine. */
+.settings-slider::-webkit-slider-thumb {
+  width: calc(3 * var(--book-px));
+  height: calc(5 * var(--book-px));
+  appearance: none;
+  background: var(--book-accent);
+  border: 2px solid var(--book-ink);
+  border-radius: 0;
+}
+
+.settings-slider::-moz-range-thumb {
+  width: calc(3 * var(--book-px));
+  height: calc(5 * var(--book-px));
+  background: var(--book-accent);
+  border: 2px solid var(--book-ink);
+  border-radius: 0;
+}
+
+.settings-volume-value {
+  min-width: 3.2em;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 button.book-link {
   cursor: pointer;
 }

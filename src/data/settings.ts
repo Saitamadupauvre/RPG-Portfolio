@@ -30,8 +30,19 @@ export const QUALITY_LEVELS = ['low', 'medium', 'high'] as const;
 
 export type Quality = (typeof QUALITY_LEVELS)[number];
 
+/**
+ * The volume sliders. Not one per `AudioBus`: the `ui` bus (page turns, coins)
+ * follows `sfx`, a player has no reason to tell them apart. `music` has no
+ * sound yet; its level is kept so a music player only has to play on that bus.
+ */
+export const VOLUME_CHANNELS = ['music', 'sfx'] as const;
+
+export type VolumeChannel = (typeof VOLUME_CHANNELS)[number];
+
 export type Settings = {
     keys: Record<InputAction, KeyBinding>;
     quality: Quality;
     screenShake: boolean;
+    /** Slider positions, 0..1 (the loudness curve is applied by the audio player). */
+    volume: Record<VolumeChannel, number>;
 };

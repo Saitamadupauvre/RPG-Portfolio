@@ -1,7 +1,7 @@
 import type { AppState } from './StateMachine';
 import type { MapEntity } from '../data/MapEntity';
 import type { Project } from '../data/Project';
-import type { InputAction, Settings } from '../data/settings';
+import type { InputAction, Settings, VolumeChannel } from '../data/settings';
 import type { PlayerStats } from '../data/stats';
 import type { TutorialId } from '../data/tutorials';
 import { EventEmitter } from './EventEmitter';
@@ -33,6 +33,11 @@ export type AppEvents = {
     /** Game mode boot, 0 to 1. */
     loadingProgress: [progress: number];
     settingsChanged: [settings: Settings];
+    /**
+     * Apart from `settingsChanged`, which redraws the open book: a slider fires this every step
+     * of a drag, and a redraw would replace it under the pointer.
+     */
+    volumeChanged: [channel: VolumeChannel, volume: number];
     /** The player chose to rest at a bonfire; its checkpoint is already saved. */
     restRequested: [];
     /** The world is frozen for the rest: close the screen onto the player. */

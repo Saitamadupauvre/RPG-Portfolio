@@ -49,4 +49,15 @@ export const pages: BookPage[] = [
             'Raise Strength at a bonfire to hit harder.',
         ],
     },
+    {
+        id: 'statue',
+        section: 'tutorial',
+        title: 'Statues',
+        body: 'Each statue keeps one of my projects. A glowing statue has not been found yet: walk up to it and press the key to read its project in this book.',
+        controls: [{ keys: ['E'], label: 'Read the statue', actions: ['interact'] }],
+        tips: [
+            'Once found, the statue stops glowing but stays where it stands.',
+            'Every project you find waits in this book: press B to read it again.',
+        ],
+    },
 ];

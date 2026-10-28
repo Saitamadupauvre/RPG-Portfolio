@@ -39,6 +39,28 @@ export function isInsideObstacle(x: number, z: number, above: number): boolean {
     return false;
 }
 
+/**
+ * Whether a point `above` the ground at (x, z) comes within `margin` of an obstacle: for the
+ * camera, which must keep clear of a crown wider than the trunk. Searches the neighbouring
+ * buckets too, since the margin reaches past the point's own (an obstacle listed in several
+ * of them is just tested again).
+ */
+export function isNearObstacle(x: number, z: number, above: number, margin: number): boolean {
+    buckets ??= build(mapLayout);
+    for (let column = bucketOf(x - margin); column <= bucketOf(x + margin); column++) {
+        for (let row = bucketOf(z - margin); row <= bucketOf(z + margin); row++) {
+            for (const obstacle of buckets.get(keyOf(column, row)) ?? NONE) {
+                if (above < obstacle.bottom - margin || above > obstacle.top + margin) continue;
+                const reach = obstacle.radius + margin;
+                const dx = x - obstacle.x;
+                const dz = z - obstacle.z;
+                if (dx * dx + dz * dz < reach * reach) return true;
+            }
+        }
+    }
+    return false;
+}
+
 function bucketOf(coordinate: number): number {
     return Math.floor(coordinate / BUCKET_SIZE);
 }

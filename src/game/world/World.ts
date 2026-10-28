@@ -18,7 +18,7 @@ import { ProjectileSystem } from "../ProjectileSystem";
 import { FireSystem } from "../FireSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
-import { findFreePoint, rebuildNavGrid } from "./navigation";
+import { rebuildNavGrid } from "./navigation";
 import { rebuildObstacles } from "./obstacles";
 import { ChunkStreamer } from "./ChunkStreamer";
 import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
@@ -31,7 +31,7 @@ import { WindStreaks } from "./windStreaks";
 import { Water } from "./water/Water";
 import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
-import { aimMenuShot, CameraBlend, GAME_FOV, setFov } from "./menuShot";
+import { aimMenuShot, CameraBlend, GAME_FOV, pickMenuYaw, planSpawn, setFov } from "./menuShot";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 /** Keeps the camera from burying itself in a hill or cliff behind the player. */
@@ -88,6 +88,8 @@ export class World {
     private cameraBlend = new CameraBlend();
     /** Reused every menu frame: where the knight's feet are. */
     private menuFeet = new THREE.Vector3();
+    /** The angle round the knight the menu shot was planned at: on spawning, or on quitting back to the menu. */
+    private menuYaw = 0;
     // One full-ratio tier: Terrain already grows far patches sparser, and a draw
     // LOD on top would thin them a second time.
     public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
@@ -153,9 +155,13 @@ export class World {
 
             // Into the menu or out of it, the camera glides between the two shots instead of cutting.
             const menuCut = (oldState === 'MENU' && newState === 'GAME') || (oldState === 'GAME' && newState === 'MENU');
-            if (menuCut) this.cameraBlend.start(this.experience.camera);
-            // Quit mid-run: the knight must not keep running on the menu backdrop.
-            if (newState === 'MENU') this.stopPlayerInput();
+            if (menuCut) this.cameraBlend.start(this.experience.camera, this.player.mesh.position);
+            if (newState === 'MENU') {
+                // Quit mid-run: the knight must not keep running on the menu backdrop.
+                this.stopPlayerInput();
+                // Planned once from where they stand, not every frame from their facing.
+                this.menuYaw = pickMenuYaw(this.feet(), this.player.mesh.rotation.y, this.experience.camera.aspect);
+            }
         });
 
         this.loadLayout(mapLayout);
@@ -172,7 +178,7 @@ export class World {
         // The death screen decides when the player may be moved: once it hides the world.
         events.on('respawnRequested', () => this.respawn(this.experience.camera));
 
-        // After loadLayout: findFreePoint reads the nav grid, which only exists
+        // After loadLayout: the spawn search reads the nav grid, which only exists
         // once the layout has been rebuilt.
         this.placeAtCheckpoint(this.experience.camera);
     }
@@ -318,7 +324,7 @@ export class World {
         this.interaction.update(this.entities, this.player.mesh.position);
 
         this.followPlayer(camera);
-        this.cameraBlend.apply(camera, dt);
+        this.cameraBlend.apply(camera, dt, this.player.mesh.position);
         camera.updateMatrixWorld();
         this.updateGhosts(camera);
         this.combat.update(dt, camera);
@@ -408,12 +414,17 @@ export class World {
             entity.getComponent('animator')?.update(dt);
         }
 
-        const feet = this.menuFeet.copy(this.player.mesh.position);
-        feet.y -= this.player.groundOffset;
-        aimMenuShot(camera, feet, this.player.mesh.rotation.y, this.experience.timer.getElapsed());
-        this.cameraBlend.apply(camera, dt);
+        aimMenuShot(camera, this.feet(), this.menuYaw, this.experience.timer.getElapsed());
+        this.cameraBlend.apply(camera, dt, this.player.mesh.position);
         camera.updateMatrixWorld();
         this.updateGhosts(camera);
+    }
+
+    /** The ground point under the knight. */
+    private feet(): THREE.Vector3 {
+        const feet = this.menuFeet.copy(this.player.mesh.position);
+        feet.y -= this.player.groundOffset;
+        return feet;
     }
 
     public resetCamera() {
@@ -500,13 +511,19 @@ export class World {
         this.combat.resetEnemies();
     }
 
-    /** Drop the player on the last rested bonfire and snap the camera to them. */
+    /**
+     * Drop the player beside the last rested bonfire and snap the camera to
+     * them. Always the same side of the fire, facing the same way, as the menu
+     * shot sees it: the flames never stand between the lens and the knight.
+     */
     private placeAtCheckpoint(camera: THREE.PerspectiveCamera) {
         const [checkpointX, , checkpointZ] = getCheckpoint();
-        const [spawnX, spawnZ] = findFreePoint(checkpointX, checkpointZ);
+        const spawn = planSpawn(checkpointX, checkpointZ, camera.aspect);
 
-        this.player.mesh.position.x = spawnX;
-        this.player.mesh.position.z = spawnZ;
+        this.player.mesh.position.x = spawn.x;
+        this.player.mesh.position.z = spawn.z;
+        this.player.mesh.rotation.y = spawn.facing;
+        this.menuYaw = spawn.menuYaw;
         snapToGround(this.player.mesh, this.player.groundOffset);
         // Before the next frame reads the entity list: respawning at a distant
         // bonfire must load its chunks, not drop the player into an empty world.

@@ -36,6 +36,8 @@ export class LungeComponent implements EnemyAttacker {
     private target: THREE.Object3D;
     private attack: AttackComponent;
     private options: LungeOptions;
+    /** The body's radius, kept off walls by slideMove. */
+    private radius: number;
 
     private current: LungeState = 'idle';
     private timer = 0;
@@ -45,11 +47,12 @@ export class LungeComponent implements EnemyAttacker {
     private aimPoint = new THREE.Vector3();
     private before = new THREE.Vector3();
 
-    constructor(mesh: THREE.Object3D, target: THREE.Object3D, attack: AttackComponent, options: LungeOptions) {
+    constructor(mesh: THREE.Object3D, target: THREE.Object3D, attack: AttackComponent, options: LungeOptions, radius: number) {
         this.mesh = mesh;
         this.target = target;
         this.attack = attack;
         this.options = options;
+        this.radius = radius;
     }
 
     public get state(): LungeState {
@@ -150,7 +153,7 @@ export class LungeComponent implements EnemyAttacker {
     private updateDash(dt: number) {
         const step = Math.min(this.options.speed * dt, this.options.distance - this.travelled);
         this.before.copy(this.mesh.position);
-        slideMove(this.mesh, this.direction, step);
+        slideMove(this.mesh, this.direction, step, this.radius);
 
         const moved = this.before.setY(this.mesh.position.y).distanceTo(this.mesh.position);
         this.travelled += step;

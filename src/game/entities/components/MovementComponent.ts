@@ -18,11 +18,14 @@ export class MovementComponent implements Component {
     /** Who is holding the body still right now. A set, so a dash ending mid-attack cannot unfreeze the attack. */
     private frozenBy = new Set<string>();
     private turnSpeed: number;
+    /** The body's radius, kept off walls by slideMove; the dash reads it too. */
+    public readonly radius: number;
     /** Scratch vector: getInputDirection runs every frame, so it must not allocate. */
     private moveDirection = new THREE.Vector3();
 
-    constructor(mesh: THREE.Object3D, cameraOffset: THREE.Vector3, speed: number, turnSpeed = Math.PI * 10) {
+    constructor(mesh: THREE.Object3D, cameraOffset: THREE.Vector3, speed: number, radius: number, turnSpeed = Math.PI * 10) {
         this.mesh = mesh;
+        this.radius = radius;
         this.speed = speed;
         this.turnSpeed = turnSpeed;
         this.forward = new THREE.Vector3(-cameraOffset.x, 0, -cameraOffset.z).normalize();
@@ -97,7 +100,7 @@ export class MovementComponent implements Component {
         if (!move) return;
 
         this.facingAngle = Math.atan2(move.x, move.z);
-        if (this.frozenBy.size === 0) slideMove(this.mesh, move, this.speed * dt);
+        if (this.frozenBy.size === 0) slideMove(this.mesh, move, this.speed * dt, this.radius);
         if (!this.locked) this.rotateTowards(this.facingAngle, dt);
     }
 

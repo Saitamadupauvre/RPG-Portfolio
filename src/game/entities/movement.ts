@@ -132,7 +132,12 @@ export function turnToward(mesh: THREE.Object3D, angle: number, maxStep: number)
     mesh.rotation.y = Math.abs(delta) <= maxStep ? angle : mesh.rotation.y + Math.sign(delta) * maxStep;
 }
 
-export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distance: number) {
+/**
+ * Moves `mesh` by `distance` along `direction`, sliding along walls and cliffs.
+ * `radius` is the body's: the test probes that far past the centre, toward the
+ * move, so the body stops when its front reaches a wall instead of its centre.
+ */
+export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distance: number, radius = 0) {
     const grid = getNavGrid();
     const { x, z } = mesh.position;
 
@@ -149,18 +154,24 @@ export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distan
         return;
     }
 
+    const length = Math.hypot(direction.x, direction.z);
+    if (length === 0) return;
+    const aheadX = (direction.x / length) * radius;
+    const aheadZ = (direction.z / length) * radius;
+
     const full = { x: x + direction.x * distance, z: z + direction.z * distance };
-    if (!cannotReach(grid, x, z, full.x, full.z)) {
+    if (!cannotReach(grid, x, z, full.x + aheadX, full.z + aheadZ)) {
         mesh.position.x = full.x;
         mesh.position.z = full.z;
         return;
     }
 
     // Blocked head-on: keep whichever single axis still works, so the walker
-    // slides along the wall or cliff face instead of sticking to it.
-    if (!cannotReach(grid, x, z, full.x, z)) {
+    // slides along the wall or cliff face instead of sticking to it. Each axis
+    // probes only its own share of the radius: the full one would reach diagonally.
+    if (!cannotReach(grid, x, z, full.x + Math.sign(aheadX) * radius, z)) {
         mesh.position.x = full.x;
-    } else if (!cannotReach(grid, x, z, x, full.z)) {
+    } else if (!cannotReach(grid, x, z, x, full.z + Math.sign(aheadZ) * radius)) {
         mesh.position.z = full.z;
     }
 }

@@ -77,7 +77,7 @@ export class DashComponent implements Component {
             this.mesh.position.addScaledVector(this.direction, DASH_SPEED * step);
             this.leapTravelled += DASH_SPEED * step;
         } else {
-            slideMove(this.mesh, this.direction, DASH_SPEED * step);
+            slideMove(this.mesh, this.direction, DASH_SPEED * step, this.movement.radius);
         }
 
         if (!this.isDashing) this.end();

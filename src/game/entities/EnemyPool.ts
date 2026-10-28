@@ -197,7 +197,7 @@ type Fighter = {
 function createFighter(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComponent, health: HealthComponent, deps: EnemyPoolDeps): Fighter {
     switch (look.attack.kind) {
         case 'lunge': {
-            const lunge = new LungeComponent(mesh, deps.player, attack, look.attack.options);
+            const lunge = new LungeComponent(mesh, deps.player, attack, look.attack.options, look.size / 2);
             return { attacker: lunge, drive: (animator) => new LungeAnimationDriver(animator, mesh, lunge) };
         }
         case 'combo': {
@@ -208,7 +208,7 @@ function createFighter(look: EnemyLook, mesh: THREE.Object3D, attack: AttackComp
             };
         }
         case 'shoot': {
-            const shoot = new ShootComponent(mesh, deps.player, attack, health, deps.projectiles, look.attack.options);
+            const shoot = new ShootComponent(mesh, deps.player, attack, health, deps.projectiles, look.attack.options, look.size / 2);
             return {
                 attacker: shoot,
                 drive: (animator) => new ArcherAnimationDriver(animator, mesh, shoot),

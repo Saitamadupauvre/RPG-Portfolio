@@ -68,7 +68,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     // them in sync after every upgrade.
     const stats = getPlayerStats();
 
-    const movement = new MovementComponent(root, cameraOffset, stats.speed);
+    const movement = new MovementComponent(root, cameraOffset, stats.speed, PLAYER_RADIUS);
     const attack = new AttackComponent(root);
     // Attack clips are full-body, so the body plants for the whole move: no turning, no sliding.
     const combo = new ComboComponent(attack, COMBO_MOVES, {

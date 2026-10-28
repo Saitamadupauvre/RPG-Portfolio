@@ -62,6 +62,8 @@ export class ShootComponent implements EnemyAttacker {
     private health: HealthComponent;
     private projectiles: ProjectileSystem;
     private options: ShootOptions;
+    /** The body's radius, kept off walls by slideMove. */
+    private radius: number;
     /** The nocked arrow in the model: shots leave from it. Null until the model loads. */
     private muzzle: THREE.Object3D | null = null;
 
@@ -87,6 +89,7 @@ export class ShootComponent implements EnemyAttacker {
         health: HealthComponent,
         projectiles: ProjectileSystem,
         options: ShootOptions,
+        radius: number,
     ) {
         this.mesh = mesh;
         this.target = target;
@@ -94,6 +97,7 @@ export class ShootComponent implements EnemyAttacker {
         this.health = health;
         this.projectiles = projectiles;
         this.options = options;
+        this.radius = radius;
         this.lastHp = health.hp;
         // Yaw first, then the flinch's pitch around the body's own sideways axis.
         this.mesh.rotation.order = 'YXZ';
@@ -248,7 +252,7 @@ export class ShootComponent implements EnemyAttacker {
         const { distance, cooldown } = this.options.hop;
         // Only the airborne part of the clip covers ground; the crouch and the landing stay put.
         const air = THREE.MathUtils.smoothstep(this.progress, HOP_TAKEOFF, HOP_LANDING);
-        slideMove(this.mesh, this.hopDirection, distance * air - this.hopped);
+        slideMove(this.mesh, this.hopDirection, distance * air - this.hopped, this.radius);
         this.hopped = distance * air;
 
         if (this.progress >= 1) {

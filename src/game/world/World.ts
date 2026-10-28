@@ -30,6 +30,7 @@ import { WindStreaks } from "./windStreaks";
 import { Water } from "./water/Water";
 import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
+import { aimMenuShot, CameraBlend, GAME_FOV, setFov } from "./menuShot";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 /** Keeps the camera from burying itself in a hill or cliff behind the player. */
@@ -83,6 +84,9 @@ export class World {
     private resting = false;
     /** `playerFaded` went out for this death. */
     private deathReported = false;
+    private cameraBlend = new CameraBlend();
+    /** Reused every menu frame: where the knight's feet are. */
+    private menuFeet = new THREE.Vector3();
     // One full-ratio tier: Terrain already grows far patches sparser, and a draw
     // LOD on top would thin them a second time.
     public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
@@ -143,8 +147,14 @@ export class World {
             (key) => this.despawnChunk(key),
         );
 
-        events.on('stateChange', (newState) => {
+        events.on('stateChange', (newState, oldState) => {
             this.entityGroup.visible = this.isGameVisible(newState);
+
+            // Into the menu or out of it, the camera glides between the two shots instead of cutting.
+            const menuCut = (oldState === 'MENU' && newState === 'GAME') || (oldState === 'GAME' && newState === 'MENU');
+            if (menuCut) this.cameraBlend.start(this.experience.camera);
+            // Quit mid-run: the knight must not keep running on the menu backdrop.
+            if (newState === 'MENU') this.stopPlayerInput();
         });
 
         this.loadLayout(mapLayout);
@@ -262,8 +272,9 @@ export class World {
         return this.entities;
     }
 
+    /** The menu too: the world stands behind it as its backdrop. */
     private isGameVisible(state: AppState) {
-        return state === 'GAME' || state === 'DEAD' || state === 'EDITOR';
+        return state === 'MENU' || state === 'GAME' || state === 'DEAD' || state === 'EDITOR';
     }
 
     public update(dt: number) {
@@ -280,6 +291,10 @@ export class World {
         this.environment.followShadows(this.player.mesh.position);
 
         if (state === 'DEAD') this.updateDeath(dt);
+        if (state === 'MENU') {
+            this.updateMenu(dt);
+            return;
+        }
 
         // Not only DEAD and EDITOR: quitting to the menu leaves the world loaded, and it must not play on unseen.
         if (this.paused || state !== 'GAME') return;
@@ -298,6 +313,8 @@ export class World {
         this.interaction.update(this.entities, this.player.mesh.position);
 
         this.followPlayer(camera);
+        this.cameraBlend.apply(camera, dt);
+        camera.updateMatrixWorld();
         this.updateGhosts(camera);
         this.combat.update(dt, camera);
 
@@ -369,7 +386,29 @@ export class World {
     private followPlayer(camera: THREE.PerspectiveCamera) {
         cameraEye(this.player.mesh.position, camera.position);
         camera.lookAt(this.player.mesh.position);
+        setFov(camera, GAME_FOV);
         camera.updateMatrixWorld();
+    }
+
+    /**
+     * The menu backdrop: the world stays still (no AI, no combat), only the
+     * idle animations play and the camera drifts round the knight. Updating
+     * the player whole is safe here: its input listeners only listen in GAME.
+     */
+    private updateMenu(dt: number) {
+        const camera = this.experience.camera;
+
+        this.player.update(dt);
+        for (const entity of this.entities) {
+            entity.getComponent('animator')?.update(dt);
+        }
+
+        const feet = this.menuFeet.copy(this.player.mesh.position);
+        feet.y -= this.player.groundOffset;
+        aimMenuShot(camera, feet, this.player.mesh.rotation.y, this.experience.timer.getElapsed());
+        this.cameraBlend.apply(camera, dt);
+        camera.updateMatrixWorld();
+        this.updateGhosts(camera);
     }
 
     public resetCamera() {

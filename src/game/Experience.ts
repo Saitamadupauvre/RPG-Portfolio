@@ -11,6 +11,7 @@ import { GRASS_LAYER, WIND_LAYER } from './render/layers';
 import { applyColorGrading } from './render/grading';
 import { PlayerPortrait } from './portrait/PlayerPortrait';
 import { MAX_STREAKS } from './world/windStreaks';
+import { GAME_FOV } from './world/menuShot';
 
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;
@@ -56,7 +57,7 @@ export class Experience {
 
         this.scene = new THREE.Scene();
 
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
+        this.camera = new THREE.PerspectiveCamera(GAME_FOV, window.innerWidth / window.innerHeight, 0.1, 150);
         this.camera.position.z = 5;
         // Cameras only see layer 0 by default; grass sits on its own layer so
         // the water depth prepass can skip it.
@@ -180,9 +181,10 @@ export class Experience {
         window.requestAnimationFrame(() => this.tick());
         this.timer.update();
 
-        // Back in the menu or the classic book the canvas is hidden: drawing it would only heat the GPU.
+        // The menu draws too, the world being its backdrop. In the classic book the
+        // canvas is hidden: drawing it would only heat the GPU.
         const state = stateMachine.getState();
-        if (state !== 'GAME' && state !== 'DEAD' && state !== 'EDITOR') return;
+        if (state !== 'MENU' && state !== 'GAME' && state !== 'DEAD' && state !== 'EDITOR') return;
 
         this.renderer.info.reset();
 

@@ -28,6 +28,8 @@ export type AppEvents = {
     playerRespawned: [screenX: number, screenY: number];
     /** The world is ready after leaving the menu, behind a black screen: open it around the player. */
     gameEntered: [screenX: number, screenY: number];
+    /** The world finished loading behind the menu: show it as the backdrop; Game now starts without a loading screen. */
+    worldReady: [];
     /** Game mode boot, 0 to 1. */
     loadingProgress: [progress: number];
     settingsChanged: [settings: Settings];

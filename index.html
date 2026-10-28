@@ -17,11 +17,34 @@
   <canvas class="webgl"></canvas>
   <div id="ui-container" class="state-loading pixel-ui">
     <div class="screen" id="menu-screen">
-      <h1 class="title">SOLDIER'S PORTFOLIO</h1>
-      <div class="menu-actions">
-        <button class="btn" id="btn-enter-game">Game Mode</button>
-        <button class="btn" id="btn-enter-classic">Fast Portfolio</button>
+      <div class="menu-column">
+        <p class="menu-kicker">A playable portfolio</p>
+        <h1 class="title"><span>Soldier's</span> <span>Portfolio</span></h1>
+        <p class="menu-tagline">A small open world to roam. Every glowing statue holds one of my projects.</p>
+        <nav class="menu-actions" aria-label="Choose how to browse">
+          <button class="btn menu-btn menu-btn-play" id="btn-enter-game">
+            <span class="menu-btn-text">
+              <span class="menu-btn-label">Play the game</span>
+              <span class="menu-btn-hint">Explore, fight, discover the projects</span>
+            </span>
+            <span class="menu-btn-arrow" data-arrow></span>
+          </button>
+          <div class="menu-fast">
+            <button class="btn menu-btn menu-btn-fast" id="btn-enter-classic">
+              <span class="menu-btn-text">
+                <span class="menu-btn-label">Fast portfolio</span>
+                <span class="menu-btn-hint">Every project in one list, no game</span>
+              </span>
+              <span class="menu-btn-arrow" data-arrow></span>
+            </button>
+            <p class="menu-callout">
+              <span class="menu-callout-arrow" id="menu-callout-arrow"></span>
+              <span class="menu-callout-text">Recruiter in a hurry?<br><strong>Start here</strong></span>
+            </p>
+          </div>
+        </nav>
       </div>
+      <p class="menu-footer">Keyboard &amp; mouse &middot; best on desktop</p>
     </div>
     <div id="low-hp-vignette"></div>
     <div id="hud">

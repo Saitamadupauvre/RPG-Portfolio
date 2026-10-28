@@ -36,58 +36,72 @@ const ASSET_TIMEOUT_MS = 12000;
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 /**
- * Game mode's real loading happens here, not at startup: the Three.js chunk is
- * only downloaded once someone picks it, and building the world is the slow
- * part. The loading screen covers exactly that wait, models included, so the
- * world is first seen with its real meshes instead of placeholders popping in.
+ * Game mode's real loading: the Three.js chunk, the world and its models. It
+ * starts as soon as the menu is up, in the background, so the world can stand
+ * behind the menu; the loading screen only shows if someone picks Game before
+ * it is done. The classic book never waits on any of it.
  */
 async function bootGame(): Promise<Experience> {
-    document.body.classList.add('booting');
     events.emit('loadingProgress', 0);
-    try {
-        const [{ Experience }, { watchAssets }] = await Promise.all([
-            import('./game/Experience'),
-            import('./game/assetLoading'),
-        ]);
-        events.emit('loadingProgress', CODE_SHARE);
+    const [{ Experience }, { watchAssets }] = await Promise.all([
+        import('./game/Experience'),
+        import('./game/assetLoading'),
+    ]);
+    events.emit('loadingProgress', CODE_SHARE);
 
-        const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl');
-        if (!canvas) throw new Error('index.html is missing <canvas class="webgl">');
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl');
+    if (!canvas) throw new Error('index.html is missing <canvas class="webgl">');
 
-        // Before init: building the world is what requests the models.
-        const assets = watchAssets();
-        const experience = Experience.init(canvas, portraitCanvas);
-        await assets.settled(
-            (ratio) => events.emit('loadingProgress', CODE_SHARE + ratio * (1 - CODE_SHARE)),
-            ASSET_TIMEOUT_MS,
-        );
-        events.emit('loadingProgress', 1);
+    // Before init: building the world is what requests the models.
+    const assets = watchAssets();
+    const experience = Experience.init(canvas, portraitCanvas);
+    await assets.settled(
+        (ratio) => events.emit('loadingProgress', CODE_SHARE + ratio * (1 - CODE_SHARE)),
+        ASSET_TIMEOUT_MS,
+    );
+    events.emit('loadingProgress', 1);
 
-        // Two frames: the first one renders the world, the second one puts it on screen.
-        await nextFrame();
-        await nextFrame();
-        return experience;
-    } finally {
-        document.body.classList.remove('booting');
-    }
+    // Two frames: the first one renders the world, the second one puts it on screen.
+    await nextFrame();
+    await nextFrame();
+    return experience;
 }
 
 let game: Promise<Experience> | null = null;
+let ready = false;
 
-events.on('stateChange', (newState, oldState) => {
-    // Every way in from the menu: the first one boots the game, later ones find it loaded.
-    if (newState !== 'GAME' || oldState !== 'MENU') return;
-
-    game ??= bootGame();
-    game
-        .then((experience) => experience.world.reveal())
-        .catch((error) => {
+function startBoot(): Promise<Experience> {
+    game ??= bootGame().then(
+        (experience) => {
+            ready = true;
+            events.emit('worldReady');
+            return experience;
+        },
+        (error: unknown) => {
             // Let the next click try again instead of replaying the same failure.
             game = null;
-            console.error('[game] failed to start', error);
-        });
+            throw error;
+        },
+    );
+    return game;
+}
+
+events.on('stateChange', (newState, oldState) => {
+    // Every way in from the menu. Once the world stands behind the menu, the
+    // camera glides from the menu shot into the game: nothing to wait for.
+    if (newState !== 'GAME' || oldState !== 'MENU' || ready) return;
+
+    // Picked before the background boot was done: cover the rest of the wait.
+    document.body.classList.add('booting');
+    startBoot()
+        .then((experience) => experience.world.reveal())
+        .catch((error: unknown) => console.error('[game] failed to start', error))
+        .finally(() => document.body.classList.remove('booting'));
 });
 
-// Nothing to load before the menu: the menu is plain DOM and game mode loads
-// lazily. The old fixed 1.5 s wait only delayed recruiters for no reason.
+// Nothing to load before the menu: it is plain DOM, and the world loads behind it.
 stateMachine.changeState('MENU');
+// After the menu's first paint, so the title and buttons never wait on the game's download.
+requestAnimationFrame(() => {
+    startBoot().catch((error: unknown) => console.error('[game] failed to load the world', error));
+});

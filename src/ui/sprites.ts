@@ -112,3 +112,21 @@ export const CAMPFIRE: Sprite = {
         ],
     ],
 };
+
+/** A chunky arrow pointing left, for the menu: the recruiter callout points it at its button, `mirror` turns it for the buttons' own arrows. */
+const ARROW_LEFT: SpriteFrame = [
+    '....K........',
+    '...KYK.......',
+    '..KYYKKKKKKKK',
+    '.KYYYYYYYYYYK',
+    'KYWYYYYYYYYYK',
+    '.KYYOOOOOOOOK',
+    '..KYOKKKKKKKK',
+    '...KOK.......',
+    '....K........',
+];
+
+const ARROW_PALETTE = { K: '#2b1a0e', Y: '#f2c14e', O: '#b8801f', W: '#fff4c8' };
+
+export const ARROW_POINT_LEFT: Sprite = { palette: ARROW_PALETTE, frames: [ARROW_LEFT] };
+export const ARROW_POINT_RIGHT: Sprite = { palette: ARROW_PALETTE, frames: [mirror(ARROW_LEFT)] };

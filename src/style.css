@@ -352,6 +352,45 @@ body {
   }
 }
 
+/* Touch-only (MenuView): no world behind the menu, so nothing to leave room for; the book comes first. */
+.touch-only #menu-screen {
+  justify-content: center;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.touch-only .menu-fast {
+  order: -1;
+}
+
+/* The fast portfolio takes over the gold of the main way in. */
+.touch-only .menu-btn-fast {
+  --btn-bg: var(--accent-gold);
+  --btn-ink: #1d1408;
+  --btn-hint: rgba(29, 20, 8, 0.7);
+  --btn-edge: #fff1c4;
+}
+
+.touch-only .menu-btn-fast .menu-btn-arrow .sprite {
+  filter: brightness(0.2) sepia(1);
+}
+
+.touch-only .menu-btn-play {
+  --btn-bg: rgba(20, 21, 31, 0.86);
+  --btn-ink: rgba(238, 238, 238, 0.45);
+  --btn-hint: rgba(238, 238, 238, 0.45);
+  --btn-edge: rgba(238, 238, 238, 0.2);
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+.touch-only .menu-btn-play .menu-btn-arrow,
+.touch-only .menu-callout,
+.touch-only .menu-footer {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu-callout-arrow .sprite,
   .world-ready .webgl {

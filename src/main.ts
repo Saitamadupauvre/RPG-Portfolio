@@ -10,6 +10,7 @@ import { initHudView } from './ui/views/HudView';
 import { initTransitionView } from './ui/views/TransitionView';
 import { initLoadingView } from './ui/views/LoadingView';
 import { initEditorView } from './ui/views/EditorView';
+import { isTouchOnly } from './ui/device';
 import { initAudio, playTrack, setVolume, stopTrack } from './audio/audio';
 import { getSettings } from './domain/settings';
 import { VOLUME_CHANNELS, type VolumeChannel } from './data/settings';
@@ -142,6 +143,9 @@ events.on('stateChange', (newState, oldState) => {
 // Nothing to load before the menu: it is plain DOM, and the world loads behind it.
 stateMachine.changeState('MENU');
 // After the menu's first paint, so the title and buttons never wait on the game's download.
-requestAnimationFrame(() => {
-    startBoot().catch((error: unknown) => console.error('[game] failed to load the world', error));
-});
+// Never on a touch-only device: it cannot play, and the world would only cost battery and data.
+if (!isTouchOnly()) {
+    requestAnimationFrame(() => {
+        startBoot().catch((error: unknown) => console.error('[game] failed to load the world', error));
+    });
+}

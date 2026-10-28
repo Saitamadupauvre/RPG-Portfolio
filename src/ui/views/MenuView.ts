@@ -1,6 +1,7 @@
 import { stateMachine } from '../../core/StateMachine';
 import { events } from '../../core/events';
 import { getIris } from '../components/iris';
+import { isTouchOnly } from '../device';
 import { renderSprite } from '../components/pixelSprite';
 import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
 
@@ -17,6 +18,14 @@ export function initMenuView() {
         slot.appendChild(renderSprite(ARROW_POINT_RIGHT));
     }
     document.getElementById('menu-callout-arrow')?.appendChild(renderSprite(ARROW_POINT_LEFT));
+
+    // No world boots on a touch-only device (main.ts): the game stays on the menu, greyed, so it is not a surprise.
+    if (isTouchOnly()) {
+        document.body.classList.add('touch-only');
+        if (enterGame instanceof HTMLButtonElement) enterGame.disabled = true;
+        const hint = enterGame?.querySelector('.menu-btn-hint');
+        if (hint) hint.textContent = 'Needs a keyboard and mouse: open it on a computer';
+    }
 
     events.on('worldReady', () => {
         worldReady = true;

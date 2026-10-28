@@ -5,6 +5,7 @@ import { keyFor } from '../../../domain/settings';
 import { planGapLeap, slideMove, type GapLeap } from '../movement';
 import { groundHeight } from '../../world/terrainField';
 import type { MovementComponent } from './MovementComponent';
+import { playSound } from '../../../audio/audio';
 
 const DASH_SPEED = 14;
 const DASH_DURATION = 0.18;
@@ -62,6 +63,7 @@ export class DashComponent implements Component {
         this.remaining = this.leap ? this.leap.distance / DASH_SPEED : DASH_DURATION;
 
         this.movement.freeze('dash');
+        playSound('dash');
     }
 
     public update(dt: number) {

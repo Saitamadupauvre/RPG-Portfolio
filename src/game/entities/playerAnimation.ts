@@ -29,7 +29,11 @@ export const playerController: AnimatorControllerDefinition = {
             name: 'base',
             states: [
                 { name: 'idle', clip: 'Idle', loop: true },
-                { name: 'walk', clip: 'Walk', loop: true, speedParam: 'walkRate' },
+                {
+                    name: 'walk', clip: 'Walk', loop: true, speedParam: 'walkRate',
+                    // Feet land at the bottom of the bounce: frames 3 and 9 of walk_pose's 12.
+                    events: [{ name: 'footstep', time: 3 / FPS }, { name: 'footstep', time: 9 / FPS }],
+                },
                 { name: 'dash', clip: 'Dash' },
                 { name: 'slash', clip: 'Slash', speed: 0, markers: { swingStart: 8 / FPS, swingEnd: 14 / FPS } },
             ],

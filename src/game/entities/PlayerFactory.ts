@@ -20,6 +20,7 @@ import { loadPlayerModel, PLAYER_HEIGHT } from './playerModel';
 import { events } from '../../core/events';
 import { createLitMaterial } from '../render/materials';
 import { getPlayerStats } from '../../domain/playerProgress';
+import { playSound } from '../../audio/audio';
 
 const PLAYER_RADIUS = 0.4;
 /** How far in front of the root the dash trail starts, so the roll never shows its head. */
@@ -75,7 +76,8 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const stats = getPlayerStats();
 
     const movement = new MovementComponent(root, cameraOffset, stats.speed, PLAYER_RADIUS);
-    const attack = new AttackComponent(root);
+    // Starts when the hitbox goes live (after the windup), the moment the blade really sweeps.
+    const attack = new AttackComponent(root, {}, { onAttackStart: () => playSound('swordSwing') });
     // Attack clips are full-body, so the body plants for the whole move: no turning, no sliding.
     const combo = new ComboComponent(attack, COMBO_MOVES, {
         onBusyChanged: (busy) => {
@@ -88,6 +90,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const hitFlash = new HitFlashComponent(material);
     // The graph runs from frame one; it gets its bones and clips when the model arrives.
     const animator = new AnimatorComponent(playerController);
+    animator.on('footstep', () => playSound('footstep'));
 
     const health = new HealthComponent(stats.health, (hp, maxHp) => {
         events.emit('playerHealthChanged', hp, maxHp);

@@ -10,8 +10,10 @@ import { initHudView } from './ui/views/HudView';
 import { initTransitionView } from './ui/views/TransitionView';
 import { initLoadingView } from './ui/views/LoadingView';
 import { initEditorView } from './ui/views/EditorView';
+import { initAudio } from './audio/audio';
 
 validateBook();
+initAudio();
 
 /**
  * The live knight on the book's Level page. Shared like the game's own canvas: the book places

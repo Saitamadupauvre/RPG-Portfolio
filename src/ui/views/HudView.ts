@@ -2,6 +2,7 @@ import { events } from '../../core/events';
 import { getCoins } from '../../domain/playerProgress';
 import { renderSprite } from '../components/pixelSprite';
 import { COIN, HEART } from '../sprites';
+import { playSound } from '../../audio/audio';
 
 const TOAST_MS = 2600;
 /** How long the chunk of bar just lost stays lit before it drains: what makes a hit readable. */
@@ -137,7 +138,10 @@ export function initHudView() {
 
         popDelta(delta);
         replay(coins, delta > 0 ? 'gain' : 'loss');
-        if (delta > 0) replay(coin, 'spin');
+        if (delta > 0) {
+            replay(coin, 'spin');
+            playSound('coin');
+        }
         roll(amount);
     });
 

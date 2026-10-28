@@ -1,3 +1,4 @@
+import { playSound } from '../../audio/audio';
 import { events } from '../../core/events';
 import { setPaused } from '../../core/pause';
 import { stateMachine, type AppState } from '../../core/StateMachine';
@@ -25,6 +26,8 @@ import { cancelKeyCapture, renderControlsPage, renderOptionsPage } from '../comp
 
 /** Cap on leaves turned at once: past this, more paper reads as noise. */
 const MAX_LEAVES = 14;
+/** When the front cover starts to swing open: `book-cover-open`'s delay in book.css. */
+const COVER_OPEN_DELAY_S = 0.65;
 
 /** Mobile back button on a spread's second page, back to its first. */
 const BACK_LABELS: Partial<Record<SectionId, string>> = {
@@ -200,6 +203,8 @@ export function initBookView(portrait: HTMLCanvasElement) {
             activeSection = target.sectionId;
             showingEntry = true;
         }
+        // No leaf turns on the way in: the cover swinging open stands for one.
+        playSound('pageTurn', { delay: reducedMotionQuery.matches ? 0 : COVER_OPEN_DELAY_S });
 
         render();
         overlay.classList.add('open');

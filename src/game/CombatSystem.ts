@@ -11,6 +11,7 @@ import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
 import type { ProjectileSystem } from './ProjectileSystem';
 import type { FireSystem } from './FireSystem';
+import { playSound } from '../audio/audio';
 
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;
@@ -163,6 +164,7 @@ export class CombatSystem {
         const health = this.player.getComponent('health');
         // Rounded: the HUD's HP and damage trail stay whole numbers.
         health?.takeDamage(Math.round(damage * ENEMY_DAMAGE_SCALE));
+        playSound('playerHurt');
         // Same as an enemy: the fatal hit leaves the burst and the flash to the death fade.
         if (!health?.isDead()) {
             this.player.getComponent('hitFlash')?.trigger();
@@ -185,6 +187,7 @@ export class CombatSystem {
 
             const health = entity.getComponent('health');
             health?.takeDamage(attack.damage);
+            playSound('enemyHit');
 
             this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
 

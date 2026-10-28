@@ -7,8 +7,8 @@
  * from this table, so a typo in a `playSound` call fails the type-check.
  */
 
-/** Separate volume knobs. `music` and `ui` have nothing yet; they are ready for later. */
-export const AUDIO_BUSES = ['sfx', 'music', 'ui'] as const;
+/** Separate volume knobs, one gain each. Which slider drives which is decided in `main.ts`. */
+export const AUDIO_BUSES = ['sfx', 'music', 'ui', 'ambience'] as const;
 
 export type AudioBus = (typeof AUDIO_BUSES)[number];
 
@@ -87,3 +87,30 @@ export const SOUNDS = {
 } as const satisfies Record<string, SoundDefinition>;
 
 export type SoundId = keyof typeof SOUNDS;
+
+/**
+ * Long looping tracks: music and ambience. Apart from `SOUNDS` because they
+ * are streamed, not decoded up front: three minutes of decoded stereo is
+ * ~80 MB of floats, where a one-shot is a few hundred KB. Credits in `CREDITS.md`.
+ */
+export type TrackDefinition = {
+    file: string;
+    bus: AudioBus;
+    /** 0..1, before the bus and master volumes. */
+    volume: number;
+};
+
+export const TRACKS = {
+    mainTheme: {
+        file: 'audio/music/main-theme.mp3',
+        bus: 'music',
+        volume: 0.5,
+    },
+    worldAmbience: {
+        file: 'audio/ambience/world.mp3',
+        bus: 'ambience',
+        volume: 0.4,
+    },
+} as const satisfies Record<string, TrackDefinition>;
+
+export type TrackId = keyof typeof TRACKS;

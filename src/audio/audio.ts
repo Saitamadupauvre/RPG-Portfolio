@@ -1,4 +1,13 @@
-import { AUDIO_BUSES, SOUNDS, type AudioBus, type SoundDefinition, type SoundId } from '../data/sounds';
+import {
+    AUDIO_BUSES,
+    SOUNDS,
+    TRACKS,
+    type AudioBus,
+    type SoundDefinition,
+    type SoundId,
+    type TrackDefinition,
+    type TrackId,
+} from '../data/sounds';
 
 /**
  * The one sound player, on the Web Audio API. Imported by both `game/` and `ui/`
@@ -7,6 +16,8 @@ import { AUDIO_BUSES, SOUNDS, type AudioBus, type SoundDefinition, type SoundId 
  *
  * Graph: each play = BufferSource -> its own Gain -> bus Gain -> master Gain -> speakers.
  * A gain per play is what lets two copies of one sound sit at different volumes.
+ * Tracks (music, ambience) stream from an <audio> element into the same graph:
+ * <audio> -> MediaElementSource -> its own Gain (fades) -> bus Gain -> master.
  */
 
 export type PlayOptions = {
@@ -20,6 +31,14 @@ export type PlayOptions = {
 
 type Voice = { source: AudioBufferSourceNode; gain: GainNode };
 
+type Track = {
+    element: HTMLAudioElement;
+    gain: GainNode;
+    wanted: boolean;
+    /** Pauses the element once a fade-out has reached silence. */
+    pauseTimer: number;
+};
+
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
 const buses = new Map<AudioBus, GainNode>();
@@ -31,6 +50,8 @@ const loading = new Map<string, Promise<void>>();
 const voices = new Map<SoundId, Voice[]>();
 const lastVariant = new Map<SoundId, number>();
 const lastPlayed = new Map<SoundId, number>();
+
+const tracks = new Map<TrackId, Track>();
 
 /**
  * Builds the graph and starts decoding every file. Browsers create an
@@ -49,15 +70,27 @@ export function initAudio() {
         buses.set(bus, gain);
     }
 
+    let unlocked = false;
     const unlock = () => {
-        void context?.resume();
-        if (context?.state === 'running') {
+        void context?.resume().then(() => {
+            if (context?.state !== 'running') return;
+            unlocked = true;
             window.removeEventListener('pointerdown', unlock, true);
             window.removeEventListener('keydown', unlock, true);
-        }
+        });
     };
     window.addEventListener('pointerdown', unlock, true);
     window.addEventListener('keydown', unlock, true);
+
+    // Silent in a background tab, like the frozen game behind it.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) void context?.suspend();
+        else if (unlocked) void context?.resume();
+    });
+    // Tracks asked for while locked start here, once sound is allowed.
+    context.addEventListener('statechange', () => {
+        if (context?.state === 'running') for (const id of tracks.keys()) syncTrack(id, TRACK_FADE_S);
+    });
 
     for (const definition of Object.values(SOUNDS) as SoundDefinition[]) {
         for (const file of definition.files) void load(file);
@@ -150,6 +183,77 @@ function trackVoice(id: SoundId, voice: Voice, maxVoices = Infinity) {
         playing.shift();
     }
 }
+
+// ---------- tracks ----------
+
+/** Default fade in/out, seconds. */
+const TRACK_FADE_S = 2;
+
+/** Fades a looping track in. Asked while audio is locked, it starts on the first click or key. */
+export function playTrack(id: TrackId, fadeSeconds = TRACK_FADE_S) {
+    const track = trackFor(id);
+    if (!track || track.wanted) return;
+    track.wanted = true;
+    syncTrack(id, fadeSeconds);
+}
+
+/** Fades a track out, then pauses it where it is. */
+export function stopTrack(id: TrackId, fadeSeconds = TRACK_FADE_S) {
+    const track = tracks.get(id);
+    if (!track?.wanted) return;
+    track.wanted = false;
+    syncTrack(id, fadeSeconds);
+}
+
+/** Created on first use: an <audio> element downloads on its own, no need to fetch it at boot. */
+function trackFor(id: TrackId): Track | null {
+    if (!context) return null;
+    let track = tracks.get(id);
+    if (track) return track;
+
+    const definition: TrackDefinition = TRACKS[id];
+    const element = new Audio(definition.file);
+    element.loop = true;
+    element.preload = 'auto';
+
+    const gain = context.createGain();
+    gain.gain.value = 0;
+    context.createMediaElementSource(element).connect(gain);
+    gain.connect(buses.get(definition.bus)!);
+
+    track = { element, gain, wanted: false, pauseTimer: 0 };
+    tracks.set(id, track);
+    return track;
+}
+
+/** Moves the track's gain toward where `wanted` says it should be. */
+function syncTrack(id: TrackId, fadeSeconds: number) {
+    const track = tracks.get(id);
+    if (!context || !track) return;
+    // Locked: <audio>.play() would be refused by the autoplay policy. `statechange` retries.
+    if (context.state !== 'running') return;
+
+    const now = context.currentTime;
+    const param = track.gain.gain;
+    // Pin the ramp to where it is now: a new fade starts from the current level, not the last target.
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(track.element.paused ? 0 : param.value, now);
+    // setTargetAtTime approaches its target exponentially; a third of the fade gets ~95% there.
+    const timeConstant = Math.max(0.01, fadeSeconds / 3);
+    window.clearTimeout(track.pauseTimer);
+
+    if (track.wanted) {
+        param.setTargetAtTime(TRACKS[id].volume, now, timeConstant);
+        if (track.element.paused) {
+            track.element.play().catch((error) => console.warn(`[audio] ${id} failed to play`, error));
+        }
+    } else {
+        param.setTargetAtTime(0, now, timeConstant);
+        track.pauseTimer = window.setTimeout(() => track.element.pause(), fadeSeconds * 1000);
+    }
+}
+
+// ---------- volume ----------
 
 /**
  * 0..1, a slider position. `'master'` scales every bus. Squared into a gain:

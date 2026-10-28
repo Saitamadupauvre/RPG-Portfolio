@@ -10,10 +10,11 @@ import { initHudView } from './ui/views/HudView';
 import { initTransitionView } from './ui/views/TransitionView';
 import { initLoadingView } from './ui/views/LoadingView';
 import { initEditorView } from './ui/views/EditorView';
-import { initAudio, setVolume } from './audio/audio';
+import { initAudio, playTrack, setVolume, stopTrack } from './audio/audio';
 import { getSettings } from './domain/settings';
 import { VOLUME_CHANNELS, type VolumeChannel } from './data/settings';
-import type { AudioBus } from './data/sounds';
+import type { AppState } from './core/StateMachine';
+import type { AudioBus, TrackId } from './data/sounds';
 
 validateBook();
 initAudio();
@@ -21,13 +22,27 @@ initAudio();
 /** Which buses each volume slider drives: UI sounds follow the effects. */
 const CHANNEL_BUSES: Record<VolumeChannel, readonly AudioBus[]> = {
     music: ['music'],
-    sfx: ['sfx', 'ui'],
+    sfx: ['sfx', 'ui', 'ambience'],
 };
 const applyVolume = (channel: VolumeChannel, volume: number) => {
     for (const bus of CHANNEL_BUSES[channel]) setVolume(bus, volume);
 };
 for (const channel of VOLUME_CHANNELS) applyVolume(channel, getSettings().volume[channel]);
 events.on('volumeChanged', applyVolume);
+
+/**
+ * Music and ambience everywhere the world is, menu included (it stands behind it).
+ * Not in classic mode: a recruiter reading a list has no settings page to turn it down.
+ */
+const LOOPING: readonly TrackId[] = ['mainTheme', 'worldAmbience'];
+const updateTracks = (state: AppState) => {
+    for (const id of LOOPING) {
+        if (state === 'CLASSIC') stopTrack(id);
+        else playTrack(id);
+    }
+};
+updateTracks(stateMachine.getState());
+events.on('stateChange', updateTracks);
 
 /**
  * The live knight on the book's Level page. Shared like the game's own canvas: the book places

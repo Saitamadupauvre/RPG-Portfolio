@@ -109,7 +109,7 @@ export const TRACKS = {
     worldAmbience: {
         file: 'audio/ambience/world.mp3',
         bus: 'ambience',
-        volume: 0.4,
+        volume: 0.6,
     },
 } as const satisfies Record<string, TrackDefinition>;
 

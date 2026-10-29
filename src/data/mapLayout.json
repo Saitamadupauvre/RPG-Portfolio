@@ -2897,6 +2897,10 @@
             {
                 "kind": "coins",
                 "amount": 25
+            },
+            {
+                "kind": "project",
+                "projectId": "arcade"
             }
         ],
         "position": [
@@ -4991,9 +4995,9 @@
         "id": "prop-6",
         "propType": "rock-3-g",
         "position": [
-            -25.521632208074344,
-            -0.8620557865383294,
-            19.27588842692334
+            -24.773884253506324,
+            -0.505682295398691,
+            18.856441204287506
         ],
         "rotation": [
             0,
@@ -5006,7 +5010,7 @@
             2.3697824356064685
         ],
         "material": "cliff",
-        "heightOffset": -1.5
+        "heightOffset": -0.9339028975424442
     },
     {
         "kind": "bonfire",
@@ -5031,7 +5035,7 @@
     {
         "kind": "statue",
         "id": "statue-1",
-        "projectId": "glyphwright",
+        "projectId": "cartridge",
         "position": [
             29,
             0,
@@ -8463,8 +8467,12 @@
     {
         "kind": "chest",
         "id": "chest-3",
-        "chestTier": "wood",
+        "chestTier": "silver",
         "loot": [
+            {
+                "kind": "project",
+                "projectId": "wolf3d"
+            },
             {
                 "kind": "coins",
                 "amount": 25
@@ -8561,7 +8569,7 @@
     {
         "kind": "statue",
         "id": "statue-4",
-        "projectId": "glyphwright",
+        "projectId": "raytracer",
         "position": [
             9.458323273026924,
             3,
@@ -11508,17 +11516,21 @@
     {
         "kind": "chest",
         "id": "chest-5",
-        "chestTier": "wood",
+        "chestTier": "gold",
         "loot": [
             {
                 "kind": "coins",
                 "amount": 25
+            },
+            {
+                "kind": "project",
+                "projectId": "zappy"
             }
         ],
         "position": [
-            -71,
+            -73,
             0,
-            -35
+            -17
         ],
         "rotation": [
             -3.141592653589793,
@@ -11536,9 +11548,9 @@
         "id": "enemy-33",
         "enemyType": "elite",
         "position": [
-            -71,
+            -73,
             0.7200000000000001,
-            -37
+            -19
         ],
         "rotation": [
             0,
@@ -11556,9 +11568,9 @@
         "id": "enemy-34",
         "enemyType": "elite",
         "position": [
-            -71,
+            -73,
             0.7200000000000001,
-            -33
+            -15
         ],
         "rotation": [
             0,
@@ -11738,9 +11750,19 @@
         "id": "enemy-38",
         "enemyType": "elite",
         "position": [
-            -69,
+            -64,
+            0.7200000000000001,
+            -3
+        ],
+        "rotation": [
             0,
-            -17
+            1.5267767885633763,
+            0
+        ],
+        "scale": [
+            1,
+            1,
+            1
         ]
     },
     {
@@ -12166,7 +12188,7 @@
     {
         "kind": "statue",
         "id": "statue-5",
-        "projectId": "glyphwright",
+        "projectId": "youtube",
         "position": [
             -61,
             -0.0867515157823906,

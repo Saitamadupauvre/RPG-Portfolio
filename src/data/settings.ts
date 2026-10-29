@@ -1,3 +1,5 @@
+import type { Locale } from './locale';
+
 /**
  * Player preferences, types only. Here rather than in `domain/` so
  * `core/events.ts` and book content (`ControlHint.action`) can name them
@@ -45,4 +47,5 @@ export type Settings = {
     screenShake: boolean;
     /** Slider positions, 0..1 (the loudness curve is applied by the audio player). */
     volume: Record<VolumeChannel, number>;
+    language: Locale;
 };

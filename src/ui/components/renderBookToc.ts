@@ -1,4 +1,5 @@
 import { entryKey, type BookSection, type Lock, type SectionId } from '../../domain/book';
+import { localize, t } from '../../domain/i18n';
 import { monthName } from './formatDate';
 
 export type TocContext = {
@@ -12,10 +13,13 @@ export type TocContext = {
 
 const LOCKED_TITLE = '???';
 
+/** A section's name in the reader's language: the tab, the contents heading, a page's kicker. */
+export const sectionLabel = (id: SectionId) => t(`book.section.${id}`);
+
 export function renderLockIcon(): HTMLElement {
     const icon = document.createElement('span');
     icon.className = 'book-lock';
-    icon.setAttribute('aria-label', 'Locked');
+    icon.setAttribute('aria-label', t('book.locked'));
     return icon;
 }
 
@@ -28,7 +32,7 @@ export function renderBookTabs(
         const tab = document.createElement('button');
         tab.className = `book-tab book-tab-${section.id}`;
         tab.classList.toggle('active', section.id === activeId);
-        tab.textContent = section.label;
+        tab.textContent = sectionLabel(section.id);
         tab.addEventListener('click', () => onSelect(section.id));
         return tab;
     });
@@ -85,7 +89,7 @@ export function renderBookToc(section: BookSection, context: TocContext): HTMLEl
 
     const heading = document.createElement('h2');
     heading.className = 'book-page-title';
-    heading.textContent = section.label;
+    heading.textContent = sectionLabel(section.id);
     toc.appendChild(heading);
 
     const list = document.createElement('div');
@@ -113,7 +117,7 @@ export function renderBookToc(section: BookSection, context: TocContext): HTMLEl
                     context,
                 );
                 month.events.forEach(({ event, lock }, i) => {
-                    monthGroup.appendChild(renderItem(keys[i], event.title, lock, context));
+                    monthGroup.appendChild(renderItem(keys[i], localize(event.title), lock, context));
                 });
                 yearGroup.appendChild(monthGroup);
             }
@@ -121,14 +125,14 @@ export function renderBookToc(section: BookSection, context: TocContext): HTMLEl
         }
     } else if ('pages' in section) {
         for (const page of section.pages) {
-            list.appendChild(renderItem(entryKey('page', page.id), page.title, { locked: false }, context));
+            list.appendChild(renderItem(entryKey('page', page.id), localize(page.title), { locked: false }, context));
         }
     }
 
     if (list.children.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'book-empty';
-        empty.textContent = 'Nothing written here yet.';
+        empty.textContent = t('book.empty');
         list.appendChild(empty);
     }
     return toc;

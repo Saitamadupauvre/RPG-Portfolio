@@ -1,3 +1,5 @@
+import { t } from '../../domain/i18n';
+
 const MOUSE_LEFT = 'MouseLeft';
 const ARROWS = new Set(['←', '↑', '→', '↓']);
 
@@ -10,7 +12,7 @@ export function renderKey(key: string): HTMLElement {
         const mouse = document.createElement('span');
         mouse.className = 'book-mouse';
         mouse.setAttribute('role', 'img');
-        mouse.setAttribute('aria-label', 'Left mouse button');
+        mouse.setAttribute('aria-label', t('key.mouseLeft'));
         const button = document.createElement('span');
         button.className = 'book-mouse-button';
         mouse.appendChild(button);

@@ -3,6 +3,7 @@ import { events } from './core/events';
 import { validateBook } from './domain/book';
 import type { Experience } from './game/Experience';
 import { initUIStateView } from './ui/UIStateView';
+import { initStaticText } from './ui/staticText';
 import { initMenuView } from './ui/views/MenuView';
 import { initInteractPromptView } from './ui/views/InteractPromptView';
 import { initBookView } from './ui/views/BookView';
@@ -52,6 +53,7 @@ events.on('stateChange', updateTracks);
 const portraitCanvas = document.createElement('canvas');
 
 initUIStateView();
+initStaticText();
 initMenuView();
 initInteractPromptView();
 initBookView(portraitCanvas);

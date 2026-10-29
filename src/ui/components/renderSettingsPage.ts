@@ -1,5 +1,6 @@
 import { playSound } from '../../audio/audio';
 import { stateMachine } from '../../core/StateMachine';
+import { LOCALE_NAMES, LOCALES, type Locale } from '../../data/locale';
 import {
     INPUT_ACTIONS,
     MOVE_ACTIONS,
@@ -7,6 +8,7 @@ import {
     type Quality,
     type VolumeChannel,
 } from '../../data/settings';
+import { t } from '../../domain/i18n';
 import { labelForKey } from '../../domain/input';
 import { clearSave } from '../../domain/persistence';
 import {
@@ -14,6 +16,7 @@ import {
     getSettings,
     rebind,
     resetKeys,
+    setLanguage,
     setQuality,
     setScreenShake,
     setVolume,
@@ -21,35 +24,24 @@ import {
 import { keyName } from './printedKeys';
 import { renderKey } from './renderKey';
 
-const ACTION_LABELS: Record<InputAction, string> = {
-    up: 'Move up',
-    left: 'Move left',
-    down: 'Move down',
-    right: 'Move right',
-    dash: 'Dash',
-    interact: 'Interact',
-    levelUp: 'Level up',
-    book: 'Open book',
-};
+// Functions, not constants: the labels are read in the current language each time the page is drawn.
+const actionLabel = (action: InputAction) => t(`action.${action}`);
 
-const QUALITIES: Choice<Quality>[] = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
+const qualities = (): Choice<Quality>[] => [
+    { value: 'low', label: t('settings.quality.low') },
+    { value: 'medium', label: t('settings.quality.medium') },
+    { value: 'high', label: t('settings.quality.high') },
 ];
 
-const QUALITY_HINTS: Record<Quality, string> = {
-    low: 'No shadows, no grass: for older computers.',
-    medium: 'Shadows and grass at standard resolution.',
-    high: 'Everything, sharper on high-density screens.',
-};
+const qualityHint = (quality: Quality) => t(`settings.quality.${quality}.hint`);
 
-const SWITCH: Choice<boolean>[] = [
-    { value: true, label: 'On' },
-    { value: false, label: 'Off' },
+const onOff = (): Choice<boolean>[] => [
+    { value: true, label: t('settings.on') },
+    { value: false, label: t('settings.off') },
 ];
 
-const KEYS_HINT = 'Click a key to change it. The arrow keys move too.';
+/** Each language named in itself, never translated: a reader stuck in the wrong one still finds theirs. */
+const languages = (): Choice<Locale>[] => LOCALES.map((locale) => ({ value: locale, label: LOCALE_NAMES[locale] }));
 
 /** The reset button asks twice; the second click must come within this. */
 const CONFIRM_MS = 3000;
@@ -106,7 +98,7 @@ function renderVolume(channel: VolumeChannel, current: number, label: string): H
     slider.max = '1';
     slider.step = String(VOLUME_STEP);
     slider.value = String(current);
-    slider.setAttribute('aria-label', `${label} volume`);
+    slider.setAttribute('aria-label', t('settings.volume.aria', { channel: label }));
 
     const readout = el('span', 'settings-volume-value');
     const show = () => {
@@ -151,7 +143,7 @@ function captureKey(action: InputAction, button: HTMLElement, hint: HTMLElement)
     button.classList.add('listening');
     // A focused button would also "click" on Space or Enter, restarting the capture.
     button.blur();
-    hint.textContent = 'Press the new key. Esc cancels.';
+    hint.textContent = t('settings.keys.listening');
 
     const onKey = (event: KeyboardEvent) => {
         event.preventDefault();
@@ -163,7 +155,7 @@ function captureKey(action: InputAction, button: HTMLElement, hint: HTMLElement)
             return;
         }
         if (rebind(action, { code: event.code, label: labelForKey(event) }) === 'reserved') {
-            hint.textContent = 'Reserved: the arrows, Esc, Tab and the F keys.';
+            hint.textContent = t('settings.keys.reserved');
             replay(button, 'refused');
             return;
         }
@@ -181,7 +173,7 @@ function captureKey(action: InputAction, button: HTMLElement, hint: HTMLElement)
         if (!restore) return;
         button.textContent = label;
         button.classList.remove('listening', 'refused');
-        hint.textContent = KEYS_HINT;
+        hint.textContent = t('settings.keys.hint');
     }
 
     window.addEventListener('keydown', onKey, true);
@@ -195,7 +187,7 @@ function captureKey(action: InputAction, button: HTMLElement, hint: HTMLElement)
 function renderKeyButton(action: InputAction, hint: HTMLElement): HTMLElement {
     const key = el('button', 'book-key settings-key', keyName(bindingFor(action)));
     if ([...(key.textContent ?? '')].length > 1) key.classList.add('book-key-wide');
-    key.setAttribute('aria-label', `${ACTION_LABELS[action]}: ${key.textContent}. Click to change.`);
+    key.setAttribute('aria-label', t('settings.keys.aria', { action: actionLabel(action), key: key.textContent ?? '' }));
     key.addEventListener('click', () => captureKey(action, key, hint));
     return key;
 }
@@ -205,26 +197,26 @@ const isMove = (action: InputAction) => (MOVE_ACTIONS as readonly InputAction[])
 /** Left page of the Settings spread: every key. */
 export function renderControlsPage(): HTMLElement {
     const page = el('div', 'settings-page');
-    page.appendChild(el('h2', 'book-page-title', 'Controls'));
+    page.appendChild(el('h2', 'book-page-title', t('settings.controls')));
 
-    const hint = el('p', 'settings-hint', KEYS_HINT);
+    const hint = el('p', 'settings-hint', t('settings.keys.hint'));
     const rows = el('div', 'settings-rows');
 
     // The four moves laid out as on the keyboard, each one its own button.
     const cross = el('div', 'book-keys book-keys-cross');
     cross.append(...MOVE_ACTIONS.map((action) => renderKeyButton(action, hint)));
-    rows.appendChild(row('Movement', cross));
+    rows.appendChild(row(t('settings.movement'), cross));
 
     for (const action of INPUT_ACTIONS) {
-        if (!isMove(action)) rows.appendChild(row(ACTION_LABELS[action], renderKeyButton(action, hint)));
+        if (!isMove(action)) rows.appendChild(row(actionLabel(action), renderKeyButton(action, hint)));
     }
 
     rows.append(
-        row('Attack', renderKey('MouseLeft'), true),
-        row('Settings', renderKey('Esc'), true),
+        row(t('settings.attack'), renderKey('MouseLeft'), true),
+        row(t('settings.settings'), renderKey('Esc'), true),
     );
 
-    const reset = el('button', 'book-link settings-reset-keys', 'Reset keys');
+    const reset = el('button', 'book-link settings-reset-keys', t('settings.keys.reset'));
     reset.addEventListener('click', resetKeys);
 
     page.append(rows, hint, reset);
@@ -232,7 +224,7 @@ export function renderControlsPage(): HTMLElement {
 }
 
 function renderResetProgress(): HTMLElement {
-    const button = el('button', 'book-link settings-danger', 'Reset progress');
+    const button = el('button', 'book-link settings-danger', t('settings.resetProgress'));
     let armed = false;
 
     button.addEventListener('click', () => {
@@ -243,11 +235,11 @@ function renderResetProgress(): HTMLElement {
             return;
         }
         armed = true;
-        button.textContent = 'Click again to erase';
+        button.textContent = t('settings.resetProgress.confirm');
         button.classList.add('armed');
         window.setTimeout(() => {
             armed = false;
-            button.textContent = 'Reset progress';
+            button.textContent = t('settings.resetProgress');
             button.classList.remove('armed');
         }, CONFIRM_MS);
     });
@@ -260,22 +252,27 @@ export function renderOptionsPage(): HTMLElement {
     const page = el('article', 'book-entry settings-page');
 
     const head = el('header', 'book-entry-header');
-    head.append(el('span', 'book-entry-kicker', 'Settings'), el('h2', 'book-entry-title', 'Options'));
+    head.append(el('span', 'book-entry-kicker', t('settings.kicker')), el('h2', 'book-entry-title', t('settings.options')));
 
     const graphics = el('div', 'settings-rows');
     graphics.append(
-        row('Quality', renderChoice(QUALITIES, settings.quality, setQuality)),
-        el('p', 'settings-hint', QUALITY_HINTS[settings.quality]),
-        row('Screen shake', renderChoice(SWITCH, settings.screenShake, setScreenShake)),
+        row(t('settings.quality'), renderChoice(qualities(), settings.quality, setQuality)),
+        el('p', 'settings-hint', qualityHint(settings.quality)),
+        row(t('settings.screenShake'), renderChoice(onOff(), settings.screenShake, setScreenShake)),
     );
 
+    const music = t('settings.music');
+    const sfx = t('settings.sfx');
     const sound = el('div', 'settings-rows');
     sound.append(
-        row('Music', renderVolume('music', settings.volume.music, 'Music')),
-        row('Effects', renderVolume('sfx', settings.volume.sfx, 'Effects')),
+        row(music, renderVolume('music', settings.volume.music, music)),
+        row(sfx, renderVolume('sfx', settings.volume.sfx, sfx)),
     );
 
-    const quit = el('button', 'book-link', 'Quit to menu');
+    const game = el('div', 'settings-rows');
+    game.appendChild(row(t('settings.language'), renderChoice(languages(), settings.language, setLanguage)));
+
+    const quit = el('button', 'book-link', t('settings.quit'));
     quit.addEventListener('click', () => stateMachine.changeState('MENU'));
 
     const actions = el('div', 'book-links');
@@ -283,13 +280,14 @@ export function renderOptionsPage(): HTMLElement {
 
     page.append(
         head,
-        el('h3', 'settings-heading', 'Graphics'),
+        el('h3', 'settings-heading', t('settings.graphics')),
         graphics,
-        el('h3', 'settings-heading', 'Sound'),
+        el('h3', 'settings-heading', t('settings.sound')),
         sound,
-        el('h3', 'settings-heading', 'Game'),
+        el('h3', 'settings-heading', t('settings.game')),
+        game,
         actions,
-        el('p', 'settings-hint', 'Reset erases coins, stats, discoveries and your bonfire. Settings stay.'),
+        el('p', 'settings-hint', t('settings.resetProgress.hint')),
     );
     return page;
 }

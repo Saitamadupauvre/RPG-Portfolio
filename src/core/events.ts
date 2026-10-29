@@ -1,4 +1,5 @@
 import type { AppState } from './StateMachine';
+import type { Locale, Message } from '../data/locale';
 import type { MapEntity } from '../data/MapEntity';
 import type { Project } from '../data/Project';
 import type { InputAction, Settings, VolumeChannel } from '../data/settings';
@@ -8,7 +9,7 @@ import { EventEmitter } from './EventEmitter';
 import type { ScatterSettings, ScreenRect } from './editorTools';
 
 /** What the interact prompt shows: an input (drawn with whatever key is bound to it) and what it does. */
-export type PromptAction = { input: InputAction; label: string };
+export type PromptAction = { input: InputAction; label: Message };
 
 export type AppEvents = {
     stateChange: [newState: AppState, oldState: AppState];
@@ -35,6 +36,8 @@ export type AppEvents = {
     /** Game mode boot, 0 to 1. */
     loadingProgress: [progress: number];
     settingsChanged: [settings: Settings];
+    /** After `settingsChanged`: the interface language changed, every text on screen is rewritten. */
+    languageChanged: [locale: Locale];
     /**
      * Apart from `settingsChanged`, which redraws the open book: a slider fires this every step
      * of a drag, and a redraw would replace it under the pointer.
@@ -49,7 +52,7 @@ export type AppEvents = {
     /** Rested, behind a black screen: open it around the player. */
     playerRested: [screenX: number, screenY: number];
     coinsChanged: [coins: number];
-    chestOpened: [messages: string[]];
+    chestOpened: [messages: Message[]];
     playerStatsChanged: [stats: PlayerStats];
     /** Open the book on the Level page (bonfire's level-up action). */
     levelUpRequested: [];

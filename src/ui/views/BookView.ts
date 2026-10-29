@@ -352,7 +352,8 @@ export function initBookView(portrait: HTMLCanvasElement) {
     loadPrintedKeys(() => {
         if (isOpen() && !isClosing()) render();
     });
-    // Not only the settings spread: tutorial pages draw the player's own keys too.
+    // Not only the settings spread: tutorial pages draw the player's own keys too,
+    // and every page is written in the language the settings name.
     events.on('settingsChanged', () => {
         if (isOpen() && !isClosing()) render();
     });

@@ -9,6 +9,7 @@ import {
     type Settings,
     type VolumeChannel,
 } from '../data/settings';
+import { LOCALES, type Locale } from '../data/locale';
 import { isReservedKey } from './input';
 import { loadJson, saveJson } from './persistence';
 
@@ -31,6 +32,20 @@ export const DEFAULT_KEYS: Readonly<Record<InputAction, KeyBinding>> = {
     book: { code: 'KeyB', label: '' },
 };
 
+/** The reader's first preferred language the game is written in, else the fallback. */
+function browserLocale(): Locale {
+    const preferred = typeof navigator === 'undefined' ? [] : navigator.languages;
+    for (const tag of preferred) {
+        const base = tag.split('-')[0].toLowerCase();
+        if (isLocale(base)) return base;
+    }
+    return LOCALES[0];
+}
+
+function isLocale(value: unknown): value is Locale {
+    return (LOCALES as readonly unknown[]).includes(value);
+}
+
 function defaults(): Settings {
     return {
         keys: { ...DEFAULT_KEYS },
@@ -38,6 +53,8 @@ function defaults(): Settings {
         screenShake: true,
         // Under full: the effects are mixed loud, and a first visit should not start at the top.
         volume: { music: 0.6, sfx: 0.8 },
+        // Until the player picks one: the browser's, so a French reader lands in French.
+        language: browserLocale(),
     };
 }
 
@@ -53,8 +70,9 @@ function load(): Settings {
     const saved = loadJson(STORAGE_KEY);
     if (typeof saved !== 'object' || saved === null) return settings;
 
-    const { keys, quality, screenShake, volume } = saved as Record<string, unknown>;
+    const { keys, quality, screenShake, volume, language } = saved as Record<string, unknown>;
     if ((QUALITY_LEVELS as readonly unknown[]).includes(quality)) settings.quality = quality as Quality;
+    if (isLocale(language)) settings.language = language;
     if (typeof screenShake === 'boolean') settings.screenShake = screenShake;
 
     if (typeof volume === 'object' && volume !== null) {
@@ -137,4 +155,15 @@ export function setVolume(channel: VolumeChannel, volume: number) {
     state.volume[channel] = level;
     saveJson(STORAGE_KEY, state);
     events.emit('volumeChanged', channel, level);
+}
+
+/**
+ * Also announced through `languageChanged`, for what `settingsChanged` does not
+ * redraw (the menu, the prompt): text outside the book listens for that one.
+ */
+export function setLanguage(language: Locale) {
+    if (language === state.language) return;
+    state.language = language;
+    commit();
+    events.emit('languageChanged', language);
 }

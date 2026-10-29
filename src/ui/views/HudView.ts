@@ -1,4 +1,5 @@
 import { events } from '../../core/events';
+import { translate, type Message } from '../../domain/i18n';
 import { getCoins } from '../../domain/playerProgress';
 import { renderSprite } from '../components/pixelSprite';
 import { COIN, HEART } from '../sprites';
@@ -151,11 +152,11 @@ export function initHudView() {
     // instead of the first one hiding the second early.
     let toastTimer = 0;
     events.on('chestOpened', (messages) => {
-        const lines = messages.length ? messages : ['Empty chest'];
+        const lines: Message[] = messages.length ? messages : [{ key: 'loot.empty' }];
         toast.replaceChildren(...lines.map((message) => {
             const line = document.createElement('span');
             line.className = 'hud-toast-line';
-            line.textContent = message;
+            line.textContent = translate(message);
             return line;
         }));
         replay(toast, 'visible');

@@ -54,10 +54,11 @@ export function createStatue(entity: StatueEntity): Entity {
         })
         .catch((error) => console.error('[statue] model failed to load, keeping placeholder', error));
 
-    const label = project ? `Examine ${project.title}` : 'Examine statue';
     const interactable = new InteractableComponent(INTERACT_RADIUS, [{
         input: 'interact',
-        label,
+        label: project
+            ? { key: 'prompt.examine', params: { title: project.title } }
+            : { key: 'prompt.examineStatue' },
         run: () => {
             glow.setActive(false);
 

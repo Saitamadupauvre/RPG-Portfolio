@@ -35,7 +35,7 @@ export function createBonfire(entity: BonfireEntity): Entity {
     const interactable = new InteractableComponent(INTERACT_RADIUS, [
         {
             input: 'interact',
-            label: 'Rest at bonfire',
+            label: { key: 'prompt.rest' },
             run: () => {
                 setCheckpoint(entity.position);
                 events.emit('restRequested');
@@ -43,7 +43,7 @@ export function createBonfire(entity: BonfireEntity): Entity {
         },
         {
             input: 'levelUp',
-            label: 'Level up',
+            label: { key: 'prompt.levelUp' },
             run: () => events.emit('levelUpRequested'),
         },
     ], { allowsLevelUp: true });

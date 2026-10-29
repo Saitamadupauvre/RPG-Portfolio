@@ -20,26 +20,27 @@ export type TimelineYear = { year: number; months: TimelineMonth[] };
 
 type PageSectionId = BookPage['section'];
 
+/** No label: the interface names a section from its id, in the reader's language. */
 export type BookSection =
-    | { id: 'projects'; label: string; entries: ProjectEntry[] }
-    | { id: 'timeline'; label: string; years: TimelineYear[] }
-    | { id: PageSectionId; label: string; pages: BookPage[] }
+    | { id: 'projects'; entries: ProjectEntry[] }
+    | { id: 'timeline'; years: TimelineYear[] }
+    | { id: PageSectionId; pages: BookPage[] }
     /** The player and their stats: one spread, drawn from `playerProgress` at render time. */
-    | { id: 'level'; label: string }
+    | { id: 'level' }
     /** Controls on the left, everything else on the right: one spread, drawn from `settings` at render time. */
-    | { id: 'settings'; label: string };
+    | { id: 'settings' };
 
 export type SectionId = BookSection['id'];
 
-type SectionDefinition = { id: SectionId; label: string; gameOnly: boolean };
+type SectionDefinition = { id: SectionId; gameOnly: boolean };
 
 export const SECTIONS: readonly SectionDefinition[] = [
-    { id: 'projects', label: 'Projects', gameOnly: false },
-    { id: 'timeline', label: 'Timeline', gameOnly: false },
-    { id: 'about', label: 'About', gameOnly: false },
-    { id: 'tutorial', label: 'Tutorial', gameOnly: true },
-    { id: 'level', label: 'Level', gameOnly: true },
-    { id: 'settings', label: 'Settings', gameOnly: true },
+    { id: 'projects', gameOnly: false },
+    // Timeline hidden until its events are written: add `{ id: 'timeline', gameOnly: false }` back here.
+    { id: 'about', gameOnly: false },
+    { id: 'tutorial', gameOnly: true },
+    { id: 'level', gameOnly: true },
+    { id: 'settings', gameOnly: true },
 ];
 
 export function validateBook() {
@@ -91,35 +92,33 @@ function groupTimeline(entries: TimelineEntry[]): TimelineYear[] {
 }
 
 type SectionBuilders = {
-    [K in SectionId]: (label: string, found: FoundCheck) => BookSection & { id: K };
+    [K in SectionId]: (found: FoundCheck) => BookSection & { id: K };
 };
 
 const pageSection =
     <K extends PageSectionId>(id: K) =>
-    (label: string) => ({ id, label, pages: pages.filter((page) => page.section === id) });
+    () => ({ id, pages: pages.filter((page) => page.section === id) });
 
 const builders: SectionBuilders = {
-    projects: (label, found) => ({
+    projects: (found) => ({
         id: 'projects',
-        label,
         entries: projects.map((project) => ({ project, lock: lockFor([project.id], found) })),
     }),
-    timeline: (label, found) => ({
+    timeline: (found) => ({
         id: 'timeline',
-        label,
         years: groupTimeline(timeline.map((event) => ({ event, lock: lockFor(event.projectIds, found) }))),
     }),
     about: pageSection('about'),
     tutorial: pageSection('tutorial'),
-    level: (label) => ({ id: 'level', label }),
-    settings: (label) => ({ id: 'settings', label }),
+    level: () => ({ id: 'level' }),
+    settings: () => ({ id: 'settings' }),
 };
 
 export function getBook(mode: BookMode): BookSection[] {
     const found: FoundCheck = mode === 'classic' ? () => true : isDiscovered;
 
     return SECTIONS.filter((section) => mode === 'game' || !section.gameOnly).map((section) =>
-        builders[section.id](section.label, found),
+        builders[section.id](found),
     );
 }
 

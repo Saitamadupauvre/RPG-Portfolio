@@ -91,7 +91,7 @@ export function createChest(entity: ChestEntity): Entity {
 
     const interactable = new InteractableComponent(INTERACT_RADIUS, [{
         input: 'interact',
-        label: 'Open chest',
+        label: { key: 'prompt.openChest' },
         run: () => {
             if (!openChest(entity.id)) return;
 

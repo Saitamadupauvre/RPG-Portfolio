@@ -1,5 +1,8 @@
 import { stateMachine } from '../../core/StateMachine';
 import { events } from '../../core/events';
+import { LOCALE_NAMES, LOCALES, type Locale } from '../../data/locale';
+import { currentLocale, t } from '../../domain/i18n';
+import { setLanguage } from '../../domain/settings';
 import { getIris } from '../components/iris';
 import { isTouchOnly } from '../device';
 import { renderSprite } from '../components/pixelSprite';
@@ -7,6 +10,33 @@ import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
 
 /** The fade to black before the world loads behind it. */
 const ENTER_COVER_MS = 500;
+
+/**
+ * One button per language, the current one lit. Here as well as in the book's settings:
+ * classic mode has no settings page, and a recruiter must be able to switch before reading.
+ */
+function initLanguageSwitch(host: HTMLElement) {
+    const buttons = LOCALES.map((locale) => {
+        const button = document.createElement('button');
+        button.className = 'menu-lang-option';
+        button.textContent = locale.toUpperCase();
+        // Named in its own language, so a screen reader pronounces it right.
+        button.lang = locale;
+        button.setAttribute('aria-label', LOCALE_NAMES[locale]);
+        button.addEventListener('click', () => setLanguage(locale));
+        return button;
+    });
+    host.replaceChildren(...buttons);
+
+    const light = (current: Locale) => {
+        LOCALES.forEach((locale, i) => {
+            buttons[i].classList.toggle('active', locale === current);
+            buttons[i].setAttribute('aria-pressed', String(locale === current));
+        });
+    };
+    light(currentLocale());
+    events.on('languageChanged', light);
+}
 
 export function initMenuView() {
     const enterGame = document.getElementById('btn-enter-game');
@@ -19,12 +49,19 @@ export function initMenuView() {
     }
     document.getElementById('menu-callout-arrow')?.appendChild(renderSprite(ARROW_POINT_LEFT));
 
+    const languageSwitch = document.getElementById('menu-lang');
+    if (languageSwitch) initLanguageSwitch(languageSwitch);
+
     // No world boots on a touch-only device (main.ts): the game stays on the menu, greyed, so it is not a surprise.
     if (isTouchOnly()) {
         document.body.classList.add('touch-only');
         if (enterGame instanceof HTMLButtonElement) enterGame.disabled = true;
-        const hint = enterGame?.querySelector('.menu-btn-hint');
-        if (hint) hint.textContent = 'Needs a keyboard and mouse: open it on a computer';
+        const hint = enterGame?.querySelector<HTMLElement>('.menu-btn-hint');
+        if (hint) {
+            // Through its key, so a language switch rewrites this text too (staticText.ts).
+            hint.dataset.i18n = 'menu.play.touchHint';
+            hint.textContent = t('menu.play.touchHint');
+        }
     }
 
     events.on('worldReady', () => {

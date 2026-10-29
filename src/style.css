@@ -391,6 +391,45 @@ body {
   display: none;
 }
 
+/* The language switch, top right: the first thing a reader in the wrong language looks for. */
+.menu-lang {
+  position: absolute;
+  top: 1.4rem;
+  right: clamp(1.5rem, 4vw, 3rem);
+  display: flex;
+}
+
+.menu-lang-option {
+  margin-left: -2px;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(238, 238, 238, 0.7);
+  background: rgba(10, 11, 18, 0.7);
+  border: 2px solid rgba(238, 238, 238, 0.35);
+  cursor: pointer;
+}
+
+.menu-lang-option:first-child {
+  margin-left: 0;
+}
+
+.menu-lang-option:hover,
+.menu-lang-option:focus-visible {
+  color: #fff;
+  border-color: var(--accent-gold);
+  /* Above its neighbour, whose border it overlaps by 2px. */
+  position: relative;
+}
+
+.menu-lang-option.active {
+  color: #1d1408;
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu-callout-arrow .sprite,
   .world-ready .webgl {

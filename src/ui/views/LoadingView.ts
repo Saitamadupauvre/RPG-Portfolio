@@ -1,5 +1,6 @@
 import { events } from '../../core/events';
 import { loadingTips } from '../../data/loadingTips';
+import { localize } from '../../domain/i18n';
 import { renderSprite } from '../components/pixelSprite';
 import { CAMPFIRE } from '../sprites';
 
@@ -38,7 +39,8 @@ export function initLoadingView() {
     let tipTimer = 0;
 
     const showTip = () => {
-        tip.textContent = loadingTips[tipIndex % loadingTips.length] ?? '';
+        const next = loadingTips[tipIndex % loadingTips.length];
+        tip.textContent = next ? localize(next) : '';
         tip.classList.remove('fresh');
         void tip.offsetWidth;
         tip.classList.add('fresh');

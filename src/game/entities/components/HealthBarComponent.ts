@@ -6,6 +6,16 @@ const WIDTH = 0.8;
 const HEIGHT = 0.1;
 const DRAIN_SPEED = 0.6;
 
+/**
+ * Flagged transparent though fully opaque: three draws every opaque object
+ * before any transparent one, and `renderOrder` only sorts within a pass, so an
+ * opaque bar would be drawn first and the water (transparent, order 10) blended
+ * over it. In the transparent pass, 997-999 come after the water and the x-ray.
+ * No depth test: always over the body it floats above.
+ */
+const barMaterial = (color: number) =>
+    new THREE.MeshBasicMaterial({ color, transparent: true, depthTest: false, depthWrite: false });
+
 export class HealthBarComponent implements Component {
     public readonly name = 'healthBar';
 
@@ -24,18 +34,18 @@ export class HealthBarComponent implements Component {
         this.health = health;
 
         const bgGeometry = new THREE.PlaneGeometry(WIDTH, HEIGHT);
-        const bgMaterial = new THREE.MeshBasicMaterial({ color: 0x222222, depthTest: false });
+        const bgMaterial = barMaterial(0x222222);
         const bg = new THREE.Mesh(bgGeometry, bgMaterial);
         bg.renderOrder = 997;
 
         const drainGeometry = new THREE.PlaneGeometry(WIDTH, HEIGHT);
-        const drainMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
+        const drainMaterial = barMaterial(0xffffff);
         this.drain = new THREE.Mesh(drainGeometry, drainMaterial);
         this.drain.renderOrder = 998;
         this.drain.position.z = 0.0005;
 
         const fillGeometry = new THREE.PlaneGeometry(WIDTH, HEIGHT);
-        const fillMaterial = new THREE.MeshBasicMaterial({ color: 0x33dd33, depthTest: false });
+        const fillMaterial = barMaterial(0x33dd33);
         this.fill = new THREE.Mesh(fillGeometry, fillMaterial);
         this.fill.renderOrder = 999;
         this.fill.position.z = 0.001;
@@ -48,6 +58,11 @@ export class HealthBarComponent implements Component {
 
     public reset() {
         this.drainRatio = -1;
+    }
+
+    /** Off until the next update: a dying body takes no bar into its fade. */
+    public hide() {
+        this.group.visible = false;
     }
 
     public update(dt: number) {

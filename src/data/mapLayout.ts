@@ -1,13 +1,14 @@
 import type { MapEntity } from './MapEntity';
-import { spawnValley } from './chunks/spawnValley';
-import { northReach } from './chunks/northReach';
+import layout from './mapLayout.json';
 
 /**
- * Index of the hand-authored region files. Region files group entities the way
- * level design reads; the runtime chunk an entity belongs to is derived from its
- * own position (see `domain/chunks.ts`), so this stays a plain flat concat.
+ * Every hand-placed entity in the world. The list itself is `mapLayout.json`,
+ * written by the editor (F1 > Export map, with `tileMap.json`): drop a new export over that file to
+ * change the map. The runtime chunk an entity belongs to is derived from its
+ * own position (see `domain/chunks.ts`), so this stays one flat list.
+ *
+ * Cast through `unknown`: JSON gives `number[]` where `MapEntity` wants
+ * `[x, y, z]` tuples, a shape TS cannot read out of a file. The editor is the
+ * only writer, and it writes `MapEntity` values.
  */
-export const mapLayout: MapEntity[] = [
-    ...spawnValley,
-    ...northReach,
-];
+export const mapLayout = layout as unknown as MapEntity[];

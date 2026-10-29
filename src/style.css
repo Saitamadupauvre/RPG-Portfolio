@@ -2,7 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--pixel-font);
 }
 
 html,
@@ -40,8 +40,7 @@ body {
   pointer-events: none;
 }
 
-.btn,
-.modal-content {
+.btn {
   pointer-events: auto;
 }
 
@@ -62,289 +61,380 @@ body {
   pointer-events: none;
 }
 
-.state-loading #loading-screen,
-.state-menu #menu-screen,
-.state-classic #classic-screen {
-  visibility: visible;
-  transition-delay: 0s;
+
+/* The world stands behind the menu once it has loaded (body.world-ready, set by MenuView). */
+.state-menu.world-ready .webgl {
+  display: block;
 }
 
-.state-loading #loading-screen {
-  opacity: 1;
-  pointer-events: auto;
+/* Once, the moment the world is ready: it fades in under the menu instead of popping. */
+.world-ready .webgl {
+  animation: world-fade-in 1.2s ease both;
+}
+
+@keyframes world-fade-in {
+  from { opacity: 0; }
+}
+
+/* ---------------------------------------------------------------- menu */
+
+#menu-screen {
+  /* The column sits left on a wide screen; the knight stands right of centre (game/world/menuShot.ts). */
+  align-items: flex-start;
+  padding: 0 clamp(1.5rem, 7vw, 7rem);
+  /* Darkens the left for the text, the bottom for the footer; the knight's side stays clear. */
+  background:
+    linear-gradient(90deg, rgba(10, 11, 18, 0.82) 0%, rgba(10, 11, 18, 0.5) 28%, rgba(10, 11, 18, 0.15) 45%, rgba(10, 11, 18, 0) 60%),
+    linear-gradient(0deg, rgba(10, 11, 18, 0.55) 0%, rgba(10, 11, 18, 0) 22%);
+}
+
+/* What shows until the world is ready, and if it never loads: the old flat backdrop, faded out once it does. */
+#menu-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 70% 55%, rgba(230, 184, 58, 0.12) 0%, transparent 55%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 2px, transparent 2px, transparent 4px),
+    var(--pixel-bg);
+  transition: opacity 1.2s ease;
+}
+
+.world-ready #menu-screen::before {
+  opacity: 0;
 }
 
 .state-menu #menu-screen {
+  visibility: visible;
+  transition-delay: 0s;
   opacity: 1;
   pointer-events: auto;
-  background:
-    radial-gradient(ellipse at center, rgba(230, 184, 58, 0.12) 0%, transparent 60%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 2px, transparent 2px, transparent 4px),
-    var(--pixel-bg);
+}
+
+.menu-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 30rem;
+  transition: transform 0.5s ease;
+}
+
+/* Leaving: the column slides off left while the screen fades and the camera glides into the game. */
+#ui-container:not(.state-menu) .menu-column {
+  transform: translateX(-2rem);
+}
+
+.menu-kicker {
+  color: var(--accent-teal);
+  font-size: 0.95rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
 }
 
 #menu-screen .title {
+  margin-top: 0.6rem;
   color: var(--accent-gold);
-  font-size: 2.4rem;
-  text-align: center;
-  letter-spacing: 0.12em;
+  font-family: var(--pixel-font-display);
+  font-size: clamp(1.8rem, 4.2vw, 3.1rem);
+  font-weight: normal;
+  line-height: 1.2;
+  text-transform: uppercase;
   text-shadow:
-    3px 3px 0 var(--accent-crimson),
-    0 0 20px rgba(230, 184, 58, 0.6);
+    4px 4px 0 var(--accent-crimson),
+    8px 8px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* One word per line on purpose: the title is a block, not a sentence. */
+#menu-screen .title span {
+  display: block;
+}
+
+.menu-tagline {
+  margin-top: 1.4rem;
+  color: var(--pixel-ink);
+  font-size: 1.15rem;
+  line-height: 1.45;
+  opacity: 0.85;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
 }
 
 .menu-actions {
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2.2rem;
+}
+
+/* Both buttons: a notched pixel box, a label over a one-line hint, an arrow that leans forward on hover. */
+.menu-btn {
+  --btn-bg: rgba(20, 21, 31, 0.86);
+  --btn-ink: var(--pixel-ink);
+  --btn-hint: rgba(238, 238, 238, 0.65);
+  --btn-edge: rgba(238, 238, 238, 0.35);
+  display: flex;
+  align-items: center;
   gap: 1.5rem;
-  margin-top: 2rem;
-}
-
-.menu-actions .btn {
-  padding: 0.9rem 1.6rem;
-  background: #1c1d2b;
-  color: var(--pixel-ink);
-  border: 3px solid var(--accent-teal);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 8px rgba(58, 230, 201, 0.4);
+  width: 25rem;
+  max-width: 100%;
+  padding: 0.9rem 1.2rem 0.9rem 1.3rem;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border: 3px solid var(--btn-edge);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.55);
+  text-align: left;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
 }
 
-.menu-actions .btn:hover {
-  border-color: var(--accent-gold);
-  color: var(--accent-gold);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(230, 184, 58, 0.7);
+.menu-btn:hover,
+.menu-btn:focus-visible {
   transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 rgba(0, 0, 0, 0.55);
 }
 
-.menu-actions .btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+.menu-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
 }
 
-#btn-enter-classic {
-  border-color: var(--accent-crimson);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 8px rgba(201, 66, 90, 0.4);
+.menu-btn:focus-visible {
+  outline: 3px solid var(--accent-teal);
+  outline-offset: 3px;
 }
 
-#btn-enter-classic:hover {
-  border-color: var(--accent-gold);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(230, 184, 58, 0.7);
-}
-
-.state-classic #classic-screen {
-  opacity: 1;
-  pointer-events: auto;
-  overflow-y: auto;
-  padding: 2rem;
-}
-
-.modal {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 3;
-}
-
-.modal.open {
+.menu-btn-text {
   display: flex;
-  pointer-events: auto;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
 }
 
-.modal-content {
+.menu-btn-label {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.menu-btn-hint {
+  color: var(--btn-hint);
+  font-size: 0.95rem;
+}
+
+.menu-btn-arrow .sprite {
+  --px: 3px;
+  display: block;
+  transition: transform 0.12s ease;
+}
+
+.menu-btn:hover .menu-btn-arrow .sprite,
+.menu-btn:focus-visible .menu-btn-arrow .sprite {
+  transform: translateX(5px);
+}
+
+/* The main way in: solid gold, dark ink. */
+.menu-btn-play {
+  --btn-bg: var(--accent-gold);
+  --btn-ink: #1d1408;
+  --btn-hint: rgba(29, 20, 8, 0.7);
+  --btn-edge: #fff1c4;
+}
+
+.menu-btn-play:hover,
+.menu-btn-play:focus-visible {
+  --btn-bg: #f2c95a;
+}
+
+/* Its arrow is dark on the gold, the same shape as everywhere else. */
+.menu-btn-play .menu-btn-arrow .sprite {
+  filter: brightness(0.2) sepia(1);
+}
+
+.menu-btn-fast:hover,
+.menu-btn-fast:focus-visible {
+  --btn-edge: var(--accent-gold);
+  --btn-bg: rgba(28, 29, 43, 0.92);
+}
+
+.menu-fast {
   position: relative;
-  background: var(--pixel-bg);
-  padding: 1.5rem;
-  border-color: #555;
+  display: flex;
+  align-items: center;
 }
 
-.close-btn {
+/* Hand-written note in the margin: an arrow nudging at the Fast portfolio button. */
+.menu-callout {
   position: absolute;
-  top: 0.4rem;
-  right: 0.6rem;
-  background: none;
-  border: none;
-  color: #eee;
+  left: calc(100% + 1rem);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  white-space: nowrap;
+  color: var(--accent-gold);
+  font-size: 1.05rem;
+  line-height: 1.3;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.menu-callout strong {
+  color: #fff4c8;
+  font-weight: 600;
   font-size: 1.2rem;
+}
+
+.menu-callout-arrow .sprite {
+  --px: 4px;
+  display: block;
+  animation: callout-nudge 1.1s steps(2, jump-none) infinite alternate;
+}
+
+@keyframes callout-nudge {
+  from { transform: translateX(0); }
+  to { transform: translateX(-8px); }
+}
+
+.menu-footer {
+  position: absolute;
+  left: clamp(1.5rem, 7vw, 7rem);
+  bottom: 1.6rem;
+  color: rgba(238, 238, 238, 0.55);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+}
+
+/* Portrait: the knight takes the top (menuShot.ts switches its shot on the same aspect test), the menu the bottom. */
+@media (max-aspect-ratio: 1/1) {
+  #menu-screen {
+    justify-content: flex-end;
+    align-items: stretch;
+    padding: 0 1rem 4rem;
+    background:
+      linear-gradient(0deg, rgba(10, 11, 18, 0.92) 0%, rgba(10, 11, 18, 0.7) 45%, rgba(10, 11, 18, 0) 70%);
+  }
+
+  .menu-column {
+    max-width: none;
+  }
+
+  .menu-tagline {
+    font-size: 1rem;
+  }
+
+  .menu-actions {
+    margin-top: 1.4rem;
+  }
+
+  .menu-btn {
+    width: 100%;
+  }
+
+  /* No margin to write in: the note goes under the button, its arrow pointing up at it. */
+  .menu-fast {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .menu-callout {
+    position: static;
+    margin-top: 0.7rem;
+    padding-left: 1rem;
+  }
+
+  .menu-callout-arrow {
+    transform: rotate(90deg);
+  }
+
+  .menu-footer {
+    left: 1rem;
+    bottom: 1.2rem;
+  }
+}
+
+/* Touch-only (MenuView): no world behind the menu, so nothing to leave room for; the book comes first. */
+.touch-only #menu-screen {
+  justify-content: center;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.touch-only .menu-fast {
+  order: -1;
+}
+
+/* The fast portfolio takes over the gold of the main way in. */
+.touch-only .menu-btn-fast {
+  --btn-bg: var(--accent-gold);
+  --btn-ink: #1d1408;
+  --btn-hint: rgba(29, 20, 8, 0.7);
+  --btn-edge: #fff1c4;
+}
+
+.touch-only .menu-btn-fast .menu-btn-arrow .sprite {
+  filter: brightness(0.2) sepia(1);
+}
+
+.touch-only .menu-btn-play {
+  --btn-bg: rgba(20, 21, 31, 0.86);
+  --btn-ink: rgba(238, 238, 238, 0.45);
+  --btn-hint: rgba(238, 238, 238, 0.45);
+  --btn-edge: rgba(238, 238, 238, 0.2);
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+.touch-only .menu-btn-play .menu-btn-arrow,
+.touch-only .menu-callout,
+.touch-only .menu-footer {
+  display: none;
+}
+
+/* The language switch, top right: the first thing a reader in the wrong language looks for. */
+.menu-lang {
+  position: absolute;
+  top: 1.4rem;
+  right: clamp(1.5rem, 4vw, 3rem);
+  display: flex;
+}
+
+.menu-lang-option {
+  margin-left: -2px;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(238, 238, 238, 0.7);
+  background: rgba(10, 11, 18, 0.7);
+  border: 2px solid rgba(238, 238, 238, 0.35);
   cursor: pointer;
 }
 
-#classic-project-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
+.menu-lang-option:first-child {
+  margin-left: 0;
 }
 
-.project-card {
-  width: 260px;
-  padding: 1rem;
-  background: var(--pixel-bg);
-  color: var(--pixel-ink);
-  border-color: var(--rarity-common);
+.menu-lang-option:hover,
+.menu-lang-option:focus-visible {
+  color: #fff;
+  border-color: var(--accent-gold);
+  /* Above its neighbour, whose border it overlaps by 2px. */
+  position: relative;
 }
 
-.project-card.rarity-common { border-color: var(--rarity-common); }
-.project-card.rarity-rare { border-color: var(--rarity-rare); }
-.project-card.rarity-epic { border-color: var(--rarity-epic); }
-.project-card.rarity-legendary { border-color: var(--rarity-legendary); }
-.project-card.rarity-common .project-card-badge { color: var(--rarity-common); }
-.project-card.rarity-rare .project-card-badge { color: var(--rarity-rare); }
-.project-card.rarity-epic .project-card-badge { color: var(--rarity-epic); }
-.project-card.rarity-legendary .project-card-badge { color: var(--rarity-legendary); }
-.project-card.glow { box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), 0 0 10px currentColor; }
-
-.project-card-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  margin-bottom: 0.4rem;
+.menu-lang-option.active {
+  color: #1d1408;
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
 }
 
-.project-card-title {
-  margin-bottom: 0.4rem;
-}
-
-.project-card-description {
-  font-size: 0.85rem;
-  opacity: 0.85;
-  margin-bottom: 0.6rem;
-}
-
-.project-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.project-card-tag {
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border: 1px solid #444;
-  border-radius: 2px;
-  opacity: 0.7;
-}
-
-.project-card-links {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
-}
-
-.project-link-btn {
-  font-size: 0.75rem;
-  padding: 0.3rem 0.6rem;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.book-content {
-  width: min(90vw, 900px);
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-#book-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
-.project-card.locked {
-  border-color: #3a3a3a;
-  opacity: 0.55;
-}
-
-.project-card.locked .project-card-title {
-  letter-spacing: 0.2em;
-}
-
-#hud {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  display: none;
-  align-items: center;
-  gap: 0.6rem;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.state-game #hud,
-.state-dead #hud {
-  display: flex;
-}
-
-#loot-toast {
-  position: fixed;
-  top: 4rem;
-  left: 1rem;
-  padding: 6px 12px;
-  font-size: 0.75rem;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: 2;
-  transition: opacity 160ms linear;
-}
-
-#loot-toast.visible {
-  opacity: 1;
-  visibility: visible;
-}
-
-#hp-bar {
-  width: 220px;
-  height: 18px;
-  background: #2a0d12;
-  border-color: #7a2233;
-}
-
-#hp-fill {
-  width: 100%;
-  height: 100%;
-  background: var(--accent-crimson);
-  transition: width 120ms linear;
-}
-
-#hp-label {
-  font-size: 0.75rem;
-  color: var(--pixel-ink);
-  text-shadow: 2px 2px 0 #000;
-}
-
-#iris {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  visibility: hidden;
-  z-index: 8;
-}
-
-#iris.active {
-  visibility: visible;
-}
-
-#death-text {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  color: var(--accent-crimson);
-  text-shadow: 4px 4px 0 #000;
-  opacity: 0;
-  transition: opacity 600ms ease-in;
-  pointer-events: none;
-  z-index: 9;
-}
-
-#death-text.visible {
-  opacity: 1;
+@media (prefers-reduced-motion: reduce) {
+  .menu-callout-arrow .sprite,
+  .world-ready .webgl {
+    animation: none;
+  }
 }
 
 #editor-panel {
@@ -461,86 +551,38 @@ body {
   line-height: 1.4;
 }
 
-#coin-count {
-  font-size: 0.75rem;
-  color: var(--accent-gold);
-  text-shadow: 2px 2px 0 #000;
+.editor-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.upgrade-content {
-  width: min(520px, 90vw);
-}
-
-#upgrade-coins {
-  margin: 0 0 1rem;
-  color: var(--accent-gold);
-}
-
-#upgrade-list {
+.editor-scatter {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.3rem;
+  border-top: 2px solid #333;
+  padding-top: 0.3rem;
+  font-size: 0.7rem;
 }
 
-.upgrade-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.6rem 0.8rem;
-  border-color: #555;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.upgrade-info {
+.editor-scatter-entry {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  border: 2px solid #333;
+  padding: 0.3rem;
 }
 
-.upgrade-name {
-  color: var(--pixel-ink);
+#editor-tiles .editor-field > span {
+  width: auto;
 }
 
-.upgrade-detail {
-  font-size: 0.75rem;
-  color: var(--accent-teal);
-}
-
-.upgrade-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Shown while game mode boots (Three.js chunk download + world build), on top
-   of the game state, which is already active underneath. */
-.booting #loading-screen {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-  transition-delay: 0s;
-  background: var(--pixel-bg);
-  z-index: 10;
-}
-
-.progress-bar {
-  width: 240px;
-  height: 12px;
-  margin-top: 1rem;
-  border: 2px solid var(--accent-teal);
-  overflow: hidden;
-}
-
-/* Indeterminate: nothing reports real progress, so the bar sweeps instead of
-   pretending to fill. */
-#progress-fill {
-  width: 30%;
-  height: 100%;
-  background: var(--accent-teal);
-  animation: progress-sweep 1s steps(8) infinite;
-}
-
-@keyframes progress-sweep {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(340%); }
+/* Box-select rectangle: drawn over the canvas, never catches the pointer. */
+#editor-box {
+  position: fixed;
+  display: none;
+  border: 1px solid var(--accent-teal);
+  background: rgba(58, 230, 201, 0.12);
+  pointer-events: none;
+  z-index: 5;
 }

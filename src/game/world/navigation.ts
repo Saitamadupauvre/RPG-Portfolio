@@ -1,6 +1,8 @@
 import { mapLayout } from '../../data/mapLayout';
 import type { MapEntity } from '../../data/MapEntity';
 import { getTileGrid } from './terrainField';
+import { isPropModel, PROP_MODELS } from '../../data/propModels';
+import { WALKER_HEADROOM } from '../entities/collisionSizes';
 import {
     buildNavGrid,
     colToWorld,
@@ -14,8 +16,16 @@ import {
 const LANDMARK_FOOTPRINT = 1;
 
 function isBlocking(entity: MapEntity): boolean {
-    if (entity.kind === 'prop') return entity.collidable === true;
+    // Lifted overhead (a rock perched on a ledge or another rock): walkers pass under it.
+    if ((entity.heightOffset ?? 0) >= WALKER_HEADROOM) return false;
+    // A radius of 0 is a model you walk through (a bush).
+    if (entity.kind === 'prop') return isPropModel(entity.propType) && PROP_MODELS[entity.propType].radius > 0;
     return entity.kind === 'statue' || entity.kind === 'bonfire';
+}
+
+/** A model prop blocks its own footprint (a tree: the trunk only, not the canopy overhead). */
+function footprintOf(entity: MapEntity): number {
+    return entity.kind === 'prop' && isPropModel(entity.propType) ? PROP_MODELS[entity.propType].radius * 2 : LANDMARK_FOOTPRINT;
 }
 
 const CELL_SIZE = 0.5;
@@ -67,8 +77,8 @@ function build(layout: MapEntity[]): NavGrid {
             position: [entity.position[0], entity.position[2]] as [number, number],
 
             size: [
-                (entity.scale?.[0] ?? 1) * LANDMARK_FOOTPRINT,
-                (entity.scale?.[2] ?? 1) * LANDMARK_FOOTPRINT,
+                (entity.scale?.[0] ?? 1) * footprintOf(entity),
+                (entity.scale?.[2] ?? 1) * footprintOf(entity),
             ] as [number, number],
         }));
 

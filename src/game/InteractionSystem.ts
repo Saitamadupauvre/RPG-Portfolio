@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { events } from '../core/events';
 import { isGameplayActive } from '../core/pause';
+import { keyFor } from '../domain/settings';
 import type { Entity } from './entities/Entity';
 import type { InteractAction } from './entities/components/InteractableComponent';
 
 export class InteractionSystem {
     private currentActions: readonly InteractAction[] | null = null;
+    private levelUpAvailable = false;
     private pressedKeys = new Set<string>();
 
     constructor() {
@@ -14,7 +16,7 @@ export class InteractionSystem {
             // unrelated presses never queue up between frames.
             // An E pressed behind an open modal must not queue up and fire on close.
             if (event.repeat || !isGameplayActive()) return;
-            if (!this.currentActions?.some((action) => action.key === event.code)) return;
+            if (!this.currentActions?.some((action) => keyFor(action.input) === event.code)) return;
 
             this.pressedKeys.add(event.code);
         });
@@ -25,11 +27,20 @@ export class InteractionSystem {
         const actions = target?.getComponent('interactable')?.actions ?? null;
 
         this.setPrompt(actions);
+        this.setLevelUpAvailable(target?.getComponent('interactable')?.allowsLevelUp ?? false);
 
         for (const key of this.pressedKeys) {
             target?.getComponent('interactable')?.interact(key);
         }
         this.pressedKeys.clear();
+    }
+
+    /**
+     * Clears the prompt now instead of on the next update, which a paused world
+     * never runs. The next live frame brings it back if the target is still there.
+     */
+    public hidePrompt() {
+        this.setPrompt(null);
     }
 
     private findNearest(entities: Entity[], playerPosition: THREE.Vector3): Entity | null {
@@ -51,6 +62,17 @@ export class InteractionSystem {
         }
 
         return nearest;
+    }
+
+    /**
+     * Not called while paused (World skips the update), so the value read when the
+     * book opens is the one from the last gameplay frame: still at the bonfire.
+     */
+    private setLevelUpAvailable(available: boolean) {
+        if (available === this.levelUpAvailable) return;
+
+        this.levelUpAvailable = available;
+        events.emit('levelUpAvailableChanged', available);
     }
 
     private setPrompt(actions: readonly InteractAction[] | null) {

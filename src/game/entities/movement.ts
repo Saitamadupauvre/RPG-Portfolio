@@ -1,6 +1,109 @@
 import type * as THREE from 'three';
 import { canTraverse, isBlocked, isInsideBounds, worldToCol, worldToRow } from '../../domain/pathfinding/NavGrid';
 import { getNavGrid } from '../world/navigation';
+import { getTileGrid, groundHeight } from '../world/terrainField';
+
+/** Widest gap a leap clears, in tiles. */
+const MAX_GAP_TILES = 1;
+/** How far past the far edge the leap lands, so the feet are fully on the ledge. */
+const LANDING_MARGIN = 0.4;
+/** Distance between two samples along the leap line; well under a tile so none is skipped. */
+const SAMPLE_STEP = 0.1;
+
+export type GapLeap = {
+    /** Ground distance from takeoff to landing. */
+    distance: number;
+    takeoffY: number;
+    landingY: number;
+};
+
+/**
+ * Whether a dash from (x, z) along `direction` should leap a gap instead of
+ * stopping at its edge. It must find, in this order: walkable ground up to an
+ * edge the normal dash would reach, a drop of more than one step (the gap),
+ * at most `MAX_GAP_TILES` tiles of it, then ground the takeoff tile could step
+ * onto, free of obstacles. Anything else (a wall, a wide gap, a tree on the
+ * landing) returns null and the dash stays an ordinary dash.
+ */
+export function planGapLeap(x: number, z: number, direction: THREE.Vector3, dashDistance: number): GapLeap | null {
+    const tiles = getTileGrid();
+    const nav = getNavGrid();
+    const maxDistance = dashDistance + MAX_GAP_TILES * tiles.map.tileSize + LANDING_MARGIN;
+
+    let walkedTile = tiles.index(tiles.colAt(x), tiles.rowAt(z));
+    let walkedLevel = tiles.levelAt(tiles.colAt(x), tiles.rowAt(z));
+    const gapTiles = new Set<number>();
+
+    for (let travelled = SAMPLE_STEP; travelled <= maxDistance; travelled += SAMPLE_STEP) {
+        const px = x + direction.x * travelled;
+        const pz = z + direction.z * travelled;
+        if (!isInsideBounds(nav, px, pz)) return null;
+
+        const col = tiles.colAt(px);
+        const row = tiles.rowAt(pz);
+        const tile = tiles.index(col, row);
+        const level = tiles.levelAt(col, row);
+        const reachable = Math.abs(level - walkedLevel) <= tiles.maxStep;
+
+        if (gapTiles.size === 0) {
+            if (tile === walkedTile) continue;
+            if (reachable) {
+                // Still on walkable ground (a ramp included): keep following it.
+                walkedTile = tile;
+                walkedLevel = level;
+                continue;
+            }
+            // A wall going up is not a gap, and an edge past the normal dash
+            // range is one the player would never have reached.
+            if (level > walkedLevel || travelled > dashDistance) return null;
+            gapTiles.add(tile);
+            continue;
+        }
+
+        if (!reachable) {
+            gapTiles.add(tile);
+            if (gapTiles.size > MAX_GAP_TILES) return null;
+            continue;
+        }
+
+        // Across: land a little past the edge, and only on free ground.
+        const distance = travelled + LANDING_MARGIN;
+        const landX = x + direction.x * distance;
+        const landZ = z + direction.z * distance;
+        const landCol = tiles.colAt(landX);
+        const landRow = tiles.rowAt(landZ);
+        if (Math.abs(tiles.levelAt(landCol, landRow) - walkedLevel) > tiles.maxStep) return null;
+        if (!isInsideBounds(nav, landX, landZ) || isWorldBlocked(nav, landX, landZ)) return null;
+
+        return { distance, takeoffY: groundHeight(x, z), landingY: groundHeight(landX, landZ) };
+    }
+
+    return null;
+}
+
+/**
+ * Whether a walker could go from one point to the other in a straight line:
+ * no obstacle, no map edge and no step too tall anywhere along it. Walks the
+ * line in sub-tile steps with the same test slideMove uses, so a lunge that
+ * passes this check is one slideMove will let through.
+ */
+export function hasClearLine(fromX: number, fromZ: number, toX: number, toZ: number): boolean {
+    const grid = getNavGrid();
+    const length = Math.hypot(toX - fromX, toZ - fromZ);
+    const steps = Math.ceil(length / SAMPLE_STEP);
+
+    let x = fromX;
+    let z = fromZ;
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const nextX = fromX + (toX - fromX) * t;
+        const nextZ = fromZ + (toZ - fromZ) * t;
+        if (cannotReach(grid, x, z, nextX, nextZ)) return false;
+        x = nextX;
+        z = nextZ;
+    }
+    return true;
+}
 
 type Grid = ReturnType<typeof getNavGrid>;
 
@@ -20,7 +123,21 @@ function cannotReach(grid: Grid, fromX: number, fromZ: number, toX: number, toZ:
     );
 }
 
-export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distance: number) {
+/**
+ * Turns `mesh` toward the heading `angle` (radians, as `Math.atan2(x, z)` gives it) the
+ * shortest way round, by at most `maxStep`.
+ */
+export function turnToward(mesh: THREE.Object3D, angle: number, maxStep: number) {
+    const delta = Math.atan2(Math.sin(angle - mesh.rotation.y), Math.cos(angle - mesh.rotation.y));
+    mesh.rotation.y = Math.abs(delta) <= maxStep ? angle : mesh.rotation.y + Math.sign(delta) * maxStep;
+}
+
+/**
+ * Moves `mesh` by `distance` along `direction`, sliding along walls and cliffs.
+ * `radius` is the body's: the test probes that far past the centre, toward the
+ * move, so the body stops when its front reaches a wall instead of its centre.
+ */
+export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distance: number, radius = 0) {
     const grid = getNavGrid();
     const { x, z } = mesh.position;
 
@@ -37,18 +154,24 @@ export function slideMove(mesh: THREE.Object3D, direction: THREE.Vector3, distan
         return;
     }
 
+    const length = Math.hypot(direction.x, direction.z);
+    if (length === 0) return;
+    const aheadX = (direction.x / length) * radius;
+    const aheadZ = (direction.z / length) * radius;
+
     const full = { x: x + direction.x * distance, z: z + direction.z * distance };
-    if (!cannotReach(grid, x, z, full.x, full.z)) {
+    if (!cannotReach(grid, x, z, full.x + aheadX, full.z + aheadZ)) {
         mesh.position.x = full.x;
         mesh.position.z = full.z;
         return;
     }
 
     // Blocked head-on: keep whichever single axis still works, so the walker
-    // slides along the wall or cliff face instead of sticking to it.
-    if (!cannotReach(grid, x, z, full.x, z)) {
+    // slides along the wall or cliff face instead of sticking to it. Each axis
+    // probes only its own share of the radius: the full one would reach diagonally.
+    if (!cannotReach(grid, x, z, full.x + Math.sign(aheadX) * radius, z)) {
         mesh.position.x = full.x;
-    } else if (!cannotReach(grid, x, z, x, full.z)) {
+    } else if (!cannotReach(grid, x, z, x, full.z + Math.sign(aheadZ) * radius)) {
         mesh.position.z = full.z;
     }
 }

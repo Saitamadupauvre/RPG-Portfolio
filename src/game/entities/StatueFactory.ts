@@ -7,21 +7,25 @@ import { findProject } from '../../data/projects';
 import { discover, isDiscovered } from '../../domain/discovery';
 import { GlowComponent } from './components/GlowComponent';
 import { InteractableComponent } from './components/InteractableComponent';
-import { createToonMaterial } from '../render/toon';
+import { findMaterial, loadModel } from './loadModel';
+import { disposeObject3D } from './disposeObject3D';
+import { createLitMaterial } from '../render/materials';
+import { PALETTE } from '../render/palette';
+import { STATUE_COLLISION_RADIUS, STATUE_HEIGHT } from './collisionSizes';
 
-const GLOW_COLOR = 0xffcc55;
+const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
-const STATUE_COLLISION_RADIUS = 0.5;
+const MODEL_URL = 'models/statue.glb';
 
 export function createStatue(entity: StatueEntity): Entity {
     const group = new THREE.Group();
     applyTransform(group, entity);
 
-    const baseMaterial = createToonMaterial({ color: 0x8d95a3 });
+    const baseMaterial = createLitMaterial({ color: PALETTE.stone });
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.4, 8), baseMaterial);
     base.position.y = 0.2;
 
-    const bodyMaterial = createToonMaterial({ color: 0xdbe3ee });
+    const bodyMaterial = createLitMaterial({ color: PALETTE.cream });
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.6, 0.5), bodyMaterial);
     body.position.y = 1.2;
 
@@ -33,10 +37,28 @@ export function createStatue(entity: StatueEntity): Entity {
     const project = findProject(entity.projectId);
     glow.setActive(!!project && !isDiscovered(entity.projectId));
 
-    const label = project ? `Examine ${project.title}` : 'Examine statue';
+    // The primitives above stand in until the model arrives (and stay if it never does).
+    loadModel(MODEL_URL, { height: STATUE_HEIGHT })
+        .then(({ object, materials }) => {
+            // The gilding (crest, sword, plaque) and the carved grooves (visor slits, closed eyes) glow, not
+            // the stone: lit whole, the figure would lose its shape.
+            const gilt = findMaterial(materials, 'Gilt');
+            const carving = findMaterial(materials, 'Carving');
+            if (!gilt || !carving) throw new Error('statue.glb needs a "Gilt" and a "Carving" material to glow');
+
+            group.remove(base, body);
+            disposeObject3D(base);
+            disposeObject3D(body);
+            group.add(object);
+            glow.setMaterials([gilt, carving]);
+        })
+        .catch((error) => console.error('[statue] model failed to load, keeping placeholder', error));
+
     const interactable = new InteractableComponent(INTERACT_RADIUS, [{
-        key: 'KeyE',
-        label,
+        input: 'interact',
+        label: project
+            ? { key: 'prompt.examine', params: { title: project.title } }
+            : { key: 'prompt.examineStatue' },
         run: () => {
             glow.setActive(false);
 

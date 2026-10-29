@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { toToonMaterial, type TintableMaterial } from '../render/toon';
+import { fromGltfMaterial, type TintableMaterial } from '../render/materials';
 
 const loader = new GLTFLoader();
 
@@ -30,6 +30,16 @@ function load(url: string): Promise<CachedModel> {
     return pending;
 }
 
+/**
+ * The Lambert material a Blender role name ended up as, if the model has one.
+ * Models name their materials by role ("Flame", "Figure") so the game can make
+ * one glow or recolour another without counting meshes.
+ */
+export function findMaterial(materials: readonly THREE.Material[], name: string): THREE.MeshLambertMaterial | undefined {
+    return materials.find((material): material is THREE.MeshLambertMaterial =>
+        material instanceof THREE.MeshLambertMaterial && material.name === name);
+}
+
 export interface ModelFitOptions {
     /** Target world height; the model is uniformly scaled to match. */
     height: number;
@@ -37,11 +47,16 @@ export interface ModelFitOptions {
     originY?: number;
     /** Extra yaw if the source model does not face +Z. */
     yaw?: number;
+    /**
+     * 'centre' (default) puts the model's bounding-box centre over the origin; 'origin' keeps
+     * the model's own X/Z, for a tree whose trunk base is the point the game seats and collides.
+     */
+    anchor?: 'centre' | 'origin';
 }
 
 export interface LoadedModel {
     object: THREE.Object3D;
-    /** Per-instance toon materials — safe to tint (hit flash) without touching other instances. */
+    /** Per-instance lit materials — safe to tint (hit flash) without touching other instances. */
     materials: TintableMaterial[];
     /** The clips the file carries (Blender actions), shared between instances: clips are read-only data. */
     animations: readonly THREE.AnimationClip[];
@@ -53,11 +68,14 @@ export interface LoadedModel {
  * cache safe; it goes through SkeletonUtils because a plain clone() leaves a skinned mesh
  * pointing at the original's bones.
  */
-export async function loadModel(url: string, fit: ModelFitOptions): Promise<LoadedModel> {
+export async function loadModel(url: string, fit?: ModelFitOptions): Promise<LoadedModel> {
     const { scene, animations } = await load(url);
     const object = cloneSkinned(scene);
 
     const materials: TintableMaterial[] = [];
+    // One copy per material of the file, not per mesh: meshes the file paints alike (a chest's
+    // body and lid both in "Trim") keep sharing it, so a glow or tint on it reaches them all.
+    const converted = new Map<THREE.Material, THREE.Material>();
     object.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         child.castShadow = true;
@@ -67,21 +85,28 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
         if (child instanceof THREE.SkinnedMesh) child.frustumCulled = false;
 
         // clone() shares materials with the cached original, and glTF always brings PBR
-        // materials — so convert each one to toon *and* keep it per-instance in a single
+        // materials — so convert each one to Lambert *and* keep it per-instance in a single
         // step. Converting here rather than in the caller means every model in the game
-        // is cel-shaded by construction, with no factory left to forget it.
+        // is lit the same way by construction, with no factory left to forget it.
         const convert = (material: THREE.Material): THREE.Material => {
-            const toon = material instanceof THREE.MeshStandardMaterial
-                ? toToonMaterial(material)
+            const known = converted.get(material);
+            if (known) return known;
+
+            const lit = material instanceof THREE.MeshStandardMaterial
+                ? fromGltfMaterial(material)
                 : material.clone();
-            if ('color' in toon) materials.push(toon as TintableMaterial);
-            return toon;
+            converted.set(material, lit);
+            if ('color' in lit) materials.push(lit as TintableMaterial);
+            return lit;
         };
 
         child.material = Array.isArray(child.material)
             ? child.material.map(convert)
             : convert(child.material);
     });
+
+    // No fit: kept as built, origin and units straight from Blender (a sword whose origin is its grip).
+    if (!fit) return { object, materials, animations };
 
     const box = new THREE.Box3().setFromObject(object);
     const size = new THREE.Vector3();
@@ -95,8 +120,10 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
         const scaledBox = new THREE.Box3().setFromObject(object);
         const centre = new THREE.Vector3();
         scaledBox.getCenter(centre);
-        object.position.x -= centre.x;
-        object.position.z -= centre.z;
+        if (fit.anchor !== 'origin') {
+            object.position.x -= centre.x;
+            object.position.z -= centre.z;
+        }
         object.position.y -= scaledBox.min.y - (fit.originY ?? 0);
     }
 

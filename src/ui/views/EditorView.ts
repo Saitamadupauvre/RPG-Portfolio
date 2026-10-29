@@ -1,28 +1,18 @@
 import { events } from '../../core/events';
 import { tileMap } from '../../data/tileMap';
-import type { ChestLoot, MapEntity, Vec3 } from '../../data/MapEntity';
-import { projects } from '../../data/projects';
-import { defaultLoot, fieldsByKind, lootFieldByKind, type FieldSpec } from './editorFields';
-
-type PaletteEntry = { kind: MapEntity['kind']; variant: string; label: string };
-
-const palette: PaletteEntry[] = [
-    { kind: 'enemy', variant: 'grunt', label: 'Grunt' },
-    { kind: 'enemy', variant: 'elite', label: 'Elite' },
-    { kind: 'enemy', variant: 'boss', label: 'Boss' },
-    { kind: 'prop', variant: 'wall', label: 'Wall' },
-    { kind: 'prop', variant: 'decor', label: 'Decor' },
-    { kind: 'chest', variant: 'wood', label: 'Chest (wood)' },
-    { kind: 'chest', variant: 'silver', label: 'Chest (silver)' },
-    { kind: 'chest', variant: 'gold', label: 'Chest (gold)' },
-    { kind: 'item', variant: 'shard', label: 'Item' },
-    { kind: 'bonfire', variant: '', label: 'Bonfire' },
-    ...projects.map((project) => ({
-        kind: 'statue' as const,
-        variant: project.id,
-        label: `Statue: ${project.title}`,
-    })),
-];
+import type { ChestLoot, MapEntity, TriggerAction, Vec3 } from '../../data/MapEntity';
+import {
+    actionFieldByKind,
+    defaultLoot,
+    defaultTriggerAction,
+    fieldsByKind,
+    lootFieldByKind,
+    palette,
+    type FieldSpec,
+} from './editorFields';
+import { button, input, numberField, numberInput, row } from './editorControls';
+import { mountScatterPanel } from './editorScatterPanel';
+import { DEFAULT_TILE_BRUSH_RADIUS } from '../../core/editorTools';
 
 const gizmoModes = [
     { mode: 'translate', label: 'Move (W)' },
@@ -43,15 +33,20 @@ const PANEL_HTML = `
     <div id="editor-grid-size" class="editor-row"></div>
     <p id="editor-tile-status" class="editor-hint"></p>
     <div id="editor-palette" class="editor-row"></div>
+    <div id="editor-scatter" class="editor-scatter"></div>
     <div id="editor-inspector"></div>
+    <div class="editor-row">
+      <button class="btn editor-btn" id="btn-editor-undo" disabled>Undo</button>
+      <button class="btn editor-btn" id="btn-editor-redo" disabled>Redo</button>
+    </div>
     <div class="editor-row">
       <span id="editor-count" class="pixel-text">0 entities</span>
       <button class="btn editor-btn" id="btn-editor-copy">Copy JSON</button>
       <button class="btn editor-btn" id="btn-editor-copy-terrain">Copy tiles</button>
-      <button class="btn editor-btn" id="btn-editor-export">Export JSON</button>
+      <button class="btn editor-btn" id="btn-editor-export">Export map</button>
       <button class="btn editor-btn" id="btn-editor-reset">Reset</button>
     </div>
-    <p class="editor-hint">F1 toggle · Edit tiles: click a tile, shift-click to add, drag the arrow to change level (1 level = walkable step, 2+ = cliff) · click ground to place · click palette again to unarm · click entity to select · W/E/R gizmo · hold Shift for free (unsnapped) placement · Ctrl+D duplicate · X or Del remove</p>
+    <p class="editor-hint">F1 toggle · right-drag orbit, middle-drag pan, wheel zoom · click entity to select, ctrl-click to add/remove, drag a box to select (ctrl adds) · Edit tiles: click or box tiles (shift/ctrl adds), Brush paints tiles (ctrl erases), drag the arrow to change level (1 level = walkable step, 2+ = cliff) · click ground to place · click palette again to unarm · Scatter: drag to paint, ctrl-drag erases what the brush paints · W/E/R gizmo · hold Shift for free (unsnapped) placement · Ctrl+D duplicate · X or Del remove · Ctrl+Z undo, Ctrl+Y redo</p>
 `;
 
 function mountPanel(): HTMLElement | null {
@@ -79,18 +74,35 @@ export function initEditorView() {
     const exportBtn = document.getElementById('btn-editor-export');
     const copyBtn = document.getElementById('btn-editor-copy');
     const resetBtn = document.getElementById('btn-editor-reset');
+    const undoBtn = document.getElementById('btn-editor-undo') as HTMLButtonElement | null;
+    const redoBtn = document.getElementById('btn-editor-redo') as HTMLButtonElement | null;
+    const scatterEl = document.getElementById('editor-scatter');
     if (!panel || !paletteEl || !modesEl || !inspector || !countEl || !exportBtn || !copyBtn || !resetBtn) return;
     if (!tilesEl || !tileStatusEl || !gridSizeEl || !copyTerrainBtn) return;
+    if (!undoBtn || !redoBtn || !scatterEl) return;
 
-    // Place mode and tile mode both own the left mouse button, so arming one
-    // disarms the other — otherwise a click would spawn a chest *and* grab a tile.
+    // Place mode, tile mode and the scatter brush all own the left mouse button,
+    // so arming one disarms the others — otherwise a click would spawn a chest
+    // *and* grab a tile.
     let armed: HTMLButtonElement | null = null;
     let tileMode = false;
+    let tileBrush = false;
+    let tileBrushRadius = DEFAULT_TILE_BRUSH_RADIUS;
+    let scatterArmed = false;
 
-    const tileButton = document.createElement('button');
-    tileButton.className = 'btn editor-btn';
-    tileButton.textContent = 'Edit tiles';
-    tilesEl.appendChild(tileButton);
+    const tileButton = button('Edit tiles', () => setTileMode(!tileMode));
+    const brushButton = button('Brush', () => {
+        tileBrush = !tileBrush;
+        brushButton.classList.toggle('armed', tileBrush);
+        // The brush only paints tiles, so turning it on implies tile mode.
+        if (tileBrush && !tileMode) setTileMode(true);
+        pushTileBrush();
+    });
+    const pushTileBrush = () => events.emit('editorTileBrushChanged', tileBrush, tileBrushRadius);
+    tilesEl.append(tileButton, brushButton, numberField('radius', tileBrushRadius, (value) => {
+        tileBrushRadius = Math.max(0.5, value);
+        pushTileBrush();
+    }, false));
 
     const disarmPalette = () => {
         armed?.classList.remove('armed');
@@ -102,10 +114,28 @@ export function initEditorView() {
         tileMode = enabled;
         tileButton.classList.toggle('armed', enabled);
         events.emit('editorTileModeChanged', enabled);
-        if (enabled) disarmPalette();
+        if (enabled) {
+            disarmPalette();
+            if (scatterArmed) setScatterArmed(false);
+        }
     };
 
-    tileButton.addEventListener('click', () => setTileMode(!tileMode));
+    const scatterButton = button('Scatter brush', () => setScatterArmed(!scatterArmed));
+    scatterEl.appendChild(scatterButton);
+    const scatterSettings = mountScatterPanel(scatterEl);
+
+    const setScatterArmed = (enabled: boolean) => {
+        scatterArmed = enabled;
+        scatterButton.classList.toggle('armed', enabled);
+        if (enabled) {
+            disarmPalette();
+            if (tileMode) setTileMode(false);
+            // The editor system is created lazily, after this panel; re-sending
+            // the settings on every arm means it can never brush with stale ones.
+            events.emit('editorScatterChanged', scatterSettings());
+        }
+        events.emit('editorScatterArmed', enabled);
+    };
 
     let cols = tileMap.cols;
     let rows = tileMap.rows;
@@ -124,31 +154,44 @@ export function initEditorView() {
     }, false));
 
     for (const entry of palette) {
-        const button = document.createElement('button');
-        button.className = 'btn editor-btn';
-        button.textContent = entry.label;
-        button.addEventListener('click', () => {
-            const disarm = armed === button;
+        const paletteButton = button(entry.label, () => {
+            const disarm = armed === paletteButton;
             armed?.classList.remove('armed');
-            armed = disarm ? null : button;
+            armed = disarm ? null : paletteButton;
             armed?.classList.add('armed');
             if (!disarm && tileMode) setTileMode(false);
+            if (!disarm && scatterArmed) setScatterArmed(false);
 
             // Disarming must send a null kind, otherwise the editor stays in place
             // mode and clicking the world can never select anything again.
             events.emit('editorPlaceKindChanged', disarm ? null : entry.kind, disarm ? '' : entry.variant);
-            if (disarm) events.emit('editorSelectionChanged', null);
+            if (disarm) events.emit('editorSelectionChanged', []);
         });
-        paletteEl.appendChild(button);
+        paletteEl.appendChild(paletteButton);
     }
 
     for (const { mode, label } of gizmoModes) {
-        const button = document.createElement('button');
-        button.className = 'btn editor-btn';
-        button.textContent = label;
-        button.addEventListener('click', () => events.emit('editorGizmoChanged', mode));
-        modesEl.appendChild(button);
+        modesEl.appendChild(button(label, () => events.emit('editorGizmoChanged', mode)));
     }
+
+    undoBtn.addEventListener('click', () => events.emit('editorUndoRequested'));
+    redoBtn.addEventListener('click', () => events.emit('editorRedoRequested'));
+    events.on('editorHistoryChanged', (canUndo, canRedo) => {
+        undoBtn.disabled = !canUndo;
+        redoBtn.disabled = !canRedo;
+    });
+
+    const box = document.createElement('div');
+    box.id = 'editor-box';
+    document.body.appendChild(box);
+    events.on('editorBoxChanged', (rect) => {
+        box.style.display = rect ? 'block' : 'none';
+        if (!rect) return;
+        box.style.left = `${rect.left}px`;
+        box.style.top = `${rect.top}px`;
+        box.style.width = `${rect.width}px`;
+        box.style.height = `${rect.height}px`;
+    });
 
     copyTerrainBtn.addEventListener('click', () => {
         events.emit('editorTerrainCopyRequested');
@@ -169,13 +212,14 @@ export function initEditorView() {
         events.emit('editorResetRequested');
     });
 
-    events.on('editorSelectionChanged', (entity) => {
-        inspector.replaceChildren(entity ? renderInspector(entity) : emptyState());
+    events.on('editorSelectionChanged', (entities) => {
+        if (entities.length === 1) inspector.replaceChildren(renderInspector(entities[0]));
+        else inspector.replaceChildren(hint(entities.length === 0 ? 'Nothing selected' : `${entities.length} selected`));
     });
 
     events.on('editorTileSelectionChanged', (count, level) => {
         if (count === 0) {
-            tileStatusEl.textContent = tileMode ? 'Click a tile · shift-click adds' : '';
+            tileStatusEl.textContent = tileMode ? 'Click or box tiles · shift/ctrl adds' : '';
             return;
         }
 
@@ -188,32 +232,10 @@ export function initEditorView() {
     });
 }
 
-/**
- * `whole` covers grid sizes, which are counts and cannot be zero or fractional.
- * The water level is neither — it is a world Y that is usually negative — so it
- * opts out rather than being silently rounded up to 1.
- */
-function numberField(
-    label: string,
-    value: number,
-    onChange: (value: number) => void,
-    whole = true,
-): HTMLElement {
-    const field = input('number', String(value), (raw) => {
-        const parsed = whole ? Math.round(Number(raw)) : Number(raw);
-        if (!Number.isFinite(parsed)) return;
-        if (whole && parsed <= 0) return;
-        onChange(parsed);
-    });
-    field.classList.add('editor-number');
-
-    return row(label, field);
-}
-
-function emptyState(): HTMLElement {
+function hint(message: string): HTMLElement {
     const text = document.createElement('p');
     text.className = 'editor-hint';
-    text.textContent = 'Nothing selected';
+    text.textContent = message;
     return text;
 }
 
@@ -245,6 +267,12 @@ function renderInspector(entity: MapEntity): HTMLElement {
         draft.position = value;
         commit();
     }));
+    // Height above (negative: into) the ground; pos Y is only where it ended up.
+    form.appendChild(row('height', numberInput(draft.heightOffset ?? 0, (value) => {
+        if (value === 0) delete draft.heightOffset;
+        else draft.heightOffset = value;
+        commit();
+    })));
     form.appendChild(vectorRow('rot', draft.rotation ?? [0, 0, 0], (value) => {
         draft.rotation = value;
         commit();
@@ -263,8 +291,44 @@ function renderInspector(entity: MapEntity): HTMLElement {
     }
 
     if (draft.kind === 'chest') form.appendChild(lootEditor(draft.loot, commit));
+    if (draft.kind === 'trigger') form.appendChild(actionEditor(draft, commit));
 
     return form;
+}
+
+/** The trigger's action: its kind, then that kind's one payload field. */
+function actionEditor(trigger: { action: TriggerAction }, commit: () => void): HTMLElement {
+    const box = document.createElement('div');
+    box.className = 'editor-loot';
+
+    const rebuild = () => {
+        const kindSelect = control(
+            {
+                control: 'select',
+                key: 'kind',
+                label: 'action',
+                options: Object.keys(actionFieldByKind).map((kind) => ({ value: kind, label: kind })),
+            },
+            trigger.action.kind,
+            (value) => {
+                trigger.action = defaultTriggerAction(value as TriggerAction['kind']);
+                rebuild();
+                commit();
+            },
+        );
+
+        const spec = actionFieldByKind[trigger.action.kind];
+        const record = trigger.action as unknown as Record<string, unknown>;
+        const payload = control(spec, record[spec.key], (value) => {
+            record[spec.key] = value;
+            commit();
+        });
+
+        box.replaceChildren(row('action', kindSelect), row(spec.label, payload));
+    };
+
+    rebuild();
+    return box;
 }
 
 function lootEditor(loot: ChestLoot[], commit: () => void): HTMLElement {
@@ -360,16 +424,6 @@ function control(spec: FieldSpec, value: unknown, onChange: (value: string | boo
     return input('text', String(value ?? ''), onChange);
 }
 
-function input(type: 'text' | 'number', value: string, onChange: (value: string) => void): HTMLInputElement {
-    const element = document.createElement('input');
-    element.type = type;
-    element.className = 'editor-input';
-    element.value = value;
-    if (type === 'number') element.step = '0.5';
-    element.addEventListener('change', () => onChange(element.value));
-    return element;
-}
-
 function vectorRow(label: string, value: Vec3, onChange: (value: Vec3) => void): HTMLElement {
     const next: Vec3 = [...value];
     const fields = document.createElement('div');
@@ -385,16 +439,4 @@ function vectorRow(label: string, value: Vec3, onChange: (value: Vec3) => void):
     });
 
     return row(label, fields);
-}
-
-function row(label: string, field: HTMLElement): HTMLElement {
-    const line = document.createElement('label');
-    line.className = 'editor-field';
-
-    const text = document.createElement('span');
-    text.textContent = label;
-    line.appendChild(text);
-    line.appendChild(field);
-
-    return line;
 }

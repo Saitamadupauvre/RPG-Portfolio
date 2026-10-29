@@ -1,51 +1,54 @@
 import * as THREE from 'three';
 import type { BonfireEntity } from '../../data/MapEntity';
+import { BONFIRE_MODELS, DEFAULT_BONFIRE_MODEL, isBonfireModel } from '../../data/bonfireModels';
 import { Entity } from './Entity';
 import { applyTransform } from './applyTransform';
 import { events } from '../../core/events';
 import { setCheckpoint } from '../../domain/checkpoint';
-import { GlowComponent } from './components/GlowComponent';
+import { FireComponent } from './components/FireComponent';
 import { InteractableComponent } from './components/InteractableComponent';
-import { createToonMaterial } from '../render/toon';
+import { BONFIRE_COLLISION_RADIUS } from './collisionSizes';
+import { loadModel } from './loadModel';
 
-const FLAME_COLOR = 0xff8822;
 const INTERACT_RADIUS = 2.2;
-const COLLISION_RADIUS = 0.5;
+/** Multiplies the campfire textures' colours; above 1 brightens them. */
+const MODEL_BRIGHTNESS = 1.7;
 
 export function createBonfire(entity: BonfireEntity): Entity {
     const group = new THREE.Group();
     applyTransform(group, entity);
 
-    const stoneMaterial = createToonMaterial({ color: 0x6b7280 });
-    const stones = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.25, 8), stoneMaterial);
-    stones.position.y = 0.12;
-    stones.castShadow = true;
+    const modelId = entity.model && isBonfireModel(entity.model) ? entity.model : DEFAULT_BONFIRE_MODEL;
+    const model = BONFIRE_MODELS[modelId];
 
-    const flameMaterial = createToonMaterial({ color: FLAME_COLOR, emissive: FLAME_COLOR, emissiveIntensity: 0.9 });
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 6), flameMaterial);
-    flame.position.y = 0.6;
+    loadModel(model.url, { height: model.height })
+        .then(({ object, materials }) => {
+            // The source palette is dull next to the grass; push it up toward the art direction's warm stone.
+            for (const material of materials) material.color.multiplyScalar(MODEL_BRIGHTNESS);
+            group.add(object);
+        })
+        .catch((error) => console.error(`[bonfire] ${model.url} failed to load`, error));
 
-    group.add(stones, flame);
-
-    const glow = new GlowComponent(flameMaterial, FLAME_COLOR);
+    // The flames do not wait for the model: they are their own effect, parented to the same spot.
+    const fire = new FireComponent(group, entity.position, model.fireHeight);
 
     const interactable = new InteractableComponent(INTERACT_RADIUS, [
         {
-            key: 'KeyE',
-            label: 'Rest at bonfire',
+            input: 'interact',
+            label: { key: 'prompt.rest' },
             run: () => {
                 setCheckpoint(entity.position);
-                events.emit('bonfireRested');
+                events.emit('restRequested');
             },
         },
         {
-            key: 'KeyF',
-            label: 'Level up board',
-            run: () => events.emit('upgradeBoardRequested'),
+            input: 'levelUp',
+            label: { key: 'prompt.levelUp' },
+            run: () => events.emit('levelUpRequested'),
         },
-    ]);
+    ], { allowsLevelUp: true });
 
-    return new Entity(entity.id, group, COLLISION_RADIUS, true)
-        .addComponent('glow', glow)
+    return new Entity(entity.id, group, BONFIRE_COLLISION_RADIUS, true)
+        .addComponent('fire', fire)
         .addComponent('interactable', interactable);
 }

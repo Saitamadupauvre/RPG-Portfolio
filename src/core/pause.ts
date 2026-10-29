@@ -4,8 +4,8 @@ import { stateMachine } from './StateMachine';
 /**
  * Who is holding the game paused right now. A set of reasons rather than one
  * boolean, for the same reason `MovementComponent.frozenBy` is: with a single
- * flag, closing the book while the upgrade board is still open would unpause
- * the game underneath the board.
+ * flag, one overlay closing would unpause the game under another one still
+ * open.
  */
 const reasons = new Set<string>();
 

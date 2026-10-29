@@ -1,0 +1,426 @@
+/* In-game overlays: health, coins, loot toast, interact prompt, low-HP vignette.
+   Pixel look in CSS plus the SVG sprites of ui/sprites.ts; every hard edge is
+   on whole pixels and animations step instead of easing where they move things. */
+
+:root {
+  --hud-outline: #1b0e14;
+  --hud-ink: #fff4dc;
+  --hud-panel: rgba(18, 12, 22, 0.74);
+
+  --hud-hp: #d8485c;
+  --hud-hp-light: #ff8f9b;
+  --hud-hp-dark: #8f2438;
+  --hud-hp-back: #2e1219;
+  /* The chunk just lost, before it drains. */
+  --hud-trail: #f6dfa4;
+
+  --hud-gold: #f2c14e;
+  --hud-gold-shade: #3b2410;
+  --hud-loss: #ff5d6c;
+
+  --hud-font-number: var(--pixel-font-display);
+}
+
+#hud {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.state-game #hud,
+.state-dead #hud {
+  display: flex;
+}
+
+/* ---------- health ---------- */
+
+.hud-health {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* drop-shadow, not box-shadow: it follows the notched corners. */
+  filter: drop-shadow(3px 3px 0 rgba(0, 0, 0, 0.45));
+}
+
+/* The heart overlaps the start of the bar, like a gauge's emblem. */
+.hud-heart {
+  position: relative;
+  z-index: 1;
+  margin-right: -8px;
+  display: flex;
+}
+
+.hud-heart .sprite {
+  --px: 4px;
+}
+
+.hud-bar {
+  position: relative;
+  width: 210px;
+  height: 24px;
+  background: var(--hud-hp-back);
+  border: 3px solid var(--hud-outline);
+  clip-path: var(--notched);
+  transition: width 420ms steps(7);
+}
+
+/* Inner shade on top: the bar reads as a groove the liquid sits in. */
+.hud-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.hud-bar-fill,
+.hud-bar-trail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+
+.hud-bar-trail {
+  background: var(--hud-trail);
+  transition: width 420ms ease-in;
+}
+
+/* Hard bands instead of a gradient: a light top row, the body, a dark bottom row. */
+.hud-bar-fill {
+  background: linear-gradient(
+    to bottom,
+    var(--hud-hp-light) 0 3px,
+    var(--hud-hp) 3px calc(100% - 4px),
+    var(--hud-hp-dark) calc(100% - 4px)
+  );
+  transition: width 140ms ease-out;
+}
+
+/* One tick per SEGMENT_HP (HudView sets --segments). */
+.hud-bar-ticks {
+  --segment: calc(100% / var(--segments, 5));
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0 calc(var(--segment) - 2px),
+    rgba(27, 14, 20, 0.5) calc(var(--segment) - 2px) var(--segment)
+  );
+}
+
+.hud-bar-label {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  transform: translateY(-50%);
+  font-family: var(--hud-font-number);
+  font-size: 8px;
+  line-height: 1;
+  color: var(--hud-ink);
+  /* A one-pixel outline on four sides, so the numbers read on red and on cream. */
+  text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 1px 0 #000;
+}
+
+/* Low HP: the heart beats and the liquid throbs. */
+.hud-health.low .hud-heart {
+  animation: hud-heartbeat 0.9s steps(1) infinite;
+}
+
+.hud-health.low .hud-bar-fill {
+  animation: hud-low 0.9s steps(1) infinite;
+}
+
+/* After `.low`: a hit interrupts the beat, which resumes once the shake ends. */
+.hud-health.hurt {
+  animation: hud-shake 300ms steps(1);
+}
+
+.hud-health.hurt .hud-heart,
+.hud-health.hurt .hud-bar-fill {
+  animation: hud-hit-flash 300ms steps(1);
+}
+
+.hud-health.healed {
+  animation: hud-lift 450ms steps(3);
+}
+
+.hud-health.healed .hud-bar-fill {
+  animation: hud-heal-glow 450ms ease-out;
+}
+
+@keyframes hud-shake {
+  0% { transform: translate(-3px, 1px); }
+  25% { transform: translate(3px, -1px); }
+  50% { transform: translate(-2px, 0); }
+  75% { transform: translate(1px, 1px); }
+  100% { transform: none; }
+}
+
+@keyframes hud-hit-flash {
+  0%, 50% { filter: brightness(2.6) saturate(0.4); }
+  100% { filter: none; }
+}
+
+@keyframes hud-heartbeat {
+  0% { transform: scale(1.18); }
+  15% { transform: scale(1); }
+  30% { transform: scale(1.1); }
+  45%, 100% { transform: scale(1); }
+}
+
+@keyframes hud-low {
+  0%, 15% { filter: brightness(1.35); }
+  30% { filter: brightness(1.15); }
+  45%, 100% { filter: none; }
+}
+
+@keyframes hud-lift {
+  0% { transform: translateY(-2px); }
+  100% { transform: none; }
+}
+
+@keyframes hud-heal-glow {
+  from { filter: brightness(1.9) saturate(0.6); }
+}
+
+/* ---------- coins ---------- */
+
+.hud-coins {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+  padding: 5px 12px 5px 6px;
+}
+
+/* The plate behind the coins, on its own layer so its notched clip never cuts
+   the +N / -N popping out of the row. */
+.hud-coins::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--hud-panel);
+  clip-path: var(--notched);
+}
+
+.hud-coin {
+  display: flex;
+}
+
+.hud-coin .sprite {
+  --px: 3px;
+}
+
+.hud-coin .sprite.spin > svg {
+  animation: sprite-sheet 320ms steps(4) 2;
+}
+
+.hud-coin-count {
+  min-width: 2ch;
+  font-family: var(--hud-font-number);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--hud-gold);
+  text-shadow: 2px 2px 0 var(--hud-gold-shade);
+}
+
+.hud-coins.gain {
+  animation: hud-coin-bump 360ms steps(3);
+}
+
+.hud-coins.gain .hud-coin-count {
+  animation: hud-coin-gain 360ms steps(3);
+}
+
+/* Death: the counter goes red and shakes while it drains to zero. */
+.hud-coins.loss {
+  animation: hud-shake 300ms steps(1) 3;
+}
+
+.hud-coins.loss .hud-coin-count {
+  color: var(--hud-loss);
+  text-shadow: 2px 2px 0 #3a0d14;
+}
+
+.hud-coin-delta {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  margin-left: 8px;
+  font-family: var(--hud-font-number);
+  font-size: 11px;
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 #000;
+  animation: hud-delta-rise 900ms ease-out forwards;
+}
+
+.hud-coin-delta.gain {
+  color: #ffe9a0;
+}
+
+.hud-coin-delta.loss {
+  color: var(--hud-loss);
+  animation-name: hud-delta-fall;
+  animation-duration: 1400ms;
+}
+
+@keyframes hud-coin-bump {
+  0% { transform: translateY(-3px); }
+  100% { transform: none; }
+}
+
+@keyframes hud-coin-gain {
+  0% { color: #fff; }
+  100% { color: var(--hud-gold); }
+}
+
+@keyframes hud-delta-rise {
+  from { transform: translateY(-50%); opacity: 1; }
+  to { transform: translateY(-200%); opacity: 0; }
+}
+
+@keyframes hud-delta-fall {
+  0% { transform: translateY(-50%); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translateY(80%); opacity: 0; }
+}
+
+/* ---------- loot toast ---------- */
+
+.hud-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0 0 4px;
+  padding: 8px 14px 8px 10px;
+  font-size: 15px;
+  color: var(--hud-ink);
+  background: var(--hud-panel);
+  border-left: 4px solid var(--hud-gold);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-12px);
+  transition: opacity 160ms linear, transform 160ms steps(3), visibility 0s linear 160ms;
+}
+
+.hud-toast.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.hud-toast-line::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: 2px;
+  background: var(--hud-gold);
+  box-shadow: 1px 1px 0 #000;
+}
+
+/* ---------- interact prompt ---------- */
+
+#interact-prompt {
+  position: fixed;
+  bottom: 12%;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  gap: 20px;
+  padding: 8px 16px;
+  font-size: 16px;
+  color: var(--hud-ink);
+  white-space: nowrap;
+  background: var(--hud-panel);
+  clip-path: var(--notched);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 6px);
+  transition: opacity 140ms linear, transform 140ms steps(2), visibility 0s linear 140ms;
+  pointer-events: none;
+}
+
+/* Game state only: the prompt of the last gameplay frame must not linger over the menu. */
+.state-game #interact-prompt.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition-delay: 0s;
+}
+
+.prompt-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The book's keycap, smaller: paper face, ink outline, thick lower edge. */
+.prompt-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  font-family: var(--pixel-font-display);
+  font-size: 9px;
+  line-height: 1;
+  color: #3b2614;
+  background: #f1e2ae;
+  border: 2px solid var(--hud-outline);
+  border-bottom-width: 5px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* ---------- low-HP vignette ---------- */
+
+#low-hp-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(110, 0, 24, 0.55) 100%);
+  transition: opacity 400ms linear;
+}
+
+.state-game #low-hp-vignette.active {
+  opacity: 1;
+  animation: hud-vignette 1.8s ease-in-out infinite;
+}
+
+@keyframes hud-vignette {
+  50% { opacity: 0.55; }
+}
+
+@media (max-width: 700px) {
+  #hud {
+    top: 10px;
+    left: 10px;
+  }
+
+  .hud-bar {
+    max-width: calc(100vw - 90px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-health.low .hud-heart,
+  .hud-health.low .hud-bar-fill,
+  .state-game #low-hp-vignette.active {
+    animation: none;
+  }
+}

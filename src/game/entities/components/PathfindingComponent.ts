@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { findPath } from '../../../domain/pathfinding/AStar';
 import { getNavGrid } from '../../world/navigation';
+import { turnToward } from '../movement';
 
 const REPATH_INTERVAL = 0.4;
 const WAYPOINT_RADIUS = 0.15;
@@ -71,31 +72,18 @@ export class PathfindingComponent implements Component {
     private scratchToWaypoint = new THREE.Vector3();
 
     private followPath(dt: number) {
-        if (this.waypointIndex >= this.path.length) return;
-
-        const waypoint = this.path[this.waypointIndex];
-        const toWaypoint = this.scratchToWaypoint.subVectors(waypoint, this.mesh.position).setY(0);
-        const distance = toWaypoint.length();
-
-        if (distance < WAYPOINT_RADIUS) {
+        const toWaypoint = this.scratchToWaypoint;
+        // A reached waypoint is passed in the same frame: returning on it stood the
+        // body still for one frame per cell, which hitched any walk cycle read off its speed.
+        while (this.waypointIndex < this.path.length) {
+            toWaypoint.subVectors(this.path[this.waypointIndex], this.mesh.position).setY(0);
+            if (toWaypoint.length() >= WAYPOINT_RADIUS) break;
             this.waypointIndex++;
-            return;
         }
+        if (this.waypointIndex >= this.path.length) return;
 
         toWaypoint.normalize();
         this.mesh.position.addScaledVector(toWaypoint, this.speed * dt);
-        this.rotateTowards(Math.atan2(toWaypoint.x, toWaypoint.z), dt);
-    }
-
-    private rotateTowards(targetAngle: number, dt: number) {
-        let delta = targetAngle - this.mesh.rotation.y;
-        delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-
-        const maxStep = this.turnSpeed * dt;
-        if (Math.abs(delta) <= maxStep) {
-            this.mesh.rotation.y = targetAngle;
-        } else {
-            this.mesh.rotation.y += Math.sign(delta) * maxStep;
-        }
+        turnToward(this.mesh, Math.atan2(toWaypoint.x, toWaypoint.z), this.turnSpeed * dt);
     }
 }

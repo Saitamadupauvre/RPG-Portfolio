@@ -20,6 +20,7 @@ export class EntityCollisionSystem {
     private resolvePair(a: Entity, b: Entity) {
         // Two statues overlapping is a level-design problem, not a runtime one.
         if (a.isStatic && b.isStatic) return;
+        if (!overlapsVertically(a, b)) return;
 
         const push = resolveCircleOverlap(
             { x: a.mesh.position.x, z: a.mesh.position.z, radius: a.collisionRadius as number },
@@ -37,4 +38,13 @@ export class EntityCollisionSystem {
         b.mesh.position.x += push.nx * push.overlap * bShare;
         b.mesh.position.z += push.nz * push.overlap * bShare;
     }
+}
+
+/** Bodies without a height reach from the ground up forever, so they always overlap. */
+function overlapsVertically(a: Entity, b: Entity): boolean {
+    if (a.bodyHeight === undefined || b.bodyHeight === undefined) return true;
+
+    const aFeet = a.mesh.position.y - a.groundOffset;
+    const bFeet = b.mesh.position.y - b.groundOffset;
+    return aFeet < bFeet + b.bodyHeight && bFeet < aFeet + a.bodyHeight;
 }

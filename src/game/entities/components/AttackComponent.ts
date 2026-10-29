@@ -8,6 +8,8 @@ export interface AttackHitboxOptions {
     distance?: number;
     duration?: number;
     damage?: number;
+    /** Hitbox moves with the attacker instead of staying where the swing started (lunges). */
+    follow?: boolean;
 }
 
 export interface AttackHooks {
@@ -22,6 +24,7 @@ const DEFAULTS: Required<AttackHitboxOptions> = {
     distance: 1,
     duration: 0.25,
     damage: 10,
+    follow: false,
 };
 
 export class AttackComponent implements Component {
@@ -92,12 +95,16 @@ export class AttackComponent implements Component {
         this.activeOptions = { ...this.options, ...overrides };
         this.hooks.onAttackStart?.();
 
-        this.center.copy(this.mesh.position).addScaledVector(direction, this.activeOptions.distance);
-        this.cachedHitbox.setFromCenterAndSize(this.center, this.activeOptions.size);
+        this.placeHitbox(direction);
 
         this.isAttackingState = true;
         this.elapsed = 0;
         this.hitIds.clear();
+    }
+
+    private placeHitbox(direction: THREE.Vector3) {
+        this.center.copy(this.mesh.position).addScaledVector(direction, this.activeOptions.distance);
+        this.cachedHitbox.setFromCenterAndSize(this.center, this.activeOptions.size);
     }
 
     public getHitbox(): THREE.Box3 | null {
@@ -123,7 +130,10 @@ export class AttackComponent implements Component {
         if (!this.isAttackingState) return;
 
         this.elapsed += dt;
-        if (this.elapsed < this.activeOptions.duration) return;
+        if (this.elapsed < this.activeOptions.duration) {
+            if (this.activeOptions.follow) this.placeHitbox(this.faceDirection);
+            return;
+        }
 
         this.isAttackingState = false;
         this.hooks.onAttackEnd?.();

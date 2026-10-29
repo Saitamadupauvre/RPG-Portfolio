@@ -3,22 +3,36 @@ import type { Entity } from './entities/Entity';
 import type { EnemyEntity } from '../data/MapEntity';
 import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
 import { addCoins } from '../domain/playerProgress';
+import { getSettings } from '../domain/settings';
 import { defeatBoss } from '../domain/defeatedBosses';
+import { reviveEnemies, slayEnemy } from '../domain/slainEnemies';
 import { chunkKeyAt, type ChunkKey } from '../domain/chunks';
 import { ParticleSystem } from './effects/ParticleSystem';
 import { ScreenShake } from './effects/ScreenShake';
+import type { ProjectileSystem } from './ProjectileSystem';
+import type { FireSystem } from './FireSystem';
+import { playSound } from '../audio/audio';
 
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;
+/**
+ * Every blow, arrow and flame the player takes, on top of each enemy's own
+ * damage in EnemyPool: one knob for the overall difficulty.
+ */
+const ENEMY_DAMAGE_SCALE = 1.5;
 
 export class CombatSystem {
     private enemies: { entity: Entity; source: EnemyEntity }[] = [];
+    /** Killed enemies fading out: out of the fight already, back to the pool once gone. */
+    private dying: { entity: Entity; source: EnemyEntity }[] = [];
 
     private sources: EnemyEntity[] = [];
     private hitParticles: ParticleSystem;
     private screenShake = new ScreenShake();
     private entityGroup: THREE.Group;
     private player: Entity;
+    private projectiles: ProjectileSystem;
+    private fire: FireSystem;
     private onKill: (entity: Entity) => void;
     private onSpawn: (entity: Entity) => void;
 
@@ -29,23 +43,38 @@ export class CombatSystem {
     constructor(
         entityGroup: THREE.Group,
         player: Entity,
+        projectiles: ProjectileSystem,
+        fire: FireSystem,
         onKill: (entity: Entity) => void,
         onSpawn: (entity: Entity) => void,
     ) {
         this.entityGroup = entityGroup;
         this.player = player;
+        this.projectiles = projectiles;
+        this.fire = fire;
         this.onKill = onKill;
         this.onSpawn = onSpawn;
         this.hitParticles = new ParticleSystem(entityGroup);
     }
 
     public clear() {
+        this.finishDying();
         this.enemies = [];
         this.sources = [];
+        this.projectiles.clear();
+        this.fire.clear();
     }
 
     public addEnemy(entity: Entity, source: EnemyEntity) {
         this.enemies.push({ entity, source });
+        this.sources.push(source);
+    }
+
+    /**
+     * An enemy killed before its chunk last loaded: no body, but its source is
+     * kept so the next rest brings it back where it stands.
+     */
+    public addSlain(source: EnemyEntity) {
         this.sources.push(source);
     }
 
@@ -66,7 +95,14 @@ export class CombatSystem {
         this.sources = this.sources.filter((source) => chunkKeyAt(source.position[0], source.position[2]) !== key);
     }
 
+    /** A rest or a death: every non-boss enemy back home at full health, the slain ones included. */
     public resetEnemies() {
+        // Arrows and flames in the air or planted around belong to the fight being reset.
+        this.projectiles.clear();
+        this.fire.clear();
+        // Under the black screen: a body still fading would stand beside its revived self.
+        this.finishDying();
+        reviveEnemies();
         for (const source of this.sources) {
             if (source.enemyType === 'boss') continue;
 
@@ -85,8 +121,13 @@ export class CombatSystem {
     public update(dt: number, camera: THREE.Camera) {
         this.resolveAttack();
         this.resolveEnemyAttacks();
+        this.resolveArrows(dt);
+        this.resolveFire(dt);
+        this.updateDying(dt);
         this.hitParticles.update(dt);
-        camera.position.add(this.screenShake.getOffset(dt));
+        // Advanced even when switched off, so switching it back on cannot replay a stale shake.
+        const shake = this.screenShake.getOffset(dt);
+        if (getSettings().screenShake) camera.position.add(shake);
     }
 
     private resolveEnemyAttacks() {
@@ -103,11 +144,33 @@ export class CombatSystem {
             if (!hitbox || !hitbox.intersectsBox(playerBox)) continue;
             if (!attack.registerHit(this.player.id)) continue;
 
-            playerHealth.takeDamage(attack.damage);
-            this.player.getComponent('hitFlash')?.trigger();
-            this.hitParticles.spawnBurst(playerBox.getCenter(this.scratchCenter));
-            this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
+            this.hurtPlayer(attack.damage, playerBox.getCenter(this.scratchCenter));
         }
+    }
+
+    /** Arrows fly on even with every archer dead or unloaded, so they are resolved on their own. */
+    private resolveArrows(dt: number) {
+        const playerBox = hurtbox(this.player, this.scratchBoxA);
+        this.projectiles.update(dt, playerBox, (damage, point) => this.hurtPlayer(damage, point));
+    }
+
+    /** Like arrows: a breath already poured keeps burning after its dragon is gone. */
+    private resolveFire(dt: number) {
+        const playerBox = hurtbox(this.player, this.scratchBoxA);
+        this.fire.update(dt, playerBox, (damage, point) => this.hurtPlayer(damage, point));
+    }
+
+    private hurtPlayer(damage: number, at: THREE.Vector3) {
+        const health = this.player.getComponent('health');
+        // Rounded: the HUD's HP and damage trail stay whole numbers.
+        health?.takeDamage(Math.round(damage * ENEMY_DAMAGE_SCALE));
+        playSound('playerHurt');
+        // Same as an enemy: the fatal hit leaves the burst and the flash to the death fade.
+        if (!health?.isDead()) {
+            this.player.getComponent('hitFlash')?.trigger();
+            this.hitParticles.spawnBurst(at);
+        }
+        this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
     }
 
     private resolveAttack() {
@@ -124,22 +187,58 @@ export class CombatSystem {
 
             const health = entity.getComponent('health');
             health?.takeDamage(attack.damage);
+            playSound('enemyHit');
 
-            entity.getComponent('hitFlash')?.trigger();
-            this.hitParticles.spawnBurst(enemyBox.getCenter(this.scratchCenter));
             this.screenShake.trigger(HIT_SHAKE_INTENSITY, HIT_SHAKE_DURATION);
 
-            if (health?.isDead()) this.killEnemy(entity, source);
+            // The killing blow has no burst: the body turning white is the hit.
+            if (health?.isDead()) {
+                this.killEnemy(entity, source);
+            } else {
+                entity.getComponent('hitFlash')?.trigger();
+                this.hitParticles.spawnBurst(enemyBox.getCenter(this.scratchCenter));
+            }
         }
     }
 
+    /**
+     * Out of the fight at once (no more hits either way) and paid for, but the
+     * body stays where it fell, frozen mid-pose, while it whitens and fades.
+     */
     private killEnemy(entity: Entity, source: EnemyEntity) {
-        this.entityGroup.remove(entity.mesh);
         this.enemies = this.enemies.filter((e) => e.entity !== entity);
-        enemyPool.release(entity, source.enemyType);
         if (source.enemyType === 'boss') defeatBoss(source.id);
+        else slayEnemy(source.id);
         addCoins(getEnemyCoinReward(source.enemyType));
         this.onKill(entity);
+
+        // Before the fade reads the materials, so it starts from their real colours.
+        entity.getComponent('hitFlash')?.reset();
+        entity.getComponent('healthBar')?.hide();
+        entity.getComponent('dashTrail')?.reset();
+        entity.getComponent('deathFade')?.start();
+        this.dying.push({ entity, source });
+    }
+
+    private updateDying(dt: number) {
+        if (this.dying.length === 0) return;
+
+        for (const { entity } of this.dying) entity.getComponent('deathFade')?.update(dt);
+        this.dying = this.dying.filter(({ entity, source }) => {
+            if (entity.getComponent('deathFade')?.done === false) return true;
+            this.removeBody(entity, source);
+            return false;
+        });
+    }
+
+    private finishDying() {
+        for (const { entity, source } of this.dying) this.removeBody(entity, source);
+        this.dying = [];
+    }
+
+    private removeBody(entity: Entity, source: EnemyEntity) {
+        this.entityGroup.remove(entity.mesh);
+        enemyPool.release(entity, source.enemyType);
     }
 }
 

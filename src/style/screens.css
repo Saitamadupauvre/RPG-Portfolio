@@ -1,0 +1,194 @@
+/* Full-screen moments: the loading screen and the iris transition.
+   Stacked above the UI container (z-index 2): iris 8, loading 20
+   (it covers the black iris while the game boots). */
+
+/* ---------- iris ---------- */
+
+#iris {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+#iris.active {
+  visibility: visible;
+}
+
+/* ---------- loading ---------- */
+
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  color: #fff4dc;
+  background:
+    radial-gradient(ellipse at 100% 110%, rgba(232, 85, 45, 0.28) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 0%, #1d1a2c 0%, transparent 70%),
+    #0b0a12;
+}
+
+.state-loading #loading-screen,
+.booting #loading-screen {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.loading-embers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.loading-ember {
+  position: absolute;
+  bottom: -8px;
+  width: 4px;
+  height: 4px;
+  background: #ffb347;
+  box-shadow: 0 0 6px #ff8a3d;
+  opacity: 0;
+  animation: loading-ember linear infinite;
+}
+
+@keyframes loading-ember {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 0.85; }
+  70% { opacity: 0.5; }
+  100% { transform: translate(var(--drift), -105vh); opacity: 0; }
+}
+
+.loading-center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.loading-title {
+  font-family: var(--pixel-font-display);
+  font-size: clamp(0.9rem, 3.4vw, 2rem);
+  white-space: nowrap;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+  color: var(--accent-gold);
+  text-shadow: 3px 3px 0 var(--accent-crimson), 0 0 22px rgba(230, 184, 58, 0.45);
+}
+
+.loading-tip {
+  min-height: 2.8em;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: rgba(255, 244, 220, 0.72);
+}
+
+.loading-tip::before {
+  content: 'TIP  ';
+  color: var(--accent-gold);
+  white-space: pre;
+}
+
+.loading-tip.fresh {
+  animation: loading-tip 500ms ease both;
+}
+
+@keyframes loading-tip {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Bottom right: the fire, the word, the bar. */
+.loading-corner {
+  position: absolute;
+  right: 32px;
+  bottom: 28px;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.loading-fire {
+  display: flex;
+  filter: drop-shadow(0 0 14px rgba(255, 140, 50, 0.55));
+}
+
+.loading-fire .sprite {
+  --px: 4px;
+  --sprite-ms: 420ms;
+}
+
+.loading-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 190px;
+  padding-bottom: 4px;
+}
+
+.loading-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--pixel-font-display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.loading-dots {
+  display: inline-block;
+  width: 3ch;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.2s steps(1) infinite;
+}
+
+@keyframes loading-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+.loading-bar {
+  height: 12px;
+  padding: 2px;
+  background: #1b1420;
+  border: 2px solid rgba(255, 244, 220, 0.7);
+  clip-path: var(--notched);
+}
+
+/* Segmented like a pixel gauge: flame-coloured blocks with dark gaps. */
+#progress-fill {
+  width: 0;
+  height: 100%;
+  background: repeating-linear-gradient(to right, #ffb347 0 6px, #e8552d 6px 8px, transparent 8px 10px);
+  transition: width 300ms steps(5);
+}
+
+@media (max-width: 700px) {
+  .loading-corner {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .loading-meter {
+    width: 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-ember,
+  .loading-dots::after {
+    animation: none;
+  }
+}

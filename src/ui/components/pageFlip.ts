@@ -1,3 +1,5 @@
+import { playSound } from '../../audio/audio';
+
 export type FlipDirection = 'forward' | 'backward';
 
 export type PageFlipOptions = {
@@ -24,6 +26,8 @@ const MAX_SPREAD_MS = 420;
 /** Gap between stacked leaves, so the 3D sort puts each one above the previous. */
 const LEAF_GAP_PX = 0.4;
 const EASING = 'cubic-bezier(0.45, 0.05, 0.3, 1)';
+/** A bundle riffles: the first few leaves each rustle, the rest would only blur into noise. */
+const MAX_PAGE_SOUNDS = 3;
 
 function createLeaf(): { leaf: HTMLElement; front: HTMLElement; back: HTMLElement } {
     const leaf = document.createElement('div');
@@ -38,6 +42,14 @@ function createLeaf(): { leaf: HTMLElement; front: HTMLElement; back: HTMLElemen
 
 function copyPage(page: HTMLElement, face: HTMLElement) {
     face.replaceChildren(...[...page.children].map((child) => child.cloneNode(true)));
+
+    // cloneNode copies a canvas element but not its pixels: paint each copy from its original,
+    // so a live picture (the Level page's knight) turns with its page instead of going blank.
+    const originals = page.querySelectorAll('canvas');
+    face.querySelectorAll('canvas').forEach((copy, index) => {
+        const original = originals[index];
+        if (original && original.width > 0 && original.height > 0) copy.getContext('2d')?.drawImage(original, 0, 0);
+    });
 }
 
 /**
@@ -60,7 +72,16 @@ export function flipPages(layer: HTMLElement, options: PageFlipOptions): PageFli
     const leaves: ReturnType<typeof createLeaf>[] = [];
     const animations: Animation[] = [];
 
+    // Spread over the whole bundle (first, middle, last leaf): the first few leaves
+    // leave within a few dozen ms of each other and would rustle as one.
+    const soundCount = Math.min(MAX_PAGE_SOUNDS, count);
+    const soundLeaves = new Set(
+        Array.from({ length: soundCount }, (_, k) =>
+            soundCount > 1 ? Math.round((k * (count - 1)) / (soundCount - 1)) : 0),
+    );
+
     for (let i = 0; i < count; i++) {
+        if (soundLeaves.has(i)) playSound('pageTurn', { delay: (i * stagger) / 1000 });
         const leaf = createLeaf();
         // Leaf 0 starts on top of its stack, the last one ends on top of the other.
         const startZ = (count - i) * LEAF_GAP_PX;

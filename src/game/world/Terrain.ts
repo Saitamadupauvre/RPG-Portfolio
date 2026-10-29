@@ -55,6 +55,8 @@ const GRASS_GROW_BUDGET_MS = 2;
 const GRASS_SYNC_THRESHOLD = 24;
 /** Focus movement, in world units, between two grass replans. */
 const GRASS_REPLAN_DISTANCE = 2;
+/** How far above the still water level grass starts, so the swell never laps over blade roots on the shore. */
+const GRASS_SHORE_MARGIN = 0.15;
 
 /** The point the camera frames and the way it faces, flattened onto the ground. */
 export type GrassFocus = { x: number; z: number; dirX: number; dirZ: number };
@@ -151,9 +153,12 @@ export class Terrain {
     private patchTriangles = new Map<string, number[]>();
     /** Ground under static objects, kept bare. */
     private grassFootprints: GrassFootprint[] = [];
+    /** Lowest height grass grows at: just above the water. */
+    private grassFloor: number;
 
     constructor(map: TileMap, grass: GrassSurface) {
         this.grass = grass;
+        this.grassFloor = grassFloorOf(map);
         const { geometry, topPositions } = buildGeometry(createTileGrid(map));
         this.mesh = new THREE.Mesh(geometry, this.material);
         this.topPositions = topPositions;
@@ -167,6 +172,8 @@ export class Terrain {
     public rebuild(map: TileMap) {
         const grid = rebuildTileGrid(map);
 
+        // The editor's water level slider comes through here too, and the clear below regrows at the new shore.
+        this.grassFloor = grassFloorOf(map);
         this.clearGrass();
         this.mesh.geometry.dispose();
         const { geometry, topPositions } = buildGeometry(grid);
@@ -305,9 +312,11 @@ export class Terrain {
             maxDistance: GRASS_VIEW_RADIUS + 20,
             triangles,
             key,
-            // Undefined when nothing static stands on this patch, so the common
-            // patch skips the per-blade test entirely.
-            rejectPoint: footprints.length > 0 ? (x, z) => isUnderFootprint(footprints, x, z) : undefined,
+            // Nothing under water, and nothing under a static object. The footprint
+            // test only runs on the patches something actually stands on.
+            rejectPoint: footprints.length > 0
+                ? (x, z, y) => y < this.grassFloor || isUnderFootprint(footprints, x, z)
+                : (_x, _z, y) => y < this.grassFloor,
             // Rejects blades whose triangle points sideways — belt-and-braces
             // now that walls are excluded up front, and still needed for any
             // steep-but-not-cliff tile-top geometry in the future.
@@ -320,6 +329,11 @@ export class Terrain {
         this.mesh.geometry.dispose();
         this.material.dispose();
     }
+}
+
+/** A map without a water level still gets the sea at 0 (see World), so the grass stops there too. */
+function grassFloorOf(map: TileMap): number {
+    return (map.waterLevel ?? 0) + GRASS_SHORE_MARGIN;
 }
 
 function buildGeometry(grid: TileGrid): { geometry: THREE.BufferGeometry; topPositions: number[] } {

@@ -21,6 +21,29 @@ export function saveJson(key: string, value: unknown) {
     }
 }
 
+const SAVE_PREFIX = 'rpg-portfolio:';
+/** Stored under the prefix but not progress: preferences and the dev editor's working copy. */
+const NOT_SAVE = /^(settings$|editor-)/;
+
+/**
+ * Wipes the save: coins, stats, discoveries, chests, bosses, checkpoint,
+ * tutorials. By prefix rather than a list of keys, so a save file added later
+ * cannot be forgotten here. Every module keeps its state in memory, so the
+ * caller reloads the page afterwards.
+ */
+export function clearSave() {
+    try {
+        const keys = Object.keys(localStorage);
+        for (const key of keys) {
+            if (key.startsWith(SAVE_PREFIX) && !NOT_SAVE.test(key.slice(SAVE_PREFIX.length))) {
+                localStorage.removeItem(key);
+            }
+        }
+    } catch {
+        // Storage blocked: there was nothing saved to clear.
+    }
+}
+
 export type PersistentSet = {
     has(id: string): boolean;
     /** Returns false when the id was already there, so callers can bail early. */

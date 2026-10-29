@@ -11,6 +11,13 @@
   --accent-gold: #e6b83a;
   --accent-crimson: #c9425a;
   --accent-teal: #3ae6c9;
+
+  /* Corners cut by --notch: the chunky pixel version of a rounded box. */
+  --notch: 3px;
+  --notched: polygon(
+    var(--notch) 0, calc(100% - var(--notch)) 0, 100% var(--notch), 100% calc(100% - var(--notch)),
+    calc(100% - var(--notch)) 100%, var(--notch) 100%, 0 calc(100% - var(--notch)), 0 var(--notch)
+  );
 }
 
 .pixel-ui, .pixel-ui * {
@@ -30,19 +37,32 @@
   letter-spacing: 0.05em;
 }
 
-#interact-prompt {
-  position: fixed;
-  bottom: 12%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 8px 16px;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  white-space: nowrap;
+/* Pixel sprites from ui/components/pixelSprite.ts: one frame wide, the sheet
+   inside. --px is one art pixel on screen; set it where the sprite is used. */
+.sprite {
+  --px: 3px;
+  display: inline-block;
+  flex: none;
+  width: calc(var(--cols) * var(--px));
+  height: calc(var(--rows) * var(--px));
+  overflow: hidden;
 }
 
-#interact-prompt.visible {
-  opacity: 1;
-  visibility: visible;
+.sprite > svg {
+  display: block;
+  width: calc(var(--frames) * 100%);
+  height: 100%;
+}
+
+/* Steps through every frame, looping. */
+.sprite-play > svg {
+  animation: sprite-sheet var(--sprite-ms, 600ms) steps(var(--frames)) infinite;
+}
+
+@keyframes sprite-sheet {
+  to { transform: translateX(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sprite-play > svg { animation: none; }
 }

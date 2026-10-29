@@ -3,27 +3,36 @@ import type { Experience } from "../Experience";
 import { Environment } from "./Environment";
 import { events } from "../../core/events";
 import { stateMachine, type AppState } from "../../core/StateMachine";
+import { setPaused } from "../../core/pause";
 import { mapLayout } from "../../data/mapLayout";
 import type { MapEntity } from "../../data/MapEntity";
 import { getCheckpoint } from "../../domain/checkpoint";
+import { loseAllCoins } from "../../domain/playerProgress";
 import type { Entity } from "../entities/Entity";
 import { createMapEntity } from "../entities/entityFactories";
 import { createPlayer } from "../entities/PlayerFactory";
 import { bindPlayerStats } from "../playerStats";
 import { enemyPool } from "../entities/EnemyPool";
 import { CombatSystem } from "../CombatSystem";
+import { ProjectileSystem } from "../ProjectileSystem";
+import { FireSystem } from "../FireSystem";
 import { EntityCollisionSystem } from "../EntityCollisionSystem";
 import { InteractionSystem } from "../InteractionSystem";
-import { findFreePoint, rebuildNavGrid } from "./navigation";
+import { rebuildNavGrid } from "./navigation";
+import { rebuildObstacles } from "./obstacles";
 import { ChunkStreamer } from "./ChunkStreamer";
 import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
 import { isBossDefeated } from "../../domain/defeatedBosses";
+import { isEnemySlain } from '../../domain/slainEnemies';
 import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
 import { Terrain } from "./Terrain";
 import { buildGrassFootprints } from "./grass/grassFootprints";
+import { WindStreaks } from "./windStreaks";
 import { Water } from "./water/Water";
 import { tileMap, type TileMap } from "../../data/tileMap";
 import { groundHeight, snapToGround } from "./terrainField";
+import { aimMenuShot, CameraBlend, GAME_FOV, pickMenuYaw, planSpawn, setFov } from "./menuShot";
+import { EnemyFadeIn } from "./EnemyFadeIn";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
 /** Keeps the camera from burying itself in a hill or cliff behind the player. */
@@ -34,8 +43,8 @@ const GROUND_VIEW_DIR = new THREE.Vector3(-CAMERA_OFFSET.x, 0, -CAMERA_OFFSET.z)
 /**
  * Where the camera stands to frame `target`. The offset alone would sink it
  * into rising ground behind the player; lifting it to clear the terrain under
- * it is cheaper than a raycast and enough for a fixed isometric view. Shared by
- * followPlayer and the grass planner, so the two can never disagree.
+ * it is cheaper than a raycast and enough for a fixed isometric view. Whatever
+ * still hides a character is handled by its x-ray silhouette, not the camera.
  */
 function cameraEye(target: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     out.copy(target).add(CAMERA_OFFSET);
@@ -43,7 +52,6 @@ function cameraEye(target: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     return out;
 }
 
-const RESPAWN_DELAY_MS = 1200;
 /**
  * How much wider than its body a mover parts the grass. At exactly the
  * collision radius the parted ring hides under the body itself and barely shows.
@@ -74,12 +82,24 @@ export class World {
     private collision = new EntityCollisionSystem();
     private interaction = new InteractionSystem();
     private paused = false;
+    /** Between `restRequested` and `restCovered`: the world is held paused under the closing iris. */
+    private resting = false;
+    /** `playerFaded` went out for this death. */
+    private deathReported = false;
+    private cameraBlend = new CameraBlend();
+    /** Reused every menu frame: where the knight's feet are. */
+    private menuFeet = new THREE.Vector3();
+    /** The angle round the knight the menu shot was planned at: on spawning, or on quitting back to the menu. */
+    private menuYaw = 0;
+    /** Enemies stay out of the menu backdrop and fade in once the game starts. */
+    private enemyFade = new EnemyFadeIn();
     // One full-ratio tier: Terrain already grows far patches sparser, and a draw
     // LOD on top would thin them a second time.
     public readonly grass = new GrassSurface({ lod: [{ distance: Infinity, ratio: 1 }] });
     private grassColliders: GrassCollider[] = [];
     public terrain: Terrain;
     public water: Water;
+    public readonly windStreaks: WindStreaks;
     public player: Entity;
 
     constructor(experience: Experience) {
@@ -97,18 +117,27 @@ export class World {
         this.water = new Water(tileMap.waterLevel ?? 0);
         this.entityGroup.add(this.water.mesh);
 
+        // Read at spawn time, not now: the editor can move the sea level.
+        this.windStreaks = new WindStreaks((x, z) => Math.max(groundHeight(x, z), this.water.getLevel()));
+        this.entityGroup.add(this.windStreaks.mesh);
+
         this.player = createPlayer(CAMERA_OFFSET, this.entityGroup);
         this.player.mesh.castShadow = true;
         this.entityGroup.add(this.player.mesh);
         bindPlayerStats(this.player);
 
-        enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup);
+        // Shared by the archers and dragons that loose arrows and flames, and the combat system that lands them.
+        const projectiles = new ProjectileSystem(this.entityGroup);
+        const fire = new FireSystem(this.entityGroup);
+        enemyPool.init(this.experience.camera, this.player.mesh, this.entityGroup, projectiles, fire);
 
         this.combat = new CombatSystem(
             this.entityGroup,
             this.player,
+            projectiles,
+            fire,
             (entity) => {
-                // CombatSystem already detached the mesh and pooled the entity;
+                // CombatSystem owns the body now (it fades, then goes back to the pool);
                 // the chunk must forget it too or the next despawn releases it twice.
                 this.forgetEntity(entity);
                 this.entities = this.entities.filter((e) => e !== entity);
@@ -124,8 +153,19 @@ export class World {
             (key) => this.despawnChunk(key),
         );
 
-        events.on('stateChange', (newState) => {
+        events.on('stateChange', (newState, oldState) => {
             this.entityGroup.visible = this.isGameVisible(newState);
+
+            // Into the menu or out of it, the camera glides between the two shots instead of cutting.
+            const menuCut = (oldState === 'MENU' && newState === 'GAME') || (oldState === 'GAME' && newState === 'MENU');
+            if (menuCut) this.cameraBlend.start(this.experience.camera, this.player.mesh.position);
+            if (newState === 'MENU') {
+                // Quit mid-run: the knight must not keep running on the menu backdrop.
+                this.stopPlayerInput();
+                // Planned once from where they stand, not every frame from their facing.
+                this.menuYaw = pickMenuYaw(this.feet(), this.player.mesh.rotation.y, this.experience.camera.aspect);
+            }
+            if (oldState === 'MENU' && newState === 'GAME') this.enemyFade.start(this.entities);
         });
 
         this.loadLayout(mapLayout);
@@ -135,12 +175,14 @@ export class World {
 
             if (paused) this.stopPlayerInput();
         });
-        events.on('bonfireRested', () => {
-            this.player.getComponent('health')?.refill();
-            this.combat.resetEnemies();
-        });
+        // Resting is a handshake like dying: the screen goes black first, so
+        // enemies reset where nobody can see them pop back.
+        events.on('restRequested', () => this.startRest());
+        events.on('restCovered', () => this.finishRest());
+        // The death screen decides when the player may be moved: once it hides the world.
+        events.on('respawnRequested', () => this.respawn(this.experience.camera));
 
-        // After loadLayout: findFreePoint reads the nav grid, which only exists
+        // After loadLayout: the spawn search reads the nav grid, which only exists
         // once the layout has been rebuilt.
         this.placeAtCheckpoint(this.experience.camera);
     }
@@ -155,13 +197,22 @@ export class World {
         // Built from the *whole* layout, not the loaded chunks: a flat boolean
         // array costs nothing per frame, and an enemy pathing towards a wall in
         // an unloaded chunk still gets the right answer.
-        rebuildNavGrid(layout);
-        // Same reasoning: from the whole layout, so a patch grown before its
-        // chunk's entities stream in is still bare under them.
-        this.terrain.setGrassFootprints(buildGrassFootprints(layout));
+        this.refreshFootprints(layout);
         this.streamer.setLayout(layout);
 
         this.streamFor(this.player.mesh.position);
+    }
+
+    /**
+     * Everything derived from where static objects stand, without respawning
+     * them: an editor drag moves the meshes itself, only these lag behind.
+     */
+    public refreshFootprints(layout: MapEntity[]) {
+        rebuildNavGrid(layout);
+        rebuildObstacles(layout);
+        // Same reasoning: from the whole layout, so a patch grown before its
+        // chunk's entities stream in is still bare under them.
+        this.terrain.setGrassFootprints(buildGrassFootprints(layout));
     }
 
     /** Loads/unloads the chunks around a position and refreshes the flat view. */
@@ -173,9 +224,13 @@ export class World {
     }
 
     private spawnEntity(mapEntity: MapEntity, key: ChunkKey) {
-        // Regular enemies are meant to come back when their chunk reloads; a
-        // boss is a one-time fight, so a recorded kill keeps it from respawning.
+        // A boss is a one-time fight: a recorded kill keeps it from respawning.
         if (mapEntity.kind === 'enemy' && mapEntity.enemyType === 'boss' && isBossDefeated(mapEntity.id)) return;
+        // A regular enemy killed since the last rest or death stays dead, however often its chunk reloads.
+        if (mapEntity.kind === 'enemy' && isEnemySlain(mapEntity.id)) {
+            this.combat.addSlain(mapEntity);
+            return;
+        }
 
         const entity = createMapEntity(mapEntity);
         this.trackEntity(entity, key);
@@ -232,8 +287,9 @@ export class World {
         return this.entities;
     }
 
+    /** The menu too: the world stands behind it as its backdrop. */
     private isGameVisible(state: AppState) {
-        return state === 'GAME' || state === 'DEAD' || state === 'EDITOR';
+        return state === 'MENU' || state === 'GAME' || state === 'DEAD' || state === 'EDITOR';
     }
 
     public update(dt: number) {
@@ -246,9 +302,17 @@ export class World {
         // Same reasoning: the sea should keep moving while paused, dead or being
         // sculpted, instead of freezing mid-swell.
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
+        this.windStreaks.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.environment.followShadows(this.player.mesh.position);
 
-        if (this.paused || state === 'DEAD' || state === 'EDITOR') return;
+        if (state === 'DEAD') this.updateDeath(dt);
+        if (state === 'MENU') {
+            this.updateMenu(dt);
+            return;
+        }
+
+        // Not only DEAD and EDITOR: quitting to the menu leaves the world loaded, and it must not play on unseen.
+        if (this.paused || state !== 'GAME') return;
 
         for (const entity of this.entities) {
             entity.update(dt);
@@ -260,12 +324,17 @@ export class World {
         this.allBodies.push(...this.entities, this.player);
         this.collision.resolve(this.allBodies);
         this.seatOnTerrain();
+        this.updateTriggers();
         this.interaction.update(this.entities, this.player.mesh.position);
 
         this.followPlayer(camera);
+        this.cameraBlend.apply(camera, dt, this.player.mesh.position);
+        camera.updateMatrixWorld();
+        this.updateGhosts(camera);
         this.combat.update(dt, camera);
+        this.enemyFade.update(dt);
 
-        if (this.player.getComponent('health')?.isDead()) this.die(camera);
+        if (this.player.getComponent('health')?.isDead()) this.die();
     }
 
     /**
@@ -273,14 +342,24 @@ export class World {
      * and collision have settled x/z, rather than inside each component: a hard
      * snap is exact, cannot fall through the world, and needs no gravity — and
      * one loop here beats threading a ground offset through movement, dash,
-     * pathfinding and the AI.
+     * pathfinding and the AI. Movers only: static entities were seated once by
+     * their factory, and snapping them here would erase an authored heightOffset.
      */
     private seatOnTerrain() {
         for (const entity of this.entities) {
-            snapToGround(entity.mesh, entity.groundOffset);
+            if (entity.getComponent('enemyAI')) snapToGround(entity.mesh, entity.groundOffset);
         }
 
-        snapToGround(this.player.mesh, this.player.groundOffset);
+        const airborne = this.player.getComponent('dash')?.airborneHeight() ?? null;
+        if (airborne === null) snapToGround(this.player.mesh, this.player.groundOffset);
+        else this.player.mesh.position.y = airborne + this.player.groundOffset;
+    }
+
+    /** After seating: the player's height is final for this frame, so a box raised off the ground tests right. */
+    private updateTriggers() {
+        for (const entity of this.entities) {
+            entity.getComponent('trigger')?.test(this.player.mesh.position);
+        }
     }
 
     private updateGrass(camera: THREE.PerspectiveCamera) {
@@ -307,6 +386,14 @@ export class World {
         this.grass.update(this.experience.timer.getElapsed(), camera, this.grassColliders);
     }
 
+    /** Props the camera stands inside turn see-through; after followPlayer, so the test uses this frame's eye. */
+    private updateGhosts(camera: THREE.PerspectiveCamera) {
+        for (const entity of this.entities) {
+            const ghost = entity.getComponent('ghost');
+            ghost?.setGhosted(ghost.contains(camera.position));
+        }
+    }
+
     private stopPlayerInput() {
         this.player.getComponent('movement')?.clearInput();
         this.player.getComponent('dash')?.cancel();
@@ -315,42 +402,140 @@ export class World {
     private followPlayer(camera: THREE.PerspectiveCamera) {
         cameraEye(this.player.mesh.position, camera.position);
         camera.lookAt(this.player.mesh.position);
+        setFov(camera, GAME_FOV);
         camera.updateMatrixWorld();
+    }
+
+    /**
+     * The menu backdrop: the world stays still (no AI, no combat), only the
+     * idle animations play and the camera drifts round the knight. Updating
+     * the player whole is safe here: its input listeners only listen in GAME.
+     */
+    private updateMenu(dt: number) {
+        const camera = this.experience.camera;
+
+        this.player.update(dt);
+        for (const entity of this.entities) {
+            entity.getComponent('animator')?.update(dt);
+        }
+        this.enemyFade.hold(this.entities);
+
+        aimMenuShot(camera, this.feet(), this.menuYaw, this.experience.timer.getElapsed());
+        this.cameraBlend.apply(camera, dt, this.player.mesh.position);
+        camera.updateMatrixWorld();
+        this.updateGhosts(camera);
+    }
+
+    /** The ground point under the knight. */
+    private feet(): THREE.Vector3 {
+        const feet = this.menuFeet.copy(this.player.mesh.position);
+        feet.y -= this.player.groundOffset;
+        return feet;
     }
 
     public resetCamera() {
         this.followPlayer(this.experience.camera);
     }
 
-    private die(camera: THREE.PerspectiveCamera) {
+    /**
+     * Call once the world is on screen after leaving the menu under a black
+     * screen (the boot was not done yet): no glide there, the camera already
+     * stands in its gameplay shot when the black fades, and the enemies fade in then.
+     */
+    public reveal() {
+        this.cameraBlend.stop();
+        this.followPlayer(this.experience.camera);
+        this.enemyFade.start(this.entities);
+        events.emit('gameEntered');
+    }
+
+    public setShadows(enabled: boolean) {
+        this.environment.setShadows(enabled);
+    }
+
+    private die() {
         stateMachine.changeState('DEAD');
         this.stopPlayerInput();
-        const [x, y] = this.toScreen(this.player.mesh.position, camera);
-        events.emit('playerDied', x, y);
+        // Before the fade reads the materials, so it starts from their real colours.
+        this.player.getComponent('hitFlash')?.reset();
+        this.player.getComponent('deathFade')?.start();
+        this.deathReported = false;
+        events.emit('playerDied', loseAllCoins());
+    }
 
-        window.setTimeout(() => this.respawn(camera), RESPAWN_DELAY_MS);
+    /** The world stands still while dead; only the player's body whitens and fades, then the screen may close on it. */
+    private updateDeath(dt: number) {
+        const fade = this.player.getComponent('deathFade');
+        fade?.update(dt);
+        if (this.deathReported || fade?.done === false) return;
+
+        this.deathReported = true;
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('playerFaded', x, y);
     }
 
     private respawn(camera: THREE.PerspectiveCamera) {
         if (stateMachine.getState() !== 'DEAD') return;
 
         this.placeAtCheckpoint(camera);
-        this.player.getComponent('health')?.refill();
-        this.combat.resetEnemies();
-
+        this.restore();
         stateMachine.changeState('GAME');
 
-        const [x, y] = this.toScreen(this.player.mesh.position, camera);
+        const [x, y] = this.playerOnScreen(camera);
         events.emit('playerRespawned', x, y);
     }
 
-    /** Drop the player on the last rested bonfire and snap the camera to them. */
+    /**
+     * Freezes the world (same pause as the book: enemies and arrows stop, the
+     * player's input drops) while the screen closes onto the player.
+     */
+    private startRest() {
+        if (this.resting || stateMachine.getState() !== 'GAME') return;
+
+        this.resting = true;
+        setPaused('rest', true);
+        // The circle closes onto the player: "Rest at bonfire" must not sit inside it.
+        this.interaction.hidePrompt();
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('restStarted', x, y);
+    }
+
+    private finishRest() {
+        if (!this.resting) return;
+
+        this.resting = false;
+        this.restore();
+        setPaused('rest', false);
+        // Left for the menu under the black screen: nothing to open onto.
+        if (stateMachine.getState() !== 'GAME') return;
+
+        const [x, y] = this.playerOnScreen(this.experience.camera);
+        events.emit('playerRested', x, y);
+    }
+
+    /** What a respawn and a rest share: full health, standing still, every non-boss enemy back home. */
+    private restore() {
+        this.player.getComponent('health')?.refill();
+        this.player.getComponent('deathFade')?.reset();
+        // Died (or sat down) mid-swing: come back standing, not finishing the blow.
+        this.player.getComponent('combo')?.reset();
+        this.player.getComponent('animationDriver')?.reset();
+        this.combat.resetEnemies();
+    }
+
+    /**
+     * Drop the player beside the last rested bonfire and snap the camera to
+     * them. Always the same side of the fire, facing the same way, as the menu
+     * shot sees it: the flames never stand between the lens and the knight.
+     */
     private placeAtCheckpoint(camera: THREE.PerspectiveCamera) {
         const [checkpointX, , checkpointZ] = getCheckpoint();
-        const [spawnX, spawnZ] = findFreePoint(checkpointX, checkpointZ);
+        const spawn = planSpawn(checkpointX, checkpointZ, camera.aspect);
 
-        this.player.mesh.position.x = spawnX;
-        this.player.mesh.position.z = spawnZ;
+        this.player.mesh.position.x = spawn.x;
+        this.player.mesh.position.z = spawn.z;
+        this.player.mesh.rotation.y = spawn.facing;
+        this.menuYaw = spawn.menuYaw;
         snapToGround(this.player.mesh, this.player.groundOffset);
         // Before the next frame reads the entity list: respawning at a distant
         // bonfire must load its chunks, not drop the player into an empty world.
@@ -359,8 +544,11 @@ export class World {
         this.followPlayer(camera);
     }
 
-    private toScreen(position: THREE.Vector3, camera: THREE.PerspectiveCamera): [number, number] {
-        const ndc = position.clone().project(camera);
+    /** The middle of the player's body, not their feet: what a transition circle should frame. */
+    private playerOnScreen(camera: THREE.PerspectiveCamera): [number, number] {
+        const ndc = this.player.mesh.position.clone();
+        ndc.y += (this.player.bodyHeight ?? 0) / 2 - this.player.groundOffset;
+        ndc.project(camera);
         return [
             (ndc.x + 1) / 2 * window.innerWidth,
             (1 - ndc.y) / 2 * window.innerHeight,

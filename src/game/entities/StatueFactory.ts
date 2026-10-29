@@ -11,12 +11,11 @@ import { findMaterial, loadModel } from './loadModel';
 import { disposeObject3D } from './disposeObject3D';
 import { createLitMaterial } from '../render/materials';
 import { PALETTE } from '../render/palette';
-import { STATUE_COLLISION_RADIUS } from './collisionSizes';
+import { STATUE_COLLISION_RADIUS, STATUE_HEIGHT } from './collisionSizes';
 
 const GLOW_COLOR = PALETTE.gold;
 const INTERACT_RADIUS = 2;
 const MODEL_URL = 'models/statue.glb';
-const MODEL_HEIGHT = 2.6;
 
 export function createStatue(entity: StatueEntity): Entity {
     const group = new THREE.Group();
@@ -39,23 +38,27 @@ export function createStatue(entity: StatueEntity): Entity {
     glow.setActive(!!project && !isDiscovered(entity.projectId));
 
     // The primitives above stand in until the model arrives (and stay if it never does).
-    loadModel(MODEL_URL, { height: MODEL_HEIGHT })
+    loadModel(MODEL_URL, { height: STATUE_HEIGHT })
         .then(({ object, materials }) => {
-            const figure = findMaterial(materials, 'Statue');
-            if (!figure) throw new Error('statue.glb has no "Statue" material to glow');
+            // The gilding (crest, sword, plaque) and the carved grooves (visor slits, closed eyes) glow, not
+            // the stone: lit whole, the figure would lose its shape.
+            const gilt = findMaterial(materials, 'Gilt');
+            const carving = findMaterial(materials, 'Carving');
+            if (!gilt || !carving) throw new Error('statue.glb needs a "Gilt" and a "Carving" material to glow');
 
             group.remove(base, body);
             disposeObject3D(base);
             disposeObject3D(body);
             group.add(object);
-            glow.setMaterial(figure);
+            glow.setMaterials([gilt, carving]);
         })
         .catch((error) => console.error('[statue] model failed to load, keeping placeholder', error));
 
-    const label = project ? `Examine ${project.title}` : 'Examine statue';
     const interactable = new InteractableComponent(INTERACT_RADIUS, [{
-        key: 'KeyE',
-        label,
+        input: 'interact',
+        label: project
+            ? { key: 'prompt.examine', params: { title: project.title } }
+            : { key: 'prompt.examineStatue' },
         run: () => {
             glow.setActive(false);
 

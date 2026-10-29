@@ -1,55 +1,153 @@
 import { stateMachine } from './core/StateMachine';
 import { events } from './core/events';
 import { validateBook } from './domain/book';
+import type { Experience } from './game/Experience';
 import { initUIStateView } from './ui/UIStateView';
+import { initStaticText } from './ui/staticText';
 import { initMenuView } from './ui/views/MenuView';
 import { initInteractPromptView } from './ui/views/InteractPromptView';
 import { initBookView } from './ui/views/BookView';
 import { initHudView } from './ui/views/HudView';
-import { initIrisView } from './ui/views/IrisView';
+import { initTransitionView } from './ui/views/TransitionView';
+import { initLoadingView } from './ui/views/LoadingView';
 import { initEditorView } from './ui/views/EditorView';
+import { isTouchOnly } from './ui/device';
+import { initAudio, playTrack, setVolume, stopTrack } from './audio/audio';
+import { getSettings } from './domain/settings';
+import { VOLUME_CHANNELS, type VolumeChannel } from './data/settings';
+import type { AppState } from './core/StateMachine';
+import type { AudioBus, TrackId } from './data/sounds';
 
 validateBook();
+initAudio();
+
+/** Which buses each volume slider drives: UI sounds follow the effects. */
+const CHANNEL_BUSES: Record<VolumeChannel, readonly AudioBus[]> = {
+    music: ['music'],
+    sfx: ['sfx', 'ui', 'ambience'],
+};
+const applyVolume = (channel: VolumeChannel, volume: number) => {
+    for (const bus of CHANNEL_BUSES[channel]) setVolume(bus, volume);
+};
+for (const channel of VOLUME_CHANNELS) applyVolume(channel, getSettings().volume[channel]);
+events.on('volumeChanged', applyVolume);
+
+/**
+ * Music and ambience everywhere the world is, menu included (it stands behind it).
+ * Not in classic mode: a recruiter reading a list has no settings page to turn it down.
+ */
+const LOOPING: readonly TrackId[] = ['mainTheme', 'worldAmbience'];
+const updateTracks = (state: AppState) => {
+    for (const id of LOOPING) {
+        if (state === 'CLASSIC') stopTrack(id);
+        else playTrack(id);
+    }
+};
+updateTracks(stateMachine.getState());
+events.on('stateChange', updateTracks);
+
+/**
+ * The live knight on the book's Level page. Shared like the game's own canvas: the book places
+ * it on its page, the game draws into it, and neither has to know the other exists.
+ */
+const portraitCanvas = document.createElement('canvas');
 
 initUIStateView();
+initStaticText();
 initMenuView();
 initInteractPromptView();
-initBookView();
+initBookView(portraitCanvas);
 initHudView();
-initIrisView();
+initTransitionView();
+initLoadingView();
 if (import.meta.env.DEV) initEditorView();
+
+/** Share of the bar for downloading the game code; the models fill the rest. */
+const CODE_SHARE = 0.3;
+/** Past this the game starts anyway, with placeholders where models are still missing. */
+const ASSET_TIMEOUT_MS = 12000;
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 /**
- * Game mode's real loading happens here, not at startup: the Three.js chunk is
- * only downloaded once someone picks it, and building the world is the slow
- * part. The loading screen covers exactly that wait.
+ * Game mode's real loading: the Three.js chunk, the world and its models. It
+ * starts as soon as the menu is up, in the background, so the world can stand
+ * behind the menu; the loading screen only shows if someone picks Game before
+ * it is done. The classic book never waits on any of it.
  */
-async function bootGame() {
-    document.body.classList.add('booting');
-    try {
-        const { Experience } = await import('./game/Experience');
-        const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl');
-        if (!canvas) throw new Error('index.html is missing <canvas class="webgl">');
+async function bootGame(): Promise<Experience> {
+    events.emit('loadingProgress', 0);
+    const [{ Experience }, { watchAssets }] = await Promise.all([
+        import('./game/Experience'),
+        import('./game/assetLoading'),
+    ]);
+    events.emit('loadingProgress', CODE_SHARE);
 
-        Experience.init(canvas);
-        // Two frames: the first one renders the world, the second one puts it on screen.
-        await nextFrame();
-        await nextFrame();
-    } finally {
-        document.body.classList.remove('booting');
-    }
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl');
+    if (!canvas) throw new Error('index.html is missing <canvas class="webgl">');
+
+    // Before init: building the world is what requests the models.
+    const assets = watchAssets();
+    const experience = Experience.init(canvas, portraitCanvas);
+    await assets.settled(
+        (ratio) => events.emit('loadingProgress', CODE_SHARE + ratio * (1 - CODE_SHARE)),
+        ASSET_TIMEOUT_MS,
+    );
+    events.emit('loadingProgress', 1);
+
+    // Two frames: the first one renders the world, the second one puts it on screen.
+    await nextFrame();
+    await nextFrame();
+    return experience;
 }
 
-let gameLoaded = false;
-events.on('stateChange', (newState) => {
-    if (newState !== 'GAME' || gameLoaded) return;
-    gameLoaded = true;
+let game: Promise<Experience> | null = null;
+let ready = false;
+/** The menu faded to black before this entry: it reveals with a cut, even if the world got ready meanwhile. */
+let coveredEntry = false;
 
-    bootGame().catch((error) => console.error('[game] failed to start', error));
+events.on('gameEntryCovered', () => {
+    coveredEntry = true;
 });
 
-// Nothing to load before the menu: the menu is plain DOM and game mode loads
-// lazily. The old fixed 1.5 s wait only delayed recruiters for no reason.
+function startBoot(): Promise<Experience> {
+    game ??= bootGame().then(
+        (experience) => {
+            ready = true;
+            events.emit('worldReady');
+            return experience;
+        },
+        (error: unknown) => {
+            // Let the next click try again instead of replaying the same failure.
+            game = null;
+            throw error;
+        },
+    );
+    return game;
+}
+
+events.on('stateChange', (newState, oldState) => {
+    // Every way in from the menu. Once the world stands behind the menu, the
+    // camera glides from the menu shot into the game: nothing to wait for.
+    if (newState !== 'GAME' || oldState !== 'MENU') return;
+    const covered = coveredEntry;
+    coveredEntry = false;
+    if (ready && !covered) return;
+
+    // Picked before the background boot was done: cover the rest of the wait.
+    if (!ready) document.body.classList.add('booting');
+    startBoot()
+        .then((experience) => experience.world.reveal())
+        .catch((error: unknown) => console.error('[game] failed to start', error))
+        .finally(() => document.body.classList.remove('booting'));
+});
+
+// Nothing to load before the menu: it is plain DOM, and the world loads behind it.
 stateMachine.changeState('MENU');
+// After the menu's first paint, so the title and buttons never wait on the game's download.
+// Never on a touch-only device: it cannot play, and the world would only cost battery and data.
+if (!isTouchOnly()) {
+    requestAnimationFrame(() => {
+        startBoot().catch((error: unknown) => console.error('[game] failed to load the world', error));
+    });
+}

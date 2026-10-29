@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import type { Experience } from '../Experience';
 import { LIGHT } from '../render/palette';
 
-const HEMISPHERE_INTENSITY = 0.85;
-const SUN_INTENSITY = 2.8;
+/** Exported for the Level page portrait, lit like the world so the knight keeps its colours. */
+export const HEMISPHERE_INTENSITY = 0.85;
+export const SUN_INTENSITY = 2.8;
 /**
  * How much of the sun a shadow removes. Below 1 the surface colour still shows
  * through, so shade on grass stays green instead of going grey.
@@ -73,6 +74,17 @@ export class Environment {
         this.experience.scene.add(this.sun);
         // The target must be in the scene graph or its matrix never updates.
         this.experience.scene.add(this.sun.target);
+    }
+
+    /**
+     * Through the light rather than only `renderer.shadowMap.enabled`: materials
+     * are compiled against the number of shadow-casting lights, so flipping the
+     * renderer flag alone leaves them sampling a frozen shadow map. Changing
+     * `castShadow` changes the lights' state and three recompiles them once.
+     */
+    public setShadows(enabled: boolean) {
+        this.sun.castShadow = enabled;
+        this.experience.renderer.shadowMap.enabled = enabled;
     }
 
     /**

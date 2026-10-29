@@ -55,6 +55,7 @@ uniform vec4 uColliders[${MAX_COLLIDERS}];
 uniform int uColliderCount;
 varying vec3 vGrassNormal;
 varying vec2 vGrassRootXZ;
+varying float vGrassRootY;
 varying float vGrassHeight;
 
 vec3 grassWindDisplacement(vec2 rootXZ, float weight, float bladeHeight) {
@@ -107,6 +108,7 @@ vec3 grassColliderDisplacement(vec3 root, float weight, float bladeHeight, out f
 const GRASS_FRAGMENT_PARS = /* glsl */ `
 varying vec3 vGrassNormal;
 varying vec2 vGrassRootXZ;
+varying float vGrassRootY;
 varying float vGrassHeight;
 ${GRASS_COLOR_GLSL}
 `;
@@ -124,6 +126,7 @@ const GRASS_BEND = /* glsl */ `
 
 vec3 grassRoot = grassModel[3].xyz;
 vGrassRootXZ = grassRoot.xz;
+vGrassRootY = grassRoot.y;
 vGrassHeight = aHeight;
 
 vec3 grassBladeUp = normalize(normalMatrix * normalize(grassRot * vec3(0.0, 1.0, 0.0)));
@@ -154,7 +157,8 @@ normal = normalize(vGrassNormal);
 
 const GRASS_COLOR_PATCH = /* glsl */ `
 #include <color_fragment>
-diffuseColor.rgb = bladeColorAt(vGrassRootXZ, vGrassHeight);
+// Shaded by the root's height, so a blade matches the ground it grows from.
+diffuseColor.rgb = bladeColorAt(vGrassRootXZ, vGrassHeight) * heightShade(vGrassRootY);
 `;
 
 export function createGrassMaterial(uniforms: GrassUniforms) {

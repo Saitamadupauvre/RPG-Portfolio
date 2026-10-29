@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import { Entity } from './Entity';
 import { MovementComponent } from './components/MovementComponent';
 import { DashComponent } from './components/DashComponent';
@@ -7,31 +7,38 @@ import { ComboComponent, type ComboMove } from './components/ComboComponent';
 import { PlayerAnimationDriver } from './components/PlayerAnimationDriver';
 import { DustEmitterComponent } from './components/DustEmitterComponent';
 import { SwordTrailComponent } from './components/SwordTrailComponent';
+import { DashTrailComponent } from './components/DashTrailComponent';
+import { LIGHT, PALETTE } from '../render/palette';
+import { XraySilhouette } from '../render/xraySilhouette';
 import { HitFlashComponent } from './components/HitFlashComponent';
+import { DeathFadeComponent } from './components/DeathFadeComponent';
 import { HealthComponent } from '../../domain/components/HealthComponent';
 import { AnimatorComponent } from '../animation/AnimatorComponent';
-import { collectRig, equip } from '../animation/Rig';
 import { playerController } from './playerAnimation';
 import { createSwordMesh } from './SwordFactory';
-import { loadModel } from './loadModel';
+import { loadPlayerModel, PLAYER_HEIGHT } from './playerModel';
 import { events } from '../../core/events';
 import { createLitMaterial } from '../render/materials';
 import { getPlayerStats } from '../../domain/playerProgress';
+import { playSound } from '../../audio/audio';
 
 const PLAYER_RADIUS = 0.4;
+/** How far in front of the root the dash trail starts, so the roll never shows its head. */
+const DASH_TRAIL_AHEAD = 0.4;
 
-const PLAYER_MODEL_URL = 'player/player.glb';
-const PLAYER_HEIGHT = 1.8;
 /** Root sits at y = 0.9, so the model's feet must be half a body below its own origin. */
 const PLAYER_MODEL_ORIGIN_Y = -PLAYER_HEIGHT / 2;
 
-/** The Empty in the Blender file that marks where the sword's grip goes. */
-const WEAPON_SOCKET = 'Socket_HandR';
-
 const COMBO_MOVES: ComboMove[] = [
     // Scaled off the Strength stat (base 10): 12 and 16 damage before any upgrade.
-    { options: { distance: 0.9, duration: 0.18, color: 0x66ccff }, damageScale: 1.2, recovery: 0.18, windup: 0.12 },
-    { options: { distance: 1.1, duration: 0.22, color: 0x3399ff }, damageScale: 1.6, recovery: 0.35, windup: 0.14 },
+    // One move for now: the overhead chop that followed it is out until it is redone.
+    // Wider than the 0.6 default so a slash catches what stands beside its aim too.
+    {
+        options: { size: new THREE.Vector3(1.2, 0.9, 1.2), distance: 1, duration: 0.18, color: 0x66ccff },
+        damageScale: 1.2,
+        recovery: 0.18,
+        windup: 0.12,
+    },
 ];
 
 export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Group): Entity {
@@ -57,17 +64,20 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const sword = createSwordMesh();
     const standInSocket = new THREE.Object3D();
     standInSocket.position.set(-0.45, -0.55, 0.2);
-    standInSocket.rotation.x = 0.45;
+    // Like the model's rest pose: twisted 35Â° about the blade (Euler XYZ applies Z, the blade
+    // axis, first), then raised 60Â° above level (rotating +Z about X tips it up).
+    standInSocket.rotation.set(-Math.PI / 3, 0, THREE.MathUtils.degToRad(60));
     standInSocket.add(sword);
     visual.add(standInSocket);
 
     // Base values come from the progression rules, so there is one source of
-    // truth for "how fast / how tough is the player" — bindPlayerStats keeps
+    // truth for "how fast / how tough is the player" â€” bindPlayerStats keeps
     // them in sync after every upgrade.
     const stats = getPlayerStats();
 
-    const movement = new MovementComponent(root, cameraOffset, stats.speed);
-    const attack = new AttackComponent(root);
+    const movement = new MovementComponent(root, cameraOffset, stats.speed, PLAYER_RADIUS);
+    // Starts when the hitbox goes live (after the windup), the moment the blade really sweeps.
+    const attack = new AttackComponent(root, {}, { onAttackStart: () => playSound('swordSwing') });
     // Attack clips are full-body, so the body plants for the whole move: no turning, no sliding.
     const combo = new ComboComponent(attack, COMBO_MOVES, {
         onBusyChanged: (busy) => {
@@ -80,6 +90,7 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     const hitFlash = new HitFlashComponent(material);
     // The graph runs from frame one; it gets its bones and clips when the model arrives.
     const animator = new AnimatorComponent(playerController);
+    animator.on('footstep', () => playSound('footstep'));
 
     const health = new HealthComponent(stats.health, (hp, maxHp) => {
         events.emit('playerHealthChanged', hp, maxHp);
@@ -87,28 +98,20 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
 
     health.publish();
 
-    loadModel(PLAYER_MODEL_URL, { height: PLAYER_HEIGHT, originY: PLAYER_MODEL_ORIGIN_Y })
-        .then(({ object, materials, animations }) => {
+    // Grey ghost wherever anything hides the player.
+    const xray = new XraySilhouette(root, PALETTE.stone);
+
+    // Takes the sword out of the stand-in socket into the model's hand, and hooks up the animator.
+    loadPlayerModel({ originY: PLAYER_MODEL_ORIGIN_Y, sword, animator })
+        .then(({ object, materials }) => {
             visual.remove(body);
             geometry.dispose();
             material.dispose();
 
             visual.add(object);
             hitFlash.setMaterials(materials);
-
-            if (!equip(object, WEAPON_SOCKET, sword)) {
-                console.warn(`[player] model has no "${WEAPON_SOCKET}" empty; the sword stays at the stand-in position`);
-            }
-
-            if (animations.length === 0) {
-                console.warn('[player] model has no animations; export the Actions from Blender to bring it to life');
-                return;
-            }
-            try {
-                animator.bind(collectRig(object), animations);
-            } catch (error) {
-                console.error('[player] animation setup failed, the model will stand still', error);
-            }
+            // The placeholder's twin left with it; the model's meshes get theirs now.
+            xray.refresh();
         })
         .catch((error) => console.error('[player] model failed to load, keeping placeholder', error));
 
@@ -123,6 +126,16 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
     return entity
         .addComponent('movement', movement)
         .addComponent('dash', dash)
+        // Right after the dash moves the root, so the trail's head follows the body. The head
+        // sits in front of the body (root faces +Z): the dash roll would show it otherwise.
+        .addComponent('dashTrail', new DashTrailComponent(root, entityGroup, () => dash.isDashing, {
+            time: 0.2,
+            width: 0.7,
+            gradient: [
+                { t: 0, color: PALETTE.cream, alpha: 0.9 },
+                { t: 1, color: LIGHT.sky, alpha: 0 },
+            ],
+        }, new THREE.Vector3(0, 0, DASH_TRAIL_AHEAD)))
         .addComponent('attack', attack)
         .addComponent('combo', combo)
         .addComponent('animationDriver', new PlayerAnimationDriver(animator, visual, movement, { dash, attack, combo }))
@@ -130,5 +143,6 @@ export function createPlayer(cameraOffset: THREE.Vector3, entityGroup: THREE.Gro
         .addComponent('dust', new DustEmitterComponent(root, movement, entityGroup))
         .addComponent('swordTrail', new SwordTrailComponent(sword, attack, entityGroup))
         .addComponent('health', health)
-        .addComponent('hitFlash', hitFlash);
+        .addComponent('hitFlash', hitFlash)
+        .addComponent('deathFade', new DeathFadeComponent(root, xray));
 }

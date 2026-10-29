@@ -37,14 +37,20 @@ export const PALETTE = {
     stone: 0x8f8c99,
     /** Stone in shade: the dark end of rock colour variation. */
     stoneDeep: 0x74707f,
+    /** Bright metal: silver chest bands. Stone pushed lighter and cooler, so it reads as polished. */
+    steel: 0xa9a7b8,
     /** Deep water. */
     sea: 0x245a73,
     /** Primary accent: flowers, enemies, danger. Near the meadow's complement. */
     berry: 0xc65364,
+    /** Fire: the fox dragon's flames and throat. Hotter than berry, kept to small, short-lived shapes. */
+    ember: 0xff5a36,
     /** Secondary accent: treasure, brass, glows. */
     gold: 0xe8c068,
     /** Brightest value, for highlights and metal. */
     cream: 0xfff4dc,
+    /** Editor-only trigger volumes: a cyan nothing in the world uses, so a box never passes for scenery. */
+    trigger: 0x4fd6e8,
 } as const;
 
 /**
@@ -52,7 +58,7 @@ export const PALETTE = {
  * they touch, so they stay close to white.
  */
 export const LIGHT = {
-    sky: 0xbcdde8,
+    sky: 0x87c3ff,
     /** Bounce from the ground: the meadow, darkened. Colours every shaded side. */
     bounce: 0x7d8a5e,
     sun: 0xfff1d0,

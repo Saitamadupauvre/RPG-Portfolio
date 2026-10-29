@@ -14,5 +14,8 @@ export function createItem(entity: ItemEntity): Entity {
 
     applyTransform(mesh, entity, ITEM_RADIUS);
 
-    return new Entity(entity.id, mesh);
+    const item = new Entity(entity.id, mesh);
+    // The sphere is centred, so its bottom sits a radius below the origin; the editor reads heights back through this.
+    item.groundOffset = ITEM_RADIUS;
+    return item;
 }

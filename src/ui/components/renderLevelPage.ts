@@ -1,4 +1,11 @@
-import { getCoins, getStatViews, type StatId, type StatView } from '../../domain/playerProgress';
+import { formatNumber, t } from '../../domain/i18n';
+import {
+    getCoins,
+    getStatViews,
+    type StatDefinition,
+    type StatId,
+    type StatView,
+} from '../../domain/playerProgress';
 
 export type LevelPageContext = {
     /** True at a bonfire: the only place stats can be bought. */
@@ -18,13 +25,21 @@ function playerLevel(views: StatView[]): number {
     return 1 + views.reduce((sum, view) => sum + view.level, 0);
 }
 
-/** Left-hand page of the Level section: the player instead of a table of contents. */
-export function renderPlayerPage(): HTMLElement {
+/**
+ * Left-hand page of the Level section: the player instead of a table of contents. `portrait` is
+ * the one canvas the game draws the live knight into: appending it moves it here from the page
+ * the last render built, it is never copied.
+ */
+export function renderPlayerPage(portrait: HTMLCanvasElement): HTMLElement {
+    portrait.className = 'book-portrait';
+    const frame = el('div', 'book-player');
+    frame.appendChild(portrait);
+
     const page = el('div', 'book-player-page');
     page.append(
-        el('h2', 'book-page-title', `Level ${playerLevel(getStatViews())}`),
-        el('div', 'book-player'),
-        el('p', 'book-player-coins', `${getCoins()} coins`),
+        el('h2', 'book-page-title', t('level.title', { level: playerLevel(getStatViews()) })),
+        frame,
+        el('p', 'book-player-coins', t('level.coins', { count: getCoins() })),
     );
     return page;
 }
@@ -39,11 +54,16 @@ function renderPips(view: StatView): HTMLElement {
 }
 
 function renderBuyButton(view: StatView, onBuy: () => void): HTMLElement {
-    const button = el('button', 'book-link book-stat-buy', view.cost === null ? 'Max' : `Buy · ${view.cost}`);
+    const label = view.cost === null ? t('level.max') : t('level.buy', { cost: view.cost });
+    const button = el('button', 'book-link book-stat-buy', label);
     button.disabled = !view.affordable;
     button.addEventListener('click', onBuy);
     return button;
 }
+
+/** A stat value with its unit: `4.3 SPD`, `4,3 VIT` in French. */
+const formatStat = (definition: StatDefinition, value: number) =>
+    t(`stat.${definition.id}.value`, { value: formatNumber(value, definition.decimals) });
 
 function renderStat(view: StatView, context: LevelPageContext): HTMLElement {
     const { definition, level, value, nextValue } = view;
@@ -51,13 +71,13 @@ function renderStat(view: StatView, context: LevelPageContext): HTMLElement {
 
     const head = el('div', 'book-stat-head');
     head.append(
-        el('span', 'book-stat-name', definition.label),
-        el('span', 'book-stat-level', `Lv ${level}/${definition.maxLevel}`),
+        el('span', 'book-stat-name', t(`stat.${definition.id}.name`)),
+        el('span', 'book-stat-level', t('level.rank', { level, max: definition.maxLevel })),
     );
 
     const detail = nextValue === null
-        ? `${definition.format(value)} · maxed`
-        : `${definition.format(value)} → ${definition.format(nextValue)}`;
+        ? t('level.maxed', { value: formatStat(definition, value) })
+        : t('level.next', { value: formatStat(definition, value), next: formatStat(definition, nextValue) });
 
     row.append(head, renderPips(view), el('span', 'book-stat-value', detail));
     if (context.canLevelUp) row.appendChild(renderBuyButton(view, () => context.onBuy(definition.id)));
@@ -69,7 +89,7 @@ export function renderStatsPage(context: LevelPageContext): HTMLElement {
     const page = el('article', 'book-entry');
 
     const head = el('header', 'book-entry-header');
-    head.append(el('span', 'book-entry-kicker', 'Level'), el('h2', 'book-entry-title', 'Stats'));
+    head.append(el('span', 'book-entry-kicker', t('level.kicker')), el('h2', 'book-entry-title', t('level.heading')));
     page.appendChild(head);
 
     const list = el('div', 'book-stats');
@@ -77,7 +97,7 @@ export function renderStatsPage(context: LevelPageContext): HTMLElement {
     page.appendChild(list);
 
     if (!context.canLevelUp) {
-        page.appendChild(el('p', 'book-stat-hint', 'Rest at a bonfire to spend your coins.'));
+        page.appendChild(el('p', 'book-stat-hint', t('level.hint')));
     }
     return page;
 }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BLADE_HEIGHT, createBladeGeometry } from './bladeGeometry';
 import { createGrassMaterial, createGrassUniforms, MAX_COLLIDERS, type GrassUniforms } from './grassMaterial';
 import { createRandom, hashString, type Random } from './random';
+import { GRASS_LAYER } from '../../render/layers';
 
 export type GrassCollider = { position: THREE.Vector3; radius: number };
 
@@ -13,7 +14,7 @@ export type GrassSurfaceOptions = {
     chunkSize?: number;
     maxDistance?: number;
     acceptNormal?: (normal: THREE.Vector3) => number;
-    rejectPoint?: (x: number, z: number) => boolean;
+    rejectPoint?: (x: number, z: number, y: number) => boolean;
     triangles?: number[];
     sampleGeometry?: THREE.BufferGeometry;
 };
@@ -26,8 +27,6 @@ const DEFAULT_LOD: GrassLodLevel[] = [
     { distance: 32, ratio: 0.25 },
     { distance: Infinity, ratio: 0.1 },
 ];
-
-export const GRASS_LAYER = 1;
 
 const DEFAULT_MAX_DISTANCE = 70;
 const DEFAULT_DENSITY = 20;
@@ -199,7 +198,7 @@ export class GrassSurface {
             _normal.crossVectors(_ab, _ac).normalize();
 
             if (options.acceptNormal && random() >= options.acceptNormal(_normal)) continue;
-            if (options.rejectPoint?.(_point.x, _point.z)) continue;
+            if (options.rejectPoint?.(_point.x, _point.z, _point.y)) continue;
 
             _qAlign.setFromUnitVectors(UP, _normal);
             _qYaw.setFromAxisAngle(UP, random() * Math.PI * 2);

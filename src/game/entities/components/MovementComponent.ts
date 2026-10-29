@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { Component } from '../../../domain/components/Component';
 import { slideMove } from '../movement';
-import { getMovementBindings } from '../../input/keyboardLayout';
+import type { MoveAction } from '../../../data/settings';
+import { ARROW_KEYS } from '../../../domain/input';
+import { keyFor } from '../../../domain/settings';
 
 export class MovementComponent implements Component {
     public readonly name = 'movement';
@@ -16,11 +18,14 @@ export class MovementComponent implements Component {
     /** Who is holding the body still right now. A set, so a dash ending mid-attack cannot unfreeze the attack. */
     private frozenBy = new Set<string>();
     private turnSpeed: number;
+    /** The body's radius, kept off walls by slideMove; the dash reads it too. */
+    public readonly radius: number;
     /** Scratch vector: getInputDirection runs every frame, so it must not allocate. */
     private moveDirection = new THREE.Vector3();
 
-    constructor(mesh: THREE.Object3D, cameraOffset: THREE.Vector3, speed: number, turnSpeed = Math.PI * 10) {
+    constructor(mesh: THREE.Object3D, cameraOffset: THREE.Vector3, speed: number, radius: number, turnSpeed = Math.PI * 10) {
         this.mesh = mesh;
+        this.radius = radius;
         this.speed = speed;
         this.turnSpeed = turnSpeed;
         this.forward = new THREE.Vector3(-cameraOffset.x, 0, -cameraOffset.z).normalize();
@@ -34,6 +39,11 @@ export class MovementComponent implements Component {
 
     private onKeyDown = (event: KeyboardEvent) => this.keys.add(event.code);
     private onKeyUp = (event: KeyboardEvent) => this.keys.delete(event.code);
+
+    /** Walking speed in units/s (Agility), whether or not the body is moving right now. */
+    public get moveSpeed(): number {
+        return this.speed;
+    }
 
     public setSpeed(speed: number) {
         this.speed = speed;
@@ -62,8 +72,9 @@ export class MovementComponent implements Component {
         this.frozenBy.delete(reason);
     }
 
-    private isDown(codes: readonly string[]): boolean {
-        return codes.some((code) => this.keys.has(code));
+    /** The move's bound key, read every frame so a rebind applies at once, or its arrow. */
+    private isDown(move: MoveAction): boolean {
+        return this.keys.has(keyFor(move)) || this.keys.has(ARROW_KEYS[move]);
     }
 
     /**
@@ -71,13 +82,11 @@ export class MovementComponent implements Component {
      * The next call overwrites it.
      */
     public getInputDirection(): THREE.Vector3 | null {
-        const bindings = getMovementBindings();
-
         this.moveDirection.set(0, 0, 0);
-        if (this.isDown(bindings.forward)) this.moveDirection.add(this.forward);
-        if (this.isDown(bindings.back)) this.moveDirection.sub(this.forward);
-        if (this.isDown(bindings.right)) this.moveDirection.add(this.right);
-        if (this.isDown(bindings.left)) this.moveDirection.sub(this.right);
+        if (this.isDown('up')) this.moveDirection.add(this.forward);
+        if (this.isDown('down')) this.moveDirection.sub(this.forward);
+        if (this.isDown('right')) this.moveDirection.add(this.right);
+        if (this.isDown('left')) this.moveDirection.sub(this.right);
 
         return this.moveDirection.lengthSq() > 0 ? this.moveDirection.normalize() : null;
     }
@@ -91,7 +100,7 @@ export class MovementComponent implements Component {
         if (!move) return;
 
         this.facingAngle = Math.atan2(move.x, move.z);
-        if (this.frozenBy.size === 0) slideMove(this.mesh, move, this.speed * dt);
+        if (this.frozenBy.size === 0) slideMove(this.mesh, move, this.speed * dt, this.radius);
         if (!this.locked) this.rotateTowards(this.facingAngle, dt);
     }
 

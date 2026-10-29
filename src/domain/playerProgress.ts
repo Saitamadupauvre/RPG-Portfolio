@@ -4,15 +4,16 @@ import { loadJson, saveJson } from './persistence';
 
 export type { PlayerStats, StatId };
 
+/** No name or unit: the interface writes them in the reader's language (`stat.<id>.name` / `.value`). */
 export type StatDefinition = {
     id: StatId;
-    label: string;
     base: number;
     perLevel: number;
     maxLevel: number;
     baseCost: number;
     costPerLevel: number;
-    format: (value: number) => string;
+    /** Digits shown after the decimal point. */
+    decimals: number;
 };
 
 export type StatView = {
@@ -28,16 +29,16 @@ const STORAGE_KEY = 'rpg-portfolio:progress';
 
 export const STAT_DEFINITIONS: StatDefinition[] = [
     {
-        id: 'health', label: 'Vitality', base: 100, perLevel: 20, maxLevel: 10,
-        baseCost: 15, costPerLevel: 10, format: (value) => `${value} HP`,
+        id: 'health', base: 100, perLevel: 20, maxLevel: 10,
+        baseCost: 15, costPerLevel: 10, decimals: 0,
     },
     {
-        id: 'damage', label: 'Strength', base: 10, perLevel: 4, maxLevel: 10,
-        baseCost: 20, costPerLevel: 12, format: (value) => `${value} DMG`,
+        id: 'damage', base: 10, perLevel: 4, maxLevel: 10,
+        baseCost: 20, costPerLevel: 12, decimals: 0,
     },
     {
-        id: 'speed', label: 'Agility', base: 4, perLevel: 0.3, maxLevel: 10,
-        baseCost: 25, costPerLevel: 15, format: (value) => `${value.toFixed(1)} SPD`,
+        id: 'speed', base: 4, perLevel: 0.3, maxLevel: 10,
+        baseCost: 25, costPerLevel: 15, decimals: 1,
     },
 ];
 
@@ -105,6 +106,17 @@ export function addCoins(amount: number) {
     state.coins += amount;
     save();
     events.emit('coinsChanged', state.coins);
+}
+
+/** Death takes every coin carried. Returns how many were lost. */
+export function loseAllCoins(): number {
+    const lost = state.coins;
+    if (lost === 0) return 0;
+
+    state.coins = 0;
+    save();
+    events.emit('coinsChanged', state.coins);
+    return lost;
 }
 
 export function getStatLevel(id: StatId): number {

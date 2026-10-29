@@ -1,3 +1,5 @@
+import tiles from './tileMap.json';
+
 /**
  * The world floor, as a grid of tiles at integer levels.
  *
@@ -25,19 +27,12 @@ export type TileMap = {
     waterLevel?: number;
 };
 
-const COLS = 60;
-const ROWS = 60;
-
-export const tileMap: TileMap = {
-    cols: COLS,
-    rows: ROWS,
-    tileSize: 2,
-    levelHeight: 1,
-    levels: new Array<number>(COLS * ROWS).fill(0),
-    // Just under the default flat floor, so an unsculpted map is dry land and
-    // only tiles dug below zero fill with water.
-    waterLevel: -0.5,
-};
+/**
+ * The terrain itself is `tileMap.json`, written by the editor (F1 > Export
+ * map, next to `mapLayout.json`): drop a new export over that file to change the ground. A flat 60x60
+ * floor with the sea just under it is the empty map.
+ */
+export const tileMap: TileMap = tiles;
 
 /**
  * Grows or shrinks the grid around the same centre, keeping the tiles that

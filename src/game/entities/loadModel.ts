@@ -68,11 +68,14 @@ export interface LoadedModel {
  * cache safe; it goes through SkeletonUtils because a plain clone() leaves a skinned mesh
  * pointing at the original's bones.
  */
-export async function loadModel(url: string, fit: ModelFitOptions): Promise<LoadedModel> {
+export async function loadModel(url: string, fit?: ModelFitOptions): Promise<LoadedModel> {
     const { scene, animations } = await load(url);
     const object = cloneSkinned(scene);
 
     const materials: TintableMaterial[] = [];
+    // One copy per material of the file, not per mesh: meshes the file paints alike (a chest's
+    // body and lid both in "Trim") keep sharing it, so a glow or tint on it reaches them all.
+    const converted = new Map<THREE.Material, THREE.Material>();
     object.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         child.castShadow = true;
@@ -86,9 +89,13 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
         // step. Converting here rather than in the caller means every model in the game
         // is lit the same way by construction, with no factory left to forget it.
         const convert = (material: THREE.Material): THREE.Material => {
+            const known = converted.get(material);
+            if (known) return known;
+
             const lit = material instanceof THREE.MeshStandardMaterial
                 ? fromGltfMaterial(material)
                 : material.clone();
+            converted.set(material, lit);
             if ('color' in lit) materials.push(lit as TintableMaterial);
             return lit;
         };
@@ -97,6 +104,9 @@ export async function loadModel(url: string, fit: ModelFitOptions): Promise<Load
             ? child.material.map(convert)
             : convert(child.material);
     });
+
+    // No fit: kept as built, origin and units straight from Blender (a sword whose origin is its grip).
+    if (!fit) return { object, materials, animations };
 
     const box = new THREE.Box3().setFromObject(object);
     const size = new THREE.Vector3();

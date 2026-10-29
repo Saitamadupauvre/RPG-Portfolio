@@ -1,5 +1,6 @@
-import type { MapEntity, Vec3 } from '../../data/MapEntity';
+import type { EnemyEntity, MapEntity, Vec3 } from '../../data/MapEntity';
 import { randomBonfireModel } from '../../data/bonfireModels';
+import { isTutorialId } from '../../data/tutorials';
 import { projects } from '../../data/projects';
 import { isPropModel, isPropModelKind, PROP_MODELS, randomModelOfKind } from '../../data/propModels';
 
@@ -16,7 +17,7 @@ const builders: {
     enemy: (id, position, variant) => ({
         kind: 'enemy',
         id,
-        enemyType: (variant || 'grunt') as 'grunt' | 'elite' | 'boss',
+        enemyType: (variant || 'grunt') as EnemyEntity['enemyType'],
         position,
     }),
     chest: (id, position, variant) => {
@@ -64,11 +65,22 @@ const builders: {
         model: randomBonfireModel(),
         position,
     }),
+    trigger: (id, position, variant) => ({
+        kind: 'trigger',
+        id,
+        action: { kind: 'tutorial', tutorialId: isTutorialId(variant) ? variant : 'movement' },
+        position,
+        // Wide enough that the player cannot slip past its corner, tall enough to catch a dash hop.
+        scale: [4, 2, 4],
+    }),
 };
 
 export function uniqueId(kind: string, layout: MapEntity[]): string {
+    // A Set first: scanning the whole layout once per candidate index made a
+    // scatter stroke over a few hundred trees quadratic.
+    const taken = new Set(layout.map((entity) => entity.id));
     let index = 1;
-    while (layout.some((entity) => entity.id === `${kind}-${index}`)) index++;
+    while (taken.has(`${kind}-${index}`)) index++;
     return `${kind}-${index}`;
 }
 

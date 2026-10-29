@@ -2,6 +2,7 @@ import { mapLayout } from '../../data/mapLayout';
 import type { MapEntity } from '../../data/MapEntity';
 import { getTileGrid } from './terrainField';
 import { isPropModel, PROP_MODELS } from '../../data/propModels';
+import { WALKER_HEADROOM } from '../entities/collisionSizes';
 import {
     buildNavGrid,
     colToWorld,
@@ -15,6 +16,8 @@ import {
 const LANDMARK_FOOTPRINT = 1;
 
 function isBlocking(entity: MapEntity): boolean {
+    // Lifted overhead (a rock perched on a ledge or another rock): walkers pass under it.
+    if ((entity.heightOffset ?? 0) >= WALKER_HEADROOM) return false;
     // A radius of 0 is a model you walk through (a bush).
     if (entity.kind === 'prop') return isPropModel(entity.propType) && PROP_MODELS[entity.propType].radius > 0;
     return entity.kind === 'statue' || entity.kind === 'bonfire';

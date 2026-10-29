@@ -13,6 +13,15 @@ const PATCH_EDGE_HIGH = 0.62;
 const TIP_BRIGHTNESS = 1.2;
 const BLADE_VARIATION = 0.04;
 const BLADE_VARIATION_SCALE = 13.17;
+/**
+ * Height shading: the ground darkens toward the valleys and brightens toward
+ * the tops, smoothly between these world heights, so the levels read at a
+ * glance from the isometric camera. Outside the range the ends hold.
+ */
+const HEIGHT_SHADE_LOW_Y = -2;
+const HEIGHT_SHADE_HIGH_Y = 6;
+const HEIGHT_SHADE_LOW = 0.72;
+const HEIGHT_SHADE_HIGH = 1.12;
 
 export type GrassColorUniforms = {
     uGrassColor: { value: THREE.Color };
@@ -54,6 +63,11 @@ vec3 grassColorAt(vec2 xz) {
     float n = meadowNoise(p) * ${PATCH_OCTAVE_MIX.toFixed(2)}
         + meadowNoise(p * ${PATCH_DETAIL_SCALE.toFixed(1)} + ${PATCH_DETAIL_OFFSET.toFixed(1)}) * ${(1 - PATCH_OCTAVE_MIX).toFixed(2)};
     return mix(uGrassColor, uGrassPatchColor, smoothstep(${PATCH_EDGE_LOW.toFixed(2)}, ${PATCH_EDGE_HIGH.toFixed(2)}, n));
+}
+
+float heightShade(float y) {
+    return mix(${HEIGHT_SHADE_LOW.toFixed(3)}, ${HEIGHT_SHADE_HIGH.toFixed(3)},
+        smoothstep(${HEIGHT_SHADE_LOW_Y.toFixed(1)}, ${HEIGHT_SHADE_HIGH_Y.toFixed(1)}, y));
 }
 
 vec3 bladeColorAt(vec2 root, float height) {

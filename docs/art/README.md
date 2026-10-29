@@ -25,6 +25,7 @@ Defined in `src/game/render/palette.ts`. Every lit surface picks from it.
 | `bark`     | `#6b4f3f` | Dark wood, cliff shadow, leather, boss      |
 | `stoneDeep` | `#74707f` | Stone in shade (rock colour variation)     |
 | `stone`    | `#8f8c99` | Rock, walls, bonfire stones                 |
+| `steel`    | `#a9a7b8` | Bright metal: silver chest bands, armour    |
 | `sea`      | `#245a73` | Deep water                                  |
 | `berry`    | `#c65364` | Flowers, small enemies                      |
 | `gold`     | `#e8c068` | Treasure, brass, glows, pickups             |

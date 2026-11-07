@@ -4,7 +4,8 @@ import { LOCALE_NAMES, LOCALES, type Locale } from '../../data/locale';
 import { currentLocale, t } from '../../domain/i18n';
 import { setLanguage } from '../../domain/settings';
 import { getIris } from '../components/iris';
-import { isTouchOnly } from '../device';
+import { isTouchOnly } from '../../core/device';
+import { enterGameFullscreen } from './TouchControlsView';
 import { renderSprite } from '../components/pixelSprite';
 import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
 
@@ -52,10 +53,9 @@ export function initMenuView() {
     const languageSwitch = document.getElementById('menu-lang');
     if (languageSwitch) initLanguageSwitch(languageSwitch);
 
-    // No world boots on a touch-only device (main.ts): the game stays on the menu, greyed, so it is not a surprise.
+    // A touch-only device boots the world only once Play is picked (main.ts), and plays it held sideways.
     if (isTouchOnly()) {
         document.body.classList.add('touch-only');
-        if (enterGame instanceof HTMLButtonElement) enterGame.disabled = true;
         const hint = enterGame?.querySelector<HTMLElement>('.menu-btn-hint');
         if (hint) {
             // Through its key, so a language switch rewrites this text too (staticText.ts).
@@ -73,6 +73,8 @@ export function initMenuView() {
     enterGame?.addEventListener('click', async () => {
         // A second click while the screen fades would start a second entry.
         if (entering) return;
+        // First, while the browser still counts this as the tap's own handler.
+        enterGameFullscreen();
 
         // Loaded: the menu fades out while the camera glides down into the game.
         if (worldReady) {

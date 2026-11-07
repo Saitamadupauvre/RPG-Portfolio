@@ -16,7 +16,7 @@ export const en = {
     'menu.nav': 'Choose how to browse',
     'menu.play': 'Play the game',
     'menu.play.hint': 'Explore, fight, discover the projects',
-    'menu.play.touchHint': 'Needs a keyboard and mouse: open it on a computer',
+    'menu.play.touchHint': 'Hold your phone sideways to play',
     'menu.fast': 'Fast portfolio',
     'menu.fast.hint': 'Every project in one list, no game',
     'menu.callout': 'Recruiter in a hurry?',
@@ -24,8 +24,18 @@ export const en = {
     'menu.footer': 'Keyboard & mouse · best on desktop',
     'menu.language': 'Language',
 
+    // ---------- rotate (touch, held upright) ----------
+    'rotate.title': 'Turn your phone',
+    'rotate.body': 'The game is played sideways. It waits, paused, until you turn it.',
+
     // ---------- loading ----------
     'loading.label': 'Loading',
+
+    // ---------- touch controls ----------
+    'touch.move': 'Move',
+    'touch.attack': 'Attack (tap: nearest enemy, drag: aim)',
+    'touch.dash': 'Dash',
+    'touch.book': 'Open the book',
 
     // ---------- book frame ----------
     'book.prev': 'Previous page',

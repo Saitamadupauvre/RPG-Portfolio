@@ -4,6 +4,7 @@ import { slideMove } from '../movement';
 import type { MoveAction } from '../../../data/settings';
 import { ARROW_KEYS } from '../../../domain/input';
 import { keyFor } from '../../../domain/settings';
+import { stickActive, touchInput } from '../../../core/touchInput';
 
 export class MovementComponent implements Component {
     public readonly name = 'movement';
@@ -87,6 +88,13 @@ export class MovementComponent implements Component {
         if (this.isDown('down')) this.moveDirection.sub(this.forward);
         if (this.isDown('right')) this.moveDirection.add(this.right);
         if (this.isDown('left')) this.moveDirection.sub(this.right);
+
+        // The touch stick, in screen axes: up the screen is the camera's ground forward.
+        // Past the deadzone it walks at full speed: a slower walk would skate the Walk clip.
+        const stick = touchInput.move;
+        if (stickActive(stick)) {
+            this.moveDirection.addScaledVector(this.forward, stick.y).addScaledVector(this.right, stick.x);
+        }
 
         return this.moveDirection.lengthSq() > 0 ? this.moveDirection.normalize() : null;
     }

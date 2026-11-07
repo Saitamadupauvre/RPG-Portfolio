@@ -1,6 +1,53 @@
-/* Full-screen moments: the loading screen and the iris transition.
-   Stacked above the UI container (z-index 2): iris 8, loading 20
-   (it covers the black iris while the game boots). */
+/* Full-screen moments: the loading screen, the iris transition and the
+   rotate screen. Stacked above the UI container (z-index 2): iris 8,
+   loading 20 (it covers the black iris while the game boots), rotate 30
+   (nothing else can be played or read until the phone turns). */
+
+/* ---------- rotate (ui/views/RotateView.ts) ---------- */
+
+#rotate-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0 16px;
+  text-align: center;
+  color: #fff4dc;
+  background:
+    radial-gradient(ellipse at 50% 40%, #1d1a2c 0%, transparent 70%),
+    #0b0a12;
+}
+
+.rotate-needed #rotate-screen {
+  display: flex;
+  pointer-events: auto;
+}
+
+.rotate-phone .sprite {
+  --px: 6px;
+  --sprite-ms: 1600ms;
+}
+
+.rotate-title {
+  margin: 0;
+  font-family: var(--pixel-font-display);
+  font-size: 16px;
+  line-height: 1.5;
+  color: #f2c14e;
+  text-shadow: 2px 2px 0 #3b2410;
+}
+
+.rotate-body {
+  max-width: 28ch;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
 
 /* ---------- iris ---------- */
 

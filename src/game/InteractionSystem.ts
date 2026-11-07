@@ -20,6 +20,12 @@ export class InteractionSystem {
 
             this.pressedKeys.add(event.code);
         });
+
+        // A tapped prompt button counts as its key: queued the same way, run on the next update.
+        events.on('touchInteract', (input) => {
+            if (!isGameplayActive()) return;
+            if (this.currentActions?.some((action) => action.input === input)) this.pressedKeys.add(keyFor(input));
+        });
     }
 
     public update(entities: Entity[], playerPosition: THREE.Vector3) {

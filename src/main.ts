@@ -11,7 +11,9 @@ import { initHudView } from './ui/views/HudView';
 import { initTransitionView } from './ui/views/TransitionView';
 import { initLoadingView } from './ui/views/LoadingView';
 import { initEditorView } from './ui/views/EditorView';
-import { isTouchOnly } from './ui/device';
+import { initRotateView } from './ui/views/RotateView';
+import { initTouchControlsView } from './ui/views/TouchControlsView';
+import { isTouchOnly } from './core/device';
 import { initAudio, playTrack, setVolume, stopTrack } from './audio/audio';
 import { getSettings } from './domain/settings';
 import { VOLUME_CHANNELS, type VolumeChannel } from './data/settings';
@@ -60,6 +62,8 @@ initBookView(portraitCanvas);
 initHudView();
 initTransitionView();
 initLoadingView();
+initRotateView();
+initTouchControlsView();
 if (import.meta.env.DEV) initEditorView();
 
 /** Share of the bar for downloading the game code; the models fill the rest. */
@@ -145,7 +149,8 @@ events.on('stateChange', (newState, oldState) => {
 // Nothing to load before the menu: it is plain DOM, and the world loads behind it.
 stateMachine.changeState('MENU');
 // After the menu's first paint, so the title and buttons never wait on the game's download.
-// Never on a touch-only device: it cannot play, and the world would only cost battery and data.
+// Not on a touch-only device: most phone visitors only read the book, so the world would cost them
+// battery and data for nothing. Picking Game there loads it on demand (the stateChange handler above).
 if (!isTouchOnly()) {
     requestAnimationFrame(() => {
         startBoot().catch((error: unknown) => console.error('[game] failed to load the world', error));

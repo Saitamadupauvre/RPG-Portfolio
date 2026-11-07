@@ -294,6 +294,10 @@ export class World {
         this.water.onTerrainChanged();
     }
 
+    public nearestEnemy(position: THREE.Vector3, range: number): Entity | null {
+        return this.combat.nearestEnemy(position, range);
+    }
+
     public getEntities(): Entity[] {
         return this.entities;
     }

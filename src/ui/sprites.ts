@@ -130,3 +130,98 @@ const ARROW_PALETTE = { K: '#2b1a0e', Y: '#f2c14e', O: '#b8801f', W: '#fff4c8' }
 
 export const ARROW_POINT_LEFT: Sprite = { palette: ARROW_PALETTE, frames: [ARROW_LEFT] };
 export const ARROW_POINT_RIGHT: Sprite = { palette: ARROW_PALETTE, frames: [mirror(ARROW_LEFT)] };
+
+const PHONE_UPRIGHT: SpriteFrame = [
+    '.............',
+    '...KKKKKKK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KSSSSSK...',
+    '...KKK.KKK...',
+    '...KKKKKKK...',
+    '.............',
+];
+
+/** The same phone a quarter turn anticlockwise: the button ends up on the right. */
+const PHONE_SIDEWAYS: SpriteFrame = [
+    '.............',
+    '.............',
+    '.............',
+    '.KKKKKKKKKKK.',
+    '.KSSSSSSSSKK.',
+    '.KSSSSSSSSKK.',
+    '.KSSSSSSSS.K.',
+    '.KSSSSSSSSKK.',
+    '.KSSSSSSSSKK.',
+    '.KKKKKKKKKKK.',
+    '.............',
+    '.............',
+    '.............',
+];
+
+/** Upright, then sideways, for the rotate screen. */
+export const PHONE_TURN: Sprite = {
+    palette: { K: '#fff4dc', S: '#f2c14e' },
+    frames: [PHONE_UPRIGHT, PHONE_SIDEWAYS],
+};
+
+/** Touch attack stick: a sword, blade up to the right. */
+export const SWORD: Sprite = {
+    palette: { K: '#1b0e14', W: '#fff4dc', S: '#b0aabe', G: '#f2c14e', D: '#a86a1e', H: '#b27a45', h: '#7a3519' },
+    frames: [[
+        '..............K.',
+        '.............KWK',
+        '............KWSK',
+        '...........KWSK.',
+        '..........KWSK..',
+        '.........KWSK...',
+        '........KWSK....',
+        '...KK..KWSK.....',
+        '..KDGKKWSK......',
+        '...KDGWSK.......',
+        '....KDGK........',
+        '...KHhDGK.......',
+        '.KKHhKKDK.......',
+        'KGGhK..K........',
+        'KDGK............',
+        '.KK.............',
+    ]],
+};
+
+/** Touch dash button: two chevrons rushing right. */
+export const DASH: Sprite = {
+    palette: { S: '#f2c14e', B: '#fff4dc' },
+    frames: [[
+        'SS....BB....',
+        '.SS....BB...',
+        '..SS....BB..',
+        '...SS....BB.',
+        '....SS....BB',
+        '...SS....BB.',
+        '..SS....BB..',
+        '.SS....BB...',
+        'SS....BB....',
+    ]],
+};
+
+/** Touch book button: the closed book, gold plate on the cover, page edges on the right. */
+export const BOOK: Sprite = {
+    palette: { C: '#b4582e', D: '#7a3519', G: '#f2c14e', P: '#fff4dc' },
+    frames: [[
+        '.CCCCCCCCC..',
+        '.CCCCCCCCCP.',
+        '.CCGGGGGCCP.',
+        '.CCGCCCGCCP.',
+        '.CCGGGGGCCP.',
+        '.CCCCCCCCCP.',
+        '.CCCCCCCCCP.',
+        '.CCCCCCCCCP.',
+        '.DDDDDDDDDP.',
+        '..PPPPPPPPP.',
+    ]],
+};

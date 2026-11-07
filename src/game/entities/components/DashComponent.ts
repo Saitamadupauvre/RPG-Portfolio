@@ -6,6 +6,7 @@ import { planGapLeap, slideMove, type GapLeap } from '../movement';
 import { groundHeight } from '../../world/terrainField';
 import type { MovementComponent } from './MovementComponent';
 import { playSound } from '../../../audio/audio';
+import { events } from '../../../core/events';
 
 const DASH_SPEED = 14;
 const DASH_DURATION = 0.18;
@@ -30,7 +31,12 @@ export class DashComponent implements Component {
         this.mesh = mesh;
         this.movement = movement;
         window.addEventListener('keydown', this.onKeyDown);
+        events.on('touchDash', this.onTouchDash);
     }
+
+    private onTouchDash = () => {
+        if (isGameplayActive()) this.trigger();
+    };
 
     public get isDashing(): boolean {
         return this.remaining > 0;
@@ -113,5 +119,6 @@ export class DashComponent implements Component {
 
     public dispose() {
         window.removeEventListener('keydown', this.onKeyDown);
+        events.off('touchDash', this.onTouchDash);
     }
 }

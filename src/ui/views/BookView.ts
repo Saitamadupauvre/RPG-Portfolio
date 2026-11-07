@@ -334,6 +334,10 @@ export function initBookView(portrait: HTMLCanvasElement) {
         else if (canOpenFromKey()) open('game');
     });
 
+    events.on('bookRequested', () => {
+        if (!isOpen() && canOpenFromKey()) open('game');
+    });
+
     events.on('stateChange', (state) => {
         if (state === 'CLASSIC') open('classic');
         else if (isOpen() && state !== MODE_STATE[mode]) close();

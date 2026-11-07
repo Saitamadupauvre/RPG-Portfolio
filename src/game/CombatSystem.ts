@@ -65,6 +65,20 @@ export class CombatSystem {
         this.fire.clear();
     }
 
+    /** The closest living enemy within `range` of `position`, for the touch attack's auto-aim. */
+    public nearestEnemy(position: THREE.Vector3, range: number): Entity | null {
+        let nearest: Entity | null = null;
+        let nearestSq = range * range;
+        for (const { entity } of this.enemies) {
+            if (entity.getComponent('health')?.isDead() ?? true) continue;
+            const distanceSq = entity.mesh.position.distanceToSquared(position);
+            if (distanceSq >= nearestSq) continue;
+            nearest = entity;
+            nearestSq = distanceSq;
+        }
+        return nearest;
+    }
+
     public addEnemy(entity: Entity, source: EnemyEntity) {
         this.enemies.push({ entity, source });
         this.sources.push(source);

@@ -2,6 +2,7 @@ import { events, type PromptAction } from '../../core/events';
 import { translate } from '../../domain/i18n';
 import { bindingFor } from '../../domain/settings';
 import { keyName } from '../components/printedKeys';
+import { isTouchOnly } from '../../core/device';
 
 export function initInteractPromptView() {
     const prompt = document.getElementById('interact-prompt');
@@ -9,6 +10,7 @@ export function initInteractPromptView() {
 
     /** What is on screen, kept so a language switch can rewrite it in place. */
     let shown: readonly PromptAction[] | null = null;
+    const touch = isTouchOnly();
 
     const render = () => {
         if (!shown || shown.length === 0) {
@@ -18,6 +20,16 @@ export function initInteractPromptView() {
 
         // Keys are looked up on every show, so a key rebound in the settings is what the prompt says.
         prompt.replaceChildren(...shown.map((action) => {
+            // No keys on a phone: each action is a button to tap instead.
+            if (touch) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'prompt-action prompt-tap';
+                button.textContent = translate(action.label);
+                button.addEventListener('click', () => events.emit('touchInteract', action.input));
+                return button;
+            }
+
             const item = document.createElement('span');
             item.className = 'prompt-action';
 

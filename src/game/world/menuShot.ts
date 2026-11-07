@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { findFreePoint } from './navigation';
 import { isNearObstacle } from './obstacles';
 import { groundHeight } from './terrainField';
+import { isTouchOnly } from '../../core/device';
 
-/** The gameplay lens. The menu shot uses a longer one, so the blend between them also zooms. */
-export const GAME_FOV = 75;
+/** The gameplay lens, narrower on a phone (the knight was tiny on a small screen, and the near crowns huge). The menu shot uses a longer one, so the blend between them also zooms. */
+export const GAME_FOV = isTouchOnly() ? 62 : 75;
 /** Narrow, like a portrait lens: the knight fills the frame without the camera standing in their face. */
 const MENU_FOV = 32;
 

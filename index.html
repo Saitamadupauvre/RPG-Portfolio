@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>RPG Portfolio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./src/style/book.css">
   <link rel="stylesheet" href="./src/style/hud.css">
   <link rel="stylesheet" href="./src/style/screens.css">
+  <link rel="stylesheet" href="./src/style/touch.css">
 </head>
 <body>
   <canvas class="webgl"></canvas>
@@ -65,6 +66,16 @@
       <div class="hud-toast" id="loot-toast"></div>
     </div>
     <div id="interact-prompt"></div>
+    <div id="touch-controls">
+      <div class="touch-move-zone" id="touch-move-zone" aria-label="Move" data-i18n-aria-label="touch.move">
+        <div class="touch-stick" id="touch-move-stick"><div class="touch-knob"></div></div>
+      </div>
+      <div class="touch-actions">
+        <button class="touch-btn touch-dash" id="touch-dash" type="button" aria-label="Dash" data-i18n-aria-label="touch.dash"></button>
+        <div class="touch-stick touch-stick-attack" id="touch-attack-stick" role="button" aria-label="Attack" data-i18n-aria-label="touch.attack"><div class="touch-knob" id="touch-attack-knob"></div></div>
+      </div>
+      <button class="touch-btn touch-book" id="touch-book" type="button" aria-label="Open the book" data-i18n-aria-label="touch.book"></button>
+    </div>
     <div class="book-overlay" id="book">
       <div class="book-backdrop"></div>
       <div class="book" id="book-body">
@@ -87,6 +98,11 @@
     </div>
   </div>
   <div id="iris"></div>
+  <div class="pixel-ui" id="rotate-screen" role="alert">
+    <span class="rotate-phone" id="rotate-phone"></span>
+    <p class="rotate-title" data-i18n="rotate.title">Turn your phone</p>
+    <p class="rotate-body" data-i18n="rotate.body">The game is played sideways. It waits, paused, until you turn it.</p>
+  </div>
   <div class="screen pixel-ui" id="loading-screen">
     <div class="loading-embers" id="loading-embers"></div>
     <div class="loading-center">

@@ -7,6 +7,7 @@ import type { PlayerStats } from '../data/stats';
 import type { TutorialId } from '../data/tutorials';
 import { EventEmitter } from './EventEmitter';
 import type { ScatterSettings, ScreenRect } from './editorTools';
+import type { StickAxis } from './touchInput';
 
 /** What the interact prompt shows: an input (drawn with whatever key is bound to it) and what it does. */
 export type PromptAction = { input: InputAction; label: Message };
@@ -61,6 +62,18 @@ export type AppEvents = {
     pauseChanged: [paused: boolean];
     /** A trigger opened a tutorial: show its page in the book. */
     tutorialShown: [tutorialId: TutorialId];
+
+    /**
+     * The touch attack stick. `aim` = where the stick points (screen axes, see `core/touchInput`),
+     * null for a tap: strike the nearest enemy. Sent every frame while the stick is held aside,
+     * so holding it chains the combo.
+     */
+    touchAttack: [aim: StickAxis | null];
+    touchDash: [];
+    /** The touch book button: open the book (the B key on a keyboard). */
+    bookRequested: [];
+    /** A tapped button of the interact prompt: run the action bound to this input. */
+    touchInteract: [input: InputAction];
 
     editorPlaceKindChanged: [kind: MapEntity['kind'] | null, variant: string];
     editorGizmoChanged: [mode: 'translate' | 'rotate' | 'scale'];

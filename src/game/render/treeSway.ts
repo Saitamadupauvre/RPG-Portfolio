@@ -49,8 +49,13 @@ export function applyTreeSway(material: THREE.Material, modelHeight: number, wor
                 '#include <project_vertex>',
                 /* glsl */ `
                 vTreeY = transformed.y;
-                vec4 treeWorld = modelMatrix * vec4(transformed, 1.0);
-                vec3 treeOrigin = modelMatrix[3].xyz;
+                // An instanced tree's own placement is its instance matrix.
+                mat4 treeModel = modelMatrix;
+                #ifdef USE_INSTANCING
+                treeModel = modelMatrix * instanceMatrix;
+                #endif
+                vec4 treeWorld = treeModel * vec4(transformed, 1.0);
+                vec3 treeOrigin = treeModel[3].xyz;
                 float treeH = max(treeWorld.y - treeOrigin.y, 0.0);
                 float treePhase = dot(treeOrigin.xz, uWindDir) * 0.2 - uTreeTime * uWindSpeed;
                 float treeGust = 0.6 + sin(treePhase) + 0.4 * sin(treePhase * 2.3 + treeOrigin.x);

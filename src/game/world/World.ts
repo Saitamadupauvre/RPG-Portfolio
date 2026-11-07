@@ -1,3 +1,4 @@
+import { propInstancer } from '../render/PropInstancer';
 import * as THREE from "three";
 import type { Experience } from "../Experience";
 import { Environment } from "./Environment";
@@ -118,6 +119,9 @@ export class World {
         this.entityGroup.add(this.water.mesh);
 
         // Read at spawn time, not now: the editor can move the sea level.
+        // Trees and bushes are drawn here, one batch per model; each entity's own group only places its copy.
+        this.entityGroup.add(propInstancer.root);
+
         this.windStreaks = new WindStreaks((x, z) => Math.max(groundHeight(x, z), this.water.getLevel()));
         this.entityGroup.add(this.windStreaks.mesh);
 
@@ -233,6 +237,13 @@ export class World {
         }
 
         const entity = createMapEntity(mapEntity);
+        if (entity.isStatic) {
+            // Placed once by its factory and never moved but by the editor (which
+            // updates it itself): three would otherwise rebuild the matrix of
+            // every prop, every frame. Its children (a chest's lid) still animate.
+            entity.mesh.updateMatrix();
+            entity.mesh.matrixAutoUpdate = false;
+        }
         this.trackEntity(entity, key);
         this.entityGroup.add(entity.mesh);
 
@@ -304,6 +315,9 @@ export class World {
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.windStreaks.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.environment.followShadows(this.player.mesh.position);
+        // Every state: the editor moves and erases props too. Reads last frame's
+        // world matrices, so an editor drag shows one frame late on the copy.
+        propInstancer.sync();
 
         if (state === 'DEAD') this.updateDeath(dt);
         if (state === 'MENU') {

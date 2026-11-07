@@ -6,8 +6,14 @@ import { createGroundMaterial } from './grass/groundMaterial';
 import type { GrassBounds, GrassSurface } from './grass/GrassSurface';
 import { footprintsInBounds, isUnderFootprint, type GrassFootprint } from './grass/grassFootprints';
 import { rebuildTileGrid } from './terrainField';
+import { SHORE_LAYER } from '../render/layers';
 
-const GRASS_CHUNK_SIZE = 4;
+/**
+ * Side of one grass draw bucket (one InstancedMesh, one draw call). The patch
+ * size, so a patch is a single bucket per height band: at 4 the field was ~200
+ * draw calls a frame, for culling finer than anyone could see.
+ */
+const GRASS_CHUNK_SIZE = 8;
 /** Side of one streamed grass patch, in world units. */
 const GRASS_PATCH_SIZE = 8;
 
@@ -166,6 +172,8 @@ export class Terrain {
         // A cliff has to drop a shadow onto the ground at its foot, or a two-level
         // wall reads as a flat painted stripe.
         this.mesh.castShadow = true;
+        // The shore foam reads its depth: see SHORE_LAYER.
+        this.mesh.layers.enable(SHORE_LAYER);
     }
 
     /** Rebuilds after tile levels change: geometry, tile grid and grass all follow. */

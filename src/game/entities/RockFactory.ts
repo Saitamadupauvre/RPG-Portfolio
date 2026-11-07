@@ -8,6 +8,7 @@ import { PALETTE } from '../render/palette';
 import { createGroundMaterial } from '../world/grass/groundMaterial';
 import { createRandom, hashString } from '../world/grass/random';
 import { GhostComponent } from './components/GhostComponent';
+import { SHORE_LAYER } from '../render/layers';
 
 /**
  * A rock is shaded by the terrain's own shader: grass where its surface faces
@@ -37,7 +38,10 @@ export function createRock(entity: PropEntity, def: PropModelDef): Entity {
             // loadModel gave the mesh its own lit copy of the exported material; the rock
             // wears the shared ground one instead, so drop the copy.
             object.traverse((child) => {
-                if (child instanceof THREE.Mesh) child.material = material;
+                if (!(child instanceof THREE.Mesh)) return;
+                child.material = material;
+                // A rock in the shallows gets its foam ring: see SHORE_LAYER.
+                child.layers.enable(SHORE_LAYER);
             });
             for (const own of materials) own.dispose();
 

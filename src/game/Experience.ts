@@ -203,7 +203,7 @@ export class Experience {
         // the real render, with the water itself hidden, or it would read its
         // own depth back.
         if (this.perf?.toggles.depthPrepass !== false) {
-            this.waterDepthPrepass.render(this.renderer, this.scene, this.camera, this.world.water.mesh);
+            this.waterDepthPrepass.render(this.renderer, this.scene, this.camera);
         }
         this.world.water.setSceneDepth(this.waterDepthPrepass.depthTexture, this.camera, this.drawingSize.x, this.drawingSize.y);
 

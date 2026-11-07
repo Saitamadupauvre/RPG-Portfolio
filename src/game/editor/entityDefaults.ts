@@ -1,8 +1,8 @@
-import type { EnemyEntity, MapEntity, Vec3 } from '../../data/MapEntity';
-import { randomBonfireModel } from '../../data/bonfireModels';
-import { isTutorialId } from '../../data/tutorials';
-import { projects } from '../../data/projects';
-import { isPropModel, isPropModelKind, PROP_MODELS, randomModelOfKind } from '../../data/propModels';
+import type { EnemyEntity, MapEntity, Vec3 } from '@data/map/MapEntity';
+import { randomBonfireModel } from '@data/map/bonfireModels';
+import { isTutorialId } from '@data/book/tutorials';
+import { projects } from '@data/projects/projects';
+import { isPropModel, isPropModelKind, PROP_MODELS, randomModelOfKind } from '@data/map/propModels';
 
 const chestCoins: Record<'wood' | 'silver' | 'gold', number> = { wood: 25, silver: 60, gold: 120 };
 

@@ -1,5 +1,5 @@
-import { events } from '../core/events';
-import { getPlayerStats, type PlayerStats } from '../domain/playerProgress';
+import { events } from '@core/events/events';
+import { getPlayerStats, type PlayerStats } from '@domain/save/playerProgress';
 import type { Entity } from './entities/Entity';
 
 /** Push domain-owned stat values onto the player's Three-aware components. */

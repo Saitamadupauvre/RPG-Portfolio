@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
-import { canTraverse, isBlocked, isInsideBounds, worldToCol, worldToRow } from '../../domain/pathfinding/NavGrid';
-import { getNavGrid } from '../world/navigation';
-import { getTileGrid, groundHeight } from '../world/terrainField';
+import { canTraverse, isBlocked, isInsideBounds, worldToCol, worldToRow } from '@domain/pathfinding/NavGrid';
+import { getNavGrid } from '@game/world/navigation/navigation';
+import { getTileGrid, groundHeight } from '@game/world/terrain/terrainField';
 
 /** Widest gap a leap clears, in tiles. */
 const MAX_GAP_TILES = 1;

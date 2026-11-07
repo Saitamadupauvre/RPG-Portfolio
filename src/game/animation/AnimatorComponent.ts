@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { Component } from '../../domain/components/Component';
-import { validateController, type AnimatorControllerDefinition, type StateDefinition } from '../../domain/animation/AnimatorController';
-import { AnimatorParameters } from '../../domain/animation/AnimatorParameters';
-import { AnimatorLayer, type ActiveState } from '../../domain/animation/AnimatorLayer';
+import type { Component } from '@domain/components/Component';
+import { validateController, type AnimatorControllerDefinition, type StateDefinition } from '@domain/animation/AnimatorController';
+import { AnimatorParameters } from '@domain/animation/AnimatorParameters';
+import { AnimatorLayer, type ActiveState } from '@domain/animation/AnimatorLayer';
 import { sampleClip, type SampledTrack } from './sampleClip';
 import type { Rig } from './Rig';
 

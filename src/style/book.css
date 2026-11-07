@@ -1117,6 +1117,11 @@ button.book-link {
   to { visibility: visible; }
 }
 
+/* No `to`: it ends on the book's own pan, whichever page it opened on. */
+@keyframes book-pan-open {
+  from { translate: calc(-1 * var(--book-shift)) 0; }
+}
+
 @keyframes book-enter {
   0% { transform: translateY(105vh) rotate(-14deg); }
   70% { transform: translateY(-1.5%) rotate(1.2deg); }
@@ -1147,11 +1152,12 @@ button.book-link {
   100% { transform: perspective(2400px) rotateY(-180deg); visibility: hidden; }
 }
 
-/* ---------- phone: one page of the spread at a time ---------- */
+/* ---------- phone: the spread, panned one page at a time ---------- */
 
-/* The spread is still there, seen one half at a time: the left page has the spine on its
-   right, the right page on its left, each with its own half of the cover and page edges.
-   The arrows under the book (or a swipe) swap the two halves (BookView slides them). */
+/* The whole spread stays drawn, wider than the screen: one page fills it and the
+   edge of the other peeks in from the side (--book-peek). The arrows under the book
+   (or a swipe) pan it sideways to the other page (`show-entry` = the right one).
+   The tabs and the close button stay put on the screen: they pan back by as much. */
 @media (max-width: 700px) {
   :root {
     --book-px: 3px;
@@ -1159,67 +1165,65 @@ button.book-link {
   }
 
   .book {
-    --page-width: calc(100vw - 32px - 2 * var(--book-margin));
-    width: var(--page-width);
+    /* Whole, even pixels: the spread is centred and panned by half a page, and a fraction
+       of a pixel there smears the 9-slice pixel art into seams. */
+    --book-peek: round(9vw, 2px);
+    --page-width: round(down, calc(100vw - 32px - 2 * var(--book-margin) - var(--book-peek)), 2px);
+    /* Centred, the spine sits mid-screen: half a page minus half the peek puts one page on screen. */
+    --book-shift: calc((var(--page-width) - var(--book-peek)) / 2);
+    --book-pan: var(--book-shift);
+    /* Thinner page stacks: the cover only sticks out 12px here, and a full stack
+       (17px at the last entry) poked out past it. */
+    --stack-left: calc(2px + var(--progress) * 7px);
+    --stack-right: calc(2px + (1 - var(--progress)) * 7px);
+    width: calc(2 * var(--page-width));
+    flex-shrink: 0;
     /* A page's proportions, but never taller than the screen minus the tabs and the arrows. */
-    height: min(calc(100vh - 10rem), calc(var(--page-width) * 1.5));
-    height: min(calc(100dvh - 10rem), calc(var(--page-width) * 1.5));
+    height: round(down, min(calc(100vh - 10rem), calc(var(--page-width) * 1.5)), 2px);
+    height: round(down, min(calc(100dvh - 10rem), calc(var(--page-width) * 1.5)), 2px);
     margin-top: 1rem;
+    /* `translate`, not `transform`: the entrance and exit animations own the transform. */
+    translate: var(--book-pan) 0;
+    transition: --progress 600ms ease, translate 420ms cubic-bezier(0.3, 0.8, 0.3, 1);
+    /* Rises closed with its front cover on screen, then pans over to the open page
+       while the cover turns (book-cover-open: 650ms delay, 700ms). */
+    animation:
+      book-enter 750ms cubic-bezier(0.2, 0.85, 0.3, 1) both,
+      book-pan-open 700ms cubic-bezier(0.45, 0, 0.3, 1) 650ms backwards;
   }
 
-  /* The opening reveals the left half late, for the spread's cover; one page has no such half. */
-  .book-cover,
-  .book-page-left,
-  .book-stack-left {
-    animation: none;
+  .book.show-entry {
+    --book-pan: calc(-1 * var(--book-shift));
   }
 
-  .book-cover::before {
-    width: 100%;
-  }
-
-  .book-cover::after,
-  .book.show-entry .book-cover::before {
-    display: none;
-  }
-
-  .book.show-entry .book-cover::after {
-    display: block;
-    width: 100%;
-  }
-
-  .book-stack-left {
-    right: 0;
-    width: calc(100% + var(--t));
-  }
-
-  .book-stack-right {
-    left: 0;
-    width: calc(100% + var(--t));
-  }
-
-  .book-stack-right,
-  .book.show-entry .book-stack-left {
-    display: none;
-  }
-
-  .book.show-entry .book-stack-right {
-    display: block;
-  }
-
+  /* Touch scrolling needs no bar: a thin one read as a stray line down the page. */
   .book-page {
-    left: 0;
-    width: 100%;
     padding: 1.4rem 1.2rem 1rem;
+    scrollbar-width: none;
   }
 
-  .book-page-right,
+  .book-page::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The off-screen page's peek is decoration: taps there pan instead (see BookView). */
+  .book:not(.show-entry) .book-page-right,
   .book.show-entry .book-page-left {
-    visibility: hidden;
+    overflow: hidden;
   }
 
-  .book.show-entry .book-page-right {
-    visibility: visible;
+  /* Pinned to the screen: they move back by the pan, relative to where the left page sits. */
+  .book-tabs,
+  .book-close {
+    transition: translate 420ms cubic-bezier(0.3, 0.8, 0.3, 1);
+  }
+
+  .book.show-entry .book-tabs {
+    translate: calc(2 * var(--book-shift)) 0;
+  }
+
+  .book:not(.show-entry) .book-close {
+    translate: calc(-2 * var(--book-shift)) 0;
   }
 
   .book-turn {
@@ -1244,13 +1248,14 @@ button.book-link {
     transform: translateY(2px);
   }
 
-  /* Each arrow sits on the side of the page it brings in. */
+  /* Each arrow sits on the side of the page it brings in: at the screen's edge of the
+     page on screen, which is the spine's side. */
   .book-turn-prev {
-    left: calc(-1 * var(--book-margin));
+    left: calc(50% - var(--book-margin));
   }
 
   .book-turn-next {
-    right: calc(-1 * var(--book-margin));
+    right: calc(50% - var(--book-margin));
   }
 
   .book.has-entry:not(.show-entry) .book-turn-next,
@@ -1258,13 +1263,21 @@ button.book-link {
     display: flex;
   }
 
+  /* Hung from their bottom edge onto the cover's top, whatever their height. */
   .book-tabs {
-    top: calc(-1 * var(--book-margin) - 34px);
+    top: auto;
+    bottom: calc(100% + var(--book-margin));
     right: auto;
     left: 0;
     flex-direction: row;
-    max-width: 100%;
+    align-items: flex-end;
+    max-width: var(--page-width);
     overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .book-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .book-tab {
@@ -1277,10 +1290,6 @@ button.book-link {
   .book-tab:hover,
   .book-tab.active {
     transform: translateY(0);
-  }
-
-  .book-front-cover {
-    left: calc(-1 * var(--book-margin));
   }
 
   .book-page-title {

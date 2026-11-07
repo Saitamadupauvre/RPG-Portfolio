@@ -1,6 +1,6 @@
-import type { ScatterEntry, ScatterSettings } from '../../core/editorTools';
-import type { MapEntity } from '../../data/MapEntity';
-import { isPropModel, isPropModelKind, PROP_MODELS } from '../../data/propModels';
+import type { ScatterEntry, ScatterSettings } from '@core/input/editorTools';
+import type { MapEntity } from '@data/map/MapEntity';
+import { isPropModel, isPropModelKind, PROP_MODELS } from '@data/map/propModels';
 import { createDefaultEntity } from './entityDefaults';
 
 /** Tries per copy before a crowded stamp gives up on it. */

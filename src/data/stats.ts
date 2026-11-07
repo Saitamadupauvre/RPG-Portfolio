@@ -4,5 +4,5 @@
  */
 export type StatId = 'health' | 'damage' | 'speed';
 
-/** Resolved value per stat. Here rather than in `domain/` so `core/events.ts` can name it without importing upward. */
+/** Resolved value per stat. Here rather than in `domain/` so `core/events/events.ts` can name it without importing upward. */
 export type PlayerStats = Record<StatId, number>;

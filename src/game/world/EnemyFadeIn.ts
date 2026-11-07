@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Entity } from '../entities/Entity';
+import type { Entity } from '@game/entities/Entity';
 
 /** Seconds the enemies take to fade in once the game starts. */
 const FADE_SECONDS = 1.2;

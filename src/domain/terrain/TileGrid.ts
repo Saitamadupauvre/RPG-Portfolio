@@ -1,4 +1,4 @@
-import type { TileMap } from '../../data/tileMap';
+import type { TileMap } from '@data/map/tileMap';
 
 /** A tile's four corner heights, in world units, ordered -X-Z, +X-Z, -X+Z, +X+Z. */
 export type TileCorners = [number, number, number, number];

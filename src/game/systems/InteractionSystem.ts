@@ -1,0 +1,90 @@
+import * as THREE from 'three';
+import { events } from '@core/events/events';
+import { isGameplayActive } from '@core/state/pause';
+import { keyFor } from '@domain/preferences/settings';
+import type { Entity } from '@game/entities/Entity';
+import type { InteractAction } from '@game/entities/components/interaction/InteractableComponent';
+
+export class InteractionSystem {
+    private currentActions: readonly InteractAction[] | null = null;
+    private levelUpAvailable = false;
+    private pressedKeys = new Set<string>();
+
+    constructor() {
+        window.addEventListener('keydown', (event) => {
+            // Only remember keys the current target actually listens for, so
+            // unrelated presses never queue up between frames.
+            // An E pressed behind an open modal must not queue up and fire on close.
+            if (event.repeat || !isGameplayActive()) return;
+            if (!this.currentActions?.some((action) => keyFor(action.input) === event.code)) return;
+
+            this.pressedKeys.add(event.code);
+        });
+
+        // A tapped prompt button counts as its key: queued the same way, run on the next update.
+        events.on('touchInteract', (input) => {
+            if (!isGameplayActive()) return;
+            if (this.currentActions?.some((action) => action.input === input)) this.pressedKeys.add(keyFor(input));
+        });
+    }
+
+    public update(entities: Entity[], playerPosition: THREE.Vector3) {
+        const target = isGameplayActive() ? this.findNearest(entities, playerPosition) : null;
+        const actions = target?.getComponent('interactable')?.actions ?? null;
+
+        this.setPrompt(actions);
+        this.setLevelUpAvailable(target?.getComponent('interactable')?.allowsLevelUp ?? false);
+
+        for (const key of this.pressedKeys) {
+            target?.getComponent('interactable')?.interact(key);
+        }
+        this.pressedKeys.clear();
+    }
+
+    /**
+     * Clears the prompt now instead of on the next update, which a paused world
+     * never runs. The next live frame brings it back if the target is still there.
+     */
+    public hidePrompt() {
+        this.setPrompt(null);
+    }
+
+    private findNearest(entities: Entity[], playerPosition: THREE.Vector3): Entity | null {
+        let nearest: Entity | null = null;
+        let nearestDistance = Infinity;
+
+        for (const entity of entities) {
+            const interactable = entity.getComponent('interactable');
+            // A spent interactable (looted chest) keeps its component but no actions;
+            // skipping it here stops it from shadowing a live one standing further away.
+            if (!interactable || interactable.actions.length === 0) continue;
+
+            const distanceSq = entity.mesh.position.distanceToSquared(playerPosition);
+            if (distanceSq > interactable.radius * interactable.radius) continue;
+            if (distanceSq >= nearestDistance) continue;
+
+            nearest = entity;
+            nearestDistance = distanceSq;
+        }
+
+        return nearest;
+    }
+
+    /**
+     * Not called while paused (World skips the update), so the value read when the
+     * book opens is the one from the last gameplay frame: still at the bonfire.
+     */
+    private setLevelUpAvailable(available: boolean) {
+        if (available === this.levelUpAvailable) return;
+
+        this.levelUpAvailable = available;
+        events.emit('levelUpAvailableChanged', available);
+    }
+
+    private setPrompt(actions: readonly InteractAction[] | null) {
+        if (actions === this.currentActions) return;
+
+        this.currentActions = actions;
+        events.emit('interactPromptChange', actions);
+    }
+}

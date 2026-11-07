@@ -1,5 +1,15 @@
 import * as THREE from 'three';
-import { EDITOR_LAYER, GRASS_LAYER, WIND_LAYER } from '../../render/layers';
+import { SHORE_LAYER } from '@game/render/layers';
+
+/**
+ * Fraction of the drawing buffer's size the depth is rendered at. Full size:
+ * at half, each depth texel (nearest-sampled, a depth texture cannot be
+ * filtered) covered 2x2 screen pixels, and the foam came out as stair steps
+ * set off the bank, plain to see on a phone. The prepass draws only the
+ * terrain and rocks (SHORE_LAYER), so full size stays cheap. The water shader
+ * samples it in 0..1 screen UVs, so its resolution uniform is the drawing size.
+ */
+const DEPTH_SCALE = 1;
 
 /**
  * Renders the scene's depth (water hidden) into a texture the water shader can
@@ -14,8 +24,9 @@ export class WaterDepthPrepass {
     public readonly depthTexture: THREE.DepthTexture;
 
     constructor(width: number, height: number) {
-        this.target = new THREE.WebGLRenderTarget(width, height);
-        this.depthTexture = new THREE.DepthTexture(width, height);
+        const [w, h] = scaled(width, height);
+        this.target = new THREE.WebGLRenderTarget(w, h);
+        this.depthTexture = new THREE.DepthTexture(w, h);
         // 24-bit integer depth is plenty for shore foam and half the bandwidth of
         // a 32-bit float buffer, which is also slower to sample on many GPUs.
         this.depthTexture.type = THREE.UnsignedIntType;
@@ -23,43 +34,33 @@ export class WaterDepthPrepass {
     }
 
     public setSize(width: number, height: number) {
-        this.target.setSize(width, height);
+        this.target.setSize(...scaled(width, height));
     }
 
-    public render(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, water: THREE.Object3D) {
-        const wasVisible = water.visible;
-        water.visible = false;
-
-        // Rendered with each mesh's own material rather than a cheap
-        // `scene.overrideMaterial = MeshDepthMaterial`. The grass patches its
-        // vertex shader to bend blades (see grassMaterial.ts), and an override
-        // material does not run that displacement — grass would write depth at
-        // its undisplaced positions and the shore foam would read the wrong
-        // distance. `customDepthMaterial` is no escape hatch either: three only
-        // consults it during shadow passes, not for `overrideMaterial`.
-        //
-        // Grass is left out entirely, though: it was most of the frame's
-        // triangles, drawn a second time just for this. Blades are a fraction
-        // of a unit tall, so the foam reading the ground under them instead is
-        // not visible, while skipping them halves the field's cost.
-        // Editor-only volumes are left out too: the shore would foam around trigger boxes.
-        // Wind streaks as well: a ribbon over the sea would read as a shore.
-        // The mask is restored as it was, not re-enabled, since the editor layer is on only in EDITOR.
+    public render(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
+        // Only what the shore can meet: the terrain and the rocks (SHORE_LAYER).
+        // Each mesh keeps its own material rather than a cheap
+        // `scene.overrideMaterial = MeshDepthMaterial`, since an override would
+        // not run a shader's own vertex displacement. The water, grass, wind
+        // streaks, editor volumes, props and characters are all off that layer:
+        // a bush at the waterline is not worth a foam ring, and drawing them
+        // all here cost more than the whole rest of the frame.
+        // The mask is restored as it was, since the editor layer is on only in EDITOR.
         const previousTarget = renderer.getRenderTarget();
         const previousLayers = camera.layers.mask;
-        camera.layers.disable(GRASS_LAYER);
-        camera.layers.disable(EDITOR_LAYER);
-        camera.layers.disable(WIND_LAYER);
+        camera.layers.set(SHORE_LAYER);
         renderer.setRenderTarget(this.target);
         renderer.render(scene, camera);
         renderer.setRenderTarget(previousTarget);
         camera.layers.mask = previousLayers;
-
-        water.visible = wasVisible;
     }
 
     public dispose() {
         this.target.dispose();
         this.depthTexture.dispose();
     }
+}
+
+function scaled(width: number, height: number): [number, number] {
+    return [Math.max(1, Math.round(width * DEPTH_SCALE)), Math.max(1, Math.round(height * DEPTH_SCALE))];
 }

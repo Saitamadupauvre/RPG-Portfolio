@@ -9,7 +9,7 @@ reads as empty.
 
 ## Palette
 
-Defined in `src/game/render/palette.ts`. Every lit surface picks from it.
+Defined in `src/game/render/materials/palette.ts`. Every lit surface picks from it.
 
 | Name       | Hex       | Use                                         |
 |------------|-----------|---------------------------------------------|
@@ -57,7 +57,7 @@ Lights (`LIGHT`): sky `#bcdde8`, bounce `#7d8a5e`, sun `#fff1d0`.
 
 ## Lighting
 
-In `src/game/world/Environment.ts`.
+In `src/game/world/environment/Environment.ts`.
 
 - Sun-dominated: warm sun at 2.8 against a hemisphere at 0.85. The contrast
   between them is what gives low-poly shapes their form.

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getHeightTexture, heightFieldBounds } from './heightField';
-import { getWindUniforms, WIND_GLSL, type WindUniforms } from '../wind';
-import { PALETTE } from '../../render/palette';
+import { getWindUniforms, WIND_GLSL, type WindUniforms } from '@game/world/environment/wind';
+import { PALETTE } from '@game/render/materials/palette';
 
 /** Depth over which the sea goes from near-clear at the shore to its full opacity. */
 const DEPTH_FADE = 2.6;

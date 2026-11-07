@@ -1,6 +1,6 @@
-import { events } from '../../core/events';
-import { tileMap } from '../../data/tileMap';
-import type { ChestLoot, MapEntity, TriggerAction, Vec3 } from '../../data/MapEntity';
+import { events } from '@core/events/events';
+import { tileMap } from '@data/map/tileMap';
+import type { ChestLoot, MapEntity, TriggerAction, Vec3 } from '@data/map/MapEntity';
 import {
     actionFieldByKind,
     defaultLoot,
@@ -12,7 +12,7 @@ import {
 } from './editorFields';
 import { button, input, numberField, numberInput, row } from './editorControls';
 import { mountScatterPanel } from './editorScatterPanel';
-import { DEFAULT_TILE_BRUSH_RADIUS } from '../../core/editorTools';
+import { DEFAULT_TILE_BRUSH_RADIUS } from '@core/input/editorTools';
 
 const gizmoModes = [
     { mode: 'translate', label: 'Move (W)' },

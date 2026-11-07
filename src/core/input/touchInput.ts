@@ -2,7 +2,7 @@
  * The on-screen sticks, written by `ui/views/TouchControlsView` and read by the
  * game every frame. Polled rather than sent as events: a stick moves on every
  * pointer event, and the game only cares where it stands when a frame runs.
- * One-off presses (tap to attack, dash, interact) go through `core/events` instead.
+ * One-off presses (tap to attack, dash, interact) go through `core/events/events` instead.
  *
  * Screen axes: `x` to the right, `y` up the screen, length 0 to 1.
  */

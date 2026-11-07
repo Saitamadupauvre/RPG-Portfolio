@@ -1,8 +1,8 @@
-import { events } from '../../core/events';
-import { DEFAULT_SCATTER, type ScatterEntry, type ScatterSettings } from '../../core/editorTools';
-import { loadJson, saveJson } from '../../domain/persistence';
+import { events } from '@core/events/events';
+import { DEFAULT_SCATTER, type ScatterEntry, type ScatterSettings } from '@core/input/editorTools';
+import { loadJson, saveJson } from '@domain/save/persistence';
 import { button, group, numberField, numberInput, row } from './editorControls';
-import { PROP_MODEL_IDS } from '../../data/propModels';
+import { PROP_MODEL_IDS } from '@data/map/propModels';
 import { palette, type PaletteEntry } from './editorFields';
 
 const STORAGE_KEY = 'rpg-portfolio:editor-scatter';

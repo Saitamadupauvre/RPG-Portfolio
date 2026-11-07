@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
-import type { AnimatorComponent } from '../animation/AnimatorComponent';
-import { collectRig, equip } from '../animation/Rig';
-import { loadModel, type LoadedModel } from './loadModel';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import { collectRig, equip } from '@game/animation/Rig';
+import { loadModel, type LoadedModel } from '@game/entities/loadModel';
 
 const PLAYER_MODEL_URL = 'player/player.glb';
 export const PLAYER_HEIGHT = 1.8;

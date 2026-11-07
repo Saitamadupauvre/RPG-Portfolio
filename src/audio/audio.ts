@@ -7,7 +7,7 @@ import {
     type SoundId,
     type TrackDefinition,
     type TrackId,
-} from '../data/sounds';
+} from '@data/sounds';
 
 /**
  * The one sound player, on the Web Audio API. Imported by both `game/` and `ui/`

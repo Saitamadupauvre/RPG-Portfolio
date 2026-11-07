@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
+import type { Component } from '@domain/components/Component';
 
 export interface AttackHitboxOptions {
     size?: THREE.Vector3;

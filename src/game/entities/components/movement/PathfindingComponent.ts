@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { findPath } from '../../../domain/pathfinding/AStar';
-import { getNavGrid } from '../../world/navigation';
-import { turnToward } from '../movement';
+import type { Component } from '@domain/components/Component';
+import { findPath } from '@domain/pathfinding/AStar';
+import { getNavGrid } from '@game/world/navigation/navigation';
+import { turnToward } from '@game/entities/movement';
 
 const REPATH_INTERVAL = 0.4;
 const WAYPOINT_RADIUS = 0.15;

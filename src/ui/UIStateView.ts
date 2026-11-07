@@ -1,4 +1,4 @@
-import { events } from '../core/events';
+import { events } from '@core/events/events';
 
 export function initUIStateView() {
     const uiContainer = document.getElementById('ui-container');

@@ -1,7 +1,7 @@
-import { playSound } from '../../audio/audio';
-import { events } from '../../core/events';
-import { setPaused } from '../../core/pause';
-import { stateMachine, type AppState } from '../../core/StateMachine';
+import { playSound } from '@audio/audio';
+import { events } from '@core/events/events';
+import { setPaused } from '@core/state/pause';
+import { stateMachine, type AppState } from '@core/state/StateMachine';
 import {
     entryKey,
     flattenBook,
@@ -13,18 +13,18 @@ import {
     type BookMode,
     type BookSection,
     type SectionId,
-} from '../../domain/book';
-import { buyUpgrade } from '../../domain/playerProgress';
-import { keyFor } from '../../domain/settings';
-import { getIris } from '../components/iris';
-import { flipPages, type FlipDirection, type PageFlip } from '../components/pageFlip';
-import { renderBookEntry } from '../components/renderBookEntry';
-import { renderBookTabs, renderBookToc } from '../components/renderBookToc';
-import { renderPlayerPage, renderStatsPage } from '../components/renderLevelPage';
-import { loadPrintedKeys } from '../components/printedKeys';
-import { cancelKeyCapture, renderControlsPage, renderOptionsPage } from '../components/renderSettingsPage';
-import { renderSprite } from '../components/pixelSprite';
-import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
+} from '@domain/book/book';
+import { buyUpgrade } from '@domain/save/playerProgress';
+import { keyFor } from '@domain/preferences/settings';
+import { getIris } from '@ui/components/iris';
+import { flipPages, type FlipDirection, type PageFlip } from '@ui/components/book/pageFlip';
+import { renderBookEntry } from '@ui/components/book/renderBookEntry';
+import { renderBookTabs, renderBookToc } from '@ui/components/book/renderBookToc';
+import { renderPlayerPage, renderStatsPage } from '@ui/components/book/renderLevelPage';
+import { loadPrintedKeys } from '@ui/components/keys/printedKeys';
+import { cancelKeyCapture, renderControlsPage, renderOptionsPage } from '@ui/components/book/renderSettingsPage';
+import { renderSprite } from '@ui/components/sprites/pixelSprite';
+import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '@ui/components/sprites/sprites';
 
 /** Cap on leaves turned at once: past this, more paper reads as noise. */
 const MAX_LEAVES = 14;

@@ -1,16 +1,16 @@
-import { playSound } from '../../audio/audio';
-import { stateMachine } from '../../core/StateMachine';
-import { LOCALE_NAMES, LOCALES, type Locale } from '../../data/locale';
+import { playSound } from '@audio/audio';
+import { stateMachine } from '@core/state/StateMachine';
+import { LOCALE_NAMES, LOCALES, type Locale } from '@data/i18n/locale';
 import {
     INPUT_ACTIONS,
     MOVE_ACTIONS,
     type InputAction,
     type Quality,
     type VolumeChannel,
-} from '../../data/settings';
-import { t } from '../../domain/i18n';
-import { labelForKey } from '../../domain/input';
-import { clearSave } from '../../domain/persistence';
+} from '@data/settings';
+import { t } from '@domain/preferences/i18n';
+import { labelForKey } from '@domain/preferences/input';
+import { clearSave } from '@domain/save/persistence';
 import {
     bindingFor,
     getSettings,
@@ -20,9 +20,9 @@ import {
     setQuality,
     setScreenShake,
     setVolume,
-} from '../../domain/settings';
-import { keyName } from './printedKeys';
-import { renderKey } from './renderKey';
+} from '@domain/preferences/settings';
+import { keyName } from '@ui/components/keys/printedKeys';
+import { renderKey } from '@ui/components/keys/renderKey';
 
 // Functions, not constants: the labels are read in the current language each time the page is drawn.
 const actionLabel = (action: InputAction) => t(`action.${action}`);

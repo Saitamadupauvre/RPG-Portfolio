@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { isGameplayActive } from '../../../core/pause';
-import { keyFor } from '../../../domain/settings';
-import { planGapLeap, slideMove, type GapLeap } from '../movement';
-import { groundHeight } from '../../world/terrainField';
+import type { Component } from '@domain/components/Component';
+import { isGameplayActive } from '@core/state/pause';
+import { keyFor } from '@domain/preferences/settings';
+import { planGapLeap, slideMove, type GapLeap } from '@game/entities/movement';
+import { groundHeight } from '@game/world/terrain/terrainField';
 import type { MovementComponent } from './MovementComponent';
-import { playSound } from '../../../audio/audio';
-import { events } from '../../../core/events';
+import { playSound } from '@audio/audio';
+import { events } from '@core/events/events';
 
 const DASH_SPEED = 14;
 const DASH_DURATION = 0.18;

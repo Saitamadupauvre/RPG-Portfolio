@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SHORE_LAYER } from '../../render/layers';
+import { SHORE_LAYER } from '@game/render/layers';
 
 /**
  * Fraction of the drawing buffer's size the depth is rendered at. Full size:

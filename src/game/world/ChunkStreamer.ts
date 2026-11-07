@@ -1,5 +1,5 @@
-import type { MapEntity } from '../../data/MapEntity';
-import { bucketByChunk, chunkKeyAt, keysInRadius, type ChunkKey } from '../../domain/chunks';
+import type { MapEntity } from '@data/map/MapEntity';
+import { bucketByChunk, chunkKeyAt, keysInRadius, type ChunkKey } from '@domain/map/chunks';
 
 /** Chunks kept alive around the player's own chunk, as a square ring radius. */
 const LOAD_RADIUS = 2;

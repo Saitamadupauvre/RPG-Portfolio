@@ -1,4 +1,4 @@
-import { t } from '../../domain/i18n';
+import { t } from '@domain/preferences/i18n';
 
 const MOUSE_LEFT = 'MouseLeft';
 const ARROWS = new Set(['←', '↑', '→', '↓']);

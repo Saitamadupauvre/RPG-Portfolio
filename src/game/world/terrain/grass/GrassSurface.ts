@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BLADE_HEIGHT, createBladeGeometry } from './bladeGeometry';
 import { createGrassMaterial, createGrassUniforms, MAX_COLLIDERS, type GrassUniforms } from './grassMaterial';
 import { createRandom, hashString, type Random } from './random';
-import { GRASS_LAYER } from '../../render/layers';
+import { GRASS_LAYER } from '@game/render/layers';
 
 export type GrassCollider = { position: THREE.Vector3; radius: number };
 

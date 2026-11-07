@@ -1,5 +1,5 @@
-import type { Component } from '../../../domain/components/Component';
-import type { XraySilhouette } from '../../render/xraySilhouette';
+import type { Component } from '@domain/components/Component';
+import type { XraySilhouette } from '@game/render/xraySilhouette';
 
 /** Shows its owner's x-ray silhouette only while `isShown` holds (an enemy hunting the player). */
 export class XrayComponent implements Component {

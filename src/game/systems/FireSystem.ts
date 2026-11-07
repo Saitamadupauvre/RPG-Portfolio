@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { PALETTE } from './render/palette';
-import { isInsideObstacle } from './world/obstacles';
-import { groundHeight } from './world/terrainField';
+import { PALETTE } from '@game/render/materials/palette';
+import { isInsideObstacle } from '@game/world/navigation/obstacles';
+import { groundHeight } from '@game/world/terrain/terrainField';
 
 /** Puffs alive at once; a dragon breathes about 30 a second for under a second of life each. */
 const POOL_SIZE = 160;

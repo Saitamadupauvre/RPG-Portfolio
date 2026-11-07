@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { AnimatorComponent } from '../../animation/AnimatorComponent';
-import type { BreathComponent, BreathState } from './BreathComponent';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import type { BreathComponent, BreathState } from '@game/entities/components/ai/BreathComponent';
 import { GroundSpeed, type AnimationDriver } from './AnimationDriver';
-import { RUN_CLIP_SPEED } from '../dragonAnimation';
+import { RUN_CLIP_SPEED } from '@game/entities/enemies/dragonAnimation';
 
 const LAYER = 'base';
 /** Ground speed above which the dragon counts as running rather than standing. */

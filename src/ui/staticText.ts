@@ -1,5 +1,5 @@
-import { events } from '../core/events';
-import { currentLocale, isMessageKey, t } from '../domain/i18n';
+import { events } from '@core/events/events';
+import { currentLocale, isMessageKey, t } from '@domain/preferences/i18n';
 
 /**
  * The text written in index.html, rewritten in the current language. An element

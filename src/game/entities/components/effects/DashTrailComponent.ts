@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { TrailRenderer, type TrailRendererOptions } from '../../effects/TrailRenderer';
+import type { Component } from '@domain/components/Component';
+import { TrailRenderer, type TrailRendererOptions } from '@game/effects/TrailRenderer';
 
 /**
  * Streaks a trail behind its owner while `isEmitting` holds (a dash, a lunge),

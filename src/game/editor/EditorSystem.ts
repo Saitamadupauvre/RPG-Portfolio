@@ -1,12 +1,12 @@
-import { propInstancer } from '../render/PropInstancer';
+import { propInstancer } from '@game/render/PropInstancer';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-import { events } from '../../core/events';
-import { stateMachine } from '../../core/StateMachine';
-import type { MapEntity } from '../../data/MapEntity';
-import { readTransform, seatedHeight } from '../entities/applyTransform';
-import type { Experience } from '../Experience';
+import { events } from '@core/events/events';
+import { stateMachine } from '@core/state/StateMachine';
+import type { MapEntity } from '@data/map/MapEntity';
+import { readTransform, seatedHeight } from '@game/entities/applyTransform';
+import type { Experience } from '@game/Experience';
 import {
     clearWorkingLayout,
     clearWorkingTiles,
@@ -21,15 +21,15 @@ import {
     sourceLayout,
     sourceTiles,
 } from './editorLayout';
-import { getTileGrid, groundHeight, rebuildTileGrid } from '../world/terrainField';
-import { resizeTileMap, type TileMap } from '../../data/tileMap';
+import { getTileGrid, groundHeight, rebuildTileGrid } from '@game/world/terrain/terrainField';
+import { resizeTileMap, type TileMap } from '@data/map/tileMap';
 import { TileSelection } from './TileSelection';
 import { createDefaultEntity, uniqueId } from './entityDefaults';
-import { DEFAULT_SCATTER, DEFAULT_TILE_BRUSH_RADIUS, type ScatterSettings, type ScreenRect } from '../../core/editorTools';
+import { DEFAULT_SCATTER, DEFAULT_TILE_BRUSH_RADIUS, type ScatterSettings, type ScreenRect } from '@core/input/editorTools';
 import { UndoHistory, type EditorSnapshot } from './UndoHistory';
 import { BrushCursor, ScatterGhosts } from './brushVisuals';
 import { eraseStamp, scatterStamp } from './scatter';
-import { EDITOR_LAYER } from '../render/layers';
+import { EDITOR_LAYER } from '@game/render/layers';
 
 const GRID_SNAP = 1;
 const ROTATION_SNAP = Math.PI / 12;

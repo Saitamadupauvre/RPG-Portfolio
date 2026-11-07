@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { AnimatorComponent } from '../../animation/AnimatorComponent';
-import type { ShootComponent, ShootState } from './ShootComponent';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import type { ShootComponent, ShootState } from '@game/entities/components/ai/ShootComponent';
 import { GroundSpeed, type AnimationDriver } from './AnimationDriver';
 
 const LAYER = 'base';

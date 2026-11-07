@@ -1,4 +1,4 @@
-import type { MoveAction } from '../data/settings';
+import type { MoveAction } from '@data/settings';
 
 /** Always move, on top of whatever the moves are bound to. Not rebindable. */
 export const ARROW_KEYS: Readonly<Record<MoveAction, string>> = {

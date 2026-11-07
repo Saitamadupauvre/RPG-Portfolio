@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { AnimatorComponent } from '../../animation/AnimatorComponent';
-import type { LungeComponent } from './LungeComponent';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import type { LungeComponent } from '@game/entities/components/ai/LungeComponent';
 import { GroundSpeed, type AnimationDriver } from './AnimationDriver';
 
 const LAYER = 'base';

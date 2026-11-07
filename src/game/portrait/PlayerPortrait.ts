@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { AnimatorComponent } from '../animation/AnimatorComponent';
-import { playerController } from '../entities/playerAnimation';
-import { loadPlayerModel } from '../entities/playerModel';
-import { createSwordMesh } from '../entities/SwordFactory';
-import { applyColorGrading } from '../render/grading';
-import { LIGHT, PALETTE } from '../render/palette';
-import { HEMISPHERE_INTENSITY, SUN_INTENSITY } from '../world/Environment';
+import { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import { playerController } from '@game/entities/player/playerAnimation';
+import { loadPlayerModel } from '@game/entities/player/playerModel';
+import { createSwordMesh } from '@game/entities/player/SwordFactory';
+import { applyColorGrading } from '@game/render/materials/grading';
+import { LIGHT, PALETTE } from '@game/render/materials/palette';
+import { HEMISPHERE_INTENSITY, SUN_INTENSITY } from '@game/world/environment/Environment';
 
 /** Vertical field of view, in degrees: narrow, like a portrait lens, so the knight is not distorted. */
 const FOV = 24;

@@ -1,4 +1,4 @@
-import type { LocalizedText } from './locale';
+import type { LocalizedText } from '@data/i18n/locale';
 
 /** One shown at random on the loading screen, then rotated. Keep each to one line. */
 export const loadingTips: LocalizedText[] = [

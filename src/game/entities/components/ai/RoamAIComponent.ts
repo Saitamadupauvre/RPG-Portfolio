@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import type { HealthComponent } from '../../../domain/components/HealthComponent';
-import { isBlocked, isInsideBounds, worldToCol, worldToRow } from '../../../domain/pathfinding/NavGrid';
-import { getNavGrid } from '../../world/navigation';
-import { turnToward } from '../movement';
+import type { HealthComponent } from '@domain/components/HealthComponent';
+import { isBlocked, isInsideBounds, worldToCol, worldToRow } from '@domain/pathfinding/NavGrid';
+import { getNavGrid } from '@game/world/navigation/navigation';
+import { turnToward } from '@game/entities/movement';
 import { DetectionComponent } from './DetectionComponent';
 import type { EnemyBrain } from './EnemyBrain';
 import type { RoamingAttacker } from './EnemyAttacker';
-import { PathfindingComponent } from './PathfindingComponent';
+import { PathfindingComponent } from '@game/entities/components/movement/PathfindingComponent';
 
 export interface RoamOptions {
     /** How far from its spawn it ever runs: the patch of the map it lives in. */

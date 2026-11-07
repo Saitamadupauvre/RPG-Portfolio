@@ -1,4 +1,4 @@
-import type { Project, ProjectRarity } from '../data/Project';
+import type { Project, ProjectRarity } from '@data/projects/Project';
 
 export interface CardStyle {
     frameVariant: ProjectRarity;

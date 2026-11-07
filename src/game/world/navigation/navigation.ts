@@ -1,8 +1,8 @@
-import { mapLayout } from '../../data/mapLayout';
-import type { MapEntity } from '../../data/MapEntity';
-import { getTileGrid } from './terrainField';
-import { isPropModel, PROP_MODELS } from '../../data/propModels';
-import { WALKER_HEADROOM } from '../entities/collisionSizes';
+import { mapLayout } from '@data/map/mapLayout';
+import type { MapEntity } from '@data/map/MapEntity';
+import { getTileGrid } from '@game/world/terrain/terrainField';
+import { isPropModel, PROP_MODELS } from '@data/map/propModels';
+import { WALKER_HEADROOM } from '@game/entities/collisionSizes';
 import {
     buildNavGrid,
     colToWorld,
@@ -11,7 +11,7 @@ import {
     worldToCol,
     worldToRow,
     type NavGrid,
-} from '../../domain/pathfinding/NavGrid';
+} from '@domain/pathfinding/NavGrid';
 
 const LANDMARK_FOOTPRINT = 1;
 

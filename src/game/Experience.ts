@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 import { World } from './world/World';
-import { PlayerAttackInteraction } from './PlayerAttackInteraction';
+import { PlayerAttackInteraction } from './systems/PlayerAttackInteraction';
 import { EditorSystem } from './editor/EditorSystem';
-import { stateMachine } from '../core/StateMachine';
-import { events } from '../core/events';
-import { getSettings, type Quality } from '../domain/settings';
+import { stateMachine } from '@core/state/StateMachine';
+import { events } from '@core/events/events';
+import { getSettings, type Quality } from '@domain/preferences/settings';
 import { WaterDepthPrepass } from './world/water/depthPrepass';
 import { PerfOverlay } from './debug/PerfOverlay';
 import { GRASS_LAYER, WIND_LAYER } from './render/layers';
-import { applyColorGrading } from './render/grading';
+import { applyColorGrading } from './render/materials/grading';
 import { PlayerPortrait } from './portrait/PlayerPortrait';
-import { MAX_STREAKS } from './world/windStreaks';
-import { GAME_FOV } from './world/menuShot';
+import { MAX_STREAKS } from './world/environment/windStreaks';
+import { GAME_FOV } from './world/camera/menuShot';
 
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;

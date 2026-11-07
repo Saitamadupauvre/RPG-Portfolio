@@ -1,5 +1,5 @@
 import type { CalendarDate } from './CalendarDate';
-import type { LocalizedText } from './locale';
+import type { LocalizedText } from '@data/i18n/locale';
 
 export interface TimelineEvent {
     id: string;

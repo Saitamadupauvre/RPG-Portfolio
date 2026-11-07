@@ -1,4 +1,4 @@
-import { events } from './events';
+import { events } from '@core/events/events';
 
 export type AppState = 'LOADING' | 'MENU' | 'GAME' | 'CLASSIC' | 'DEAD' | 'EDITOR';
 

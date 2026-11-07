@@ -1,8 +1,8 @@
 import type * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import type { Vec3 } from '../../../data/MapEntity';
-import { getCheckpoint } from '../../../domain/checkpoint';
-import { createFireEffect, type FireEffect } from '../../render/fireEffect';
+import type { Component } from '@domain/components/Component';
+import type { Vec3 } from '@data/map/MapEntity';
+import { getCheckpoint } from '@domain/save/checkpoint';
+import { createFireEffect, type FireEffect } from '@game/render/fireEffect';
 
 /** How strong a bonfire burns when it is not the one the player last rested at, and when it is. */
 const INTENSITY_IDLE = 0.22;

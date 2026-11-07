@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import type { HealthComponent } from '../../../domain/components/HealthComponent';
+import type { Component } from '@domain/components/Component';
+import type { HealthComponent } from '@domain/components/HealthComponent';
 
 const WIDTH = 0.8;
 const HEIGHT = 0.1;

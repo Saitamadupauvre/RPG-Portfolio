@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createGrassColorUniforms, GRASS_COLOR_GLSL } from './groundPalette';
-import { PALETTE } from '../../render/palette';
+import { PALETTE } from '@game/render/materials/palette';
 
 const GROUND_VERTEX_PARS = /* glsl */ `
 varying vec2 vGroundXZ;

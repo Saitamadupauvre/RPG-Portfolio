@@ -1,5 +1,5 @@
-import type { Entity } from './entities/Entity';
-import { resolveCircleOverlap } from '../domain/collision/CircleCollision';
+import type { Entity } from '@game/entities/Entity';
+import { resolveCircleOverlap } from '@domain/collision/CircleCollision';
 
 export class EntityCollisionSystem {
     public resolve(bodies: readonly Entity[]) {

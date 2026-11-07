@@ -1,4 +1,4 @@
-import type { MessageKey, MessageText } from '../locale';
+import type { MessageKey, MessageText } from './locale';
 
 /** Every key of `en.ts`, in French. A missing or misspelt key fails the build. */
 export const fr: Record<MessageKey, MessageText> = {

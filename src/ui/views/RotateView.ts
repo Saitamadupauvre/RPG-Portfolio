@@ -1,9 +1,9 @@
-import { events } from '../../core/events';
-import { setPaused } from '../../core/pause';
-import { stateMachine, type AppState } from '../../core/StateMachine';
-import { renderSprite } from '../components/pixelSprite';
-import { isTouchOnly } from '../../core/device';
-import { PHONE_TURN } from '../sprites';
+import { events } from '@core/events/events';
+import { setPaused } from '@core/state/pause';
+import { stateMachine, type AppState } from '@core/state/StateMachine';
+import { renderSprite } from '@ui/components/sprites/pixelSprite';
+import { isTouchOnly } from '@core/input/device';
+import { PHONE_TURN } from '@ui/components/sprites/sprites';
 
 /** The states where the world is on screen and the player is in it. */
 const PLAYING_STATES: readonly AppState[] = ['GAME', 'DEAD'];

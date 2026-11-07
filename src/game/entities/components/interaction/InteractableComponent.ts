@@ -1,6 +1,6 @@
-import type { Component } from '../../../domain/components/Component';
-import type { PromptAction } from '../../../core/events';
-import { keyFor } from '../../../domain/settings';
+import type { Component } from '@domain/components/Component';
+import type { PromptAction } from '@core/events/events';
+import { keyFor } from '@domain/preferences/settings';
 
 /** A prompt line plus the code it runs, fired by whatever key is bound to its `input`. */
 export interface InteractAction extends PromptAction {

@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import type { Entity } from './entities/Entity';
-import type { EnemyEntity } from '../data/MapEntity';
-import { enemyPool, getEnemyCoinReward } from './entities/EnemyPool';
-import { addCoins } from '../domain/playerProgress';
-import { getSettings } from '../domain/settings';
-import { defeatBoss } from '../domain/defeatedBosses';
-import { reviveEnemies, slayEnemy } from '../domain/slainEnemies';
-import { chunkKeyAt, type ChunkKey } from '../domain/chunks';
-import { ParticleSystem } from './effects/ParticleSystem';
-import { ScreenShake } from './effects/ScreenShake';
+import type { Entity } from '@game/entities/Entity';
+import type { EnemyEntity } from '@data/map/MapEntity';
+import { enemyPool, getEnemyCoinReward } from '@game/entities/enemies/EnemyPool';
+import { addCoins } from '@domain/save/playerProgress';
+import { getSettings } from '@domain/preferences/settings';
+import { defeatBoss } from '@domain/save/defeatedBosses';
+import { reviveEnemies, slayEnemy } from '@domain/save/slainEnemies';
+import { chunkKeyAt, type ChunkKey } from '@domain/map/chunks';
+import { ParticleSystem } from '@game/effects/ParticleSystem';
+import { ScreenShake } from '@game/effects/ScreenShake';
 import type { ProjectileSystem } from './ProjectileSystem';
 import type { FireSystem } from './FireSystem';
-import { playSound } from '../audio/audio';
+import { playSound } from '@audio/audio';
 
 const HIT_SHAKE_INTENSITY = 0.1;
 const HIT_SHAKE_DURATION = 0.15;

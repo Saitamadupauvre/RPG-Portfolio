@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { AttackComponent, AttackHitboxOptions } from './AttackComponent';
+import type { AttackComponent, AttackHitboxOptions } from '@game/entities/components/combat/AttackComponent';
 import type { EnemyAttacker } from './EnemyAttacker';
-import { hasClearLine, slideMove } from '../movement';
+import { hasClearLine, slideMove } from '@game/entities/movement';
 
 export interface LungeOptions {
     /** Distance to the player at which the lunge starts preparing. */

@@ -1,9 +1,9 @@
-import type { ChestLoot, MapEntity, TriggerAction } from '../../data/MapEntity';
-import { BONFIRE_MODEL_IDS } from '../../data/bonfireModels';
-import { projects } from '../../data/projects';
-import { PROP_MODEL_IDS } from '../../data/propModels';
-import type { StatId } from '../../data/stats';
-import { TUTORIAL_IDS } from '../../data/tutorials';
+import type { ChestLoot, MapEntity, TriggerAction } from '@data/map/MapEntity';
+import { BONFIRE_MODEL_IDS } from '@data/map/bonfireModels';
+import { projects } from '@data/projects/projects';
+import { PROP_MODEL_IDS } from '@data/map/propModels';
+import type { StatId } from '@data/stats';
+import { TUTORIAL_IDS } from '@data/book/tutorials';
 
 /**
  * Declarative description of one editable field. The inspector renders from these

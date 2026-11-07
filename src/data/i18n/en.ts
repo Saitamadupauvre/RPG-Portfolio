@@ -1,4 +1,4 @@
-import type { MessageText } from '../locale';
+import type { MessageText } from './locale';
 
 /**
  * Every interface string, in English. The source of truth for the keys: `fr.ts`

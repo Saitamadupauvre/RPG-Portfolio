@@ -1,6 +1,6 @@
-import type { TriggerAction } from '../data/MapEntity';
-import { events } from '../core/events';
-import { createPersistentSet } from './persistence';
+import type { TriggerAction } from '@data/map/MapEntity';
+import { events } from '@core/events/events';
+import { createPersistentSet } from '@domain/save/persistence';
 
 /** Tutorials already shown once: walking back through their trigger stays quiet. */
 const seenTutorials = createPersistentSet('rpg-portfolio:seen-tutorials');

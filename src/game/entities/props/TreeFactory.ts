@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import type { PropEntity } from '../../data/MapEntity';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
-import type { PropModelDef } from '../../data/propModels';
-import { PALETTE } from '../render/palette';
-import { jitterColor, type TintSpread } from '../render/tint';
-import { applyTreeSway, tickTreeSway } from '../render/treeSway';
-import { createRandom, hashString } from '../world/grass/random';
-import { GhostComponent } from './components/GhostComponent';
-import { propInstancer, type BatchOptions } from '../render/PropInstancer';
+import type { PropEntity } from '@data/map/MapEntity';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
+import type { PropModelDef } from '@data/map/propModels';
+import { PALETTE } from '@game/render/materials/palette';
+import { jitterColor, type TintSpread } from '@game/render/materials/tint';
+import { applyTreeSway, tickTreeSway } from '@game/render/treeSway';
+import { createRandom, hashString } from '@game/world/terrain/grass/random';
+import { GhostComponent } from '@game/entities/components/effects/GhostComponent';
+import { propInstancer, type BatchOptions } from '@game/render/PropInstancer';
 
 /**
  * How far below the ground the model's base sits, in unscaled world units. A

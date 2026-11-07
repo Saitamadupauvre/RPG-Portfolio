@@ -1,23 +1,23 @@
-import type { HealthComponent } from '../../domain/components/HealthComponent';
-import type { AnimatorComponent } from '../animation/AnimatorComponent';
-import type { AnimationDriver } from './components/AnimationDriver';
-import type { AttackComponent } from './components/AttackComponent';
-import type { ComboComponent } from './components/ComboComponent';
-import type { DashComponent } from './components/DashComponent';
-import type { DashTrailComponent } from './components/DashTrailComponent';
-import type { DeathFadeComponent } from './components/DeathFadeComponent';
-import type { DustEmitterComponent } from './components/DustEmitterComponent';
-import type { EnemyBrain } from './components/EnemyBrain';
-import type { FireComponent } from './components/FireComponent';
-import type { GhostComponent } from './components/GhostComponent';
-import type { GlowComponent } from './components/GlowComponent';
-import type { HealthBarComponent } from './components/HealthBarComponent';
-import type { HitFlashComponent } from './components/HitFlashComponent';
-import type { InteractableComponent } from './components/InteractableComponent';
-import type { MovementComponent } from './components/MovementComponent';
-import type { SwordTrailComponent } from './components/SwordTrailComponent';
-import type { TriggerComponent } from './components/TriggerComponent';
-import type { XrayComponent } from './components/XrayComponent';
+import type { HealthComponent } from '@domain/components/HealthComponent';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import type { AnimationDriver } from './components/animation/AnimationDriver';
+import type { AttackComponent } from './components/combat/AttackComponent';
+import type { ComboComponent } from './components/combat/ComboComponent';
+import type { DashComponent } from './components/movement/DashComponent';
+import type { DashTrailComponent } from './components/effects/DashTrailComponent';
+import type { DeathFadeComponent } from './components/effects/DeathFadeComponent';
+import type { DustEmitterComponent } from './components/effects/DustEmitterComponent';
+import type { EnemyBrain } from './components/ai/EnemyBrain';
+import type { FireComponent } from './components/effects/FireComponent';
+import type { GhostComponent } from './components/effects/GhostComponent';
+import type { GlowComponent } from './components/effects/GlowComponent';
+import type { HealthBarComponent } from './components/effects/HealthBarComponent';
+import type { HitFlashComponent } from './components/effects/HitFlashComponent';
+import type { InteractableComponent } from './components/interaction/InteractableComponent';
+import type { MovementComponent } from './components/movement/MovementComponent';
+import type { SwordTrailComponent } from './components/effects/SwordTrailComponent';
+import type { TriggerComponent } from './components/interaction/TriggerComponent';
+import type { XrayComponent } from './components/effects/XrayComponent';
 
 export type ComponentMap = {
     /** Whatever feeds an animator its parameters: one driver per kind of character. */

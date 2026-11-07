@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
+import type { Component } from '@domain/components/Component';
 
 /**
  * The bridge from a character's gameplay components to its animator — what a Unity script does

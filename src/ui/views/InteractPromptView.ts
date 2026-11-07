@@ -1,8 +1,8 @@
-import { events, type PromptAction } from '../../core/events';
-import { translate } from '../../domain/i18n';
-import { bindingFor } from '../../domain/settings';
-import { keyName } from '../components/printedKeys';
-import { isTouchOnly } from '../../core/device';
+import { events, type PromptAction } from '@core/events/events';
+import { translate } from '@domain/preferences/i18n';
+import { bindingFor } from '@domain/preferences/settings';
+import { keyName } from '@ui/components/keys/printedKeys';
+import { isTouchOnly } from '@core/input/device';
 
 export function initInteractPromptView() {
     const prompt = document.getElementById('interact-prompt');

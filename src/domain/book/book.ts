@@ -1,11 +1,11 @@
-import type { BookPage } from '../data/BookPage';
-import type { Project } from '../data/Project';
-import type { TimelineEvent } from '../data/TimelineEvent';
-import { pages } from '../data/pages';
-import { findProject, projects } from '../data/projects';
-import { timeline } from '../data/timeline';
-import { TUTORIAL_IDS } from '../data/tutorials';
-import { isDiscovered } from './discovery';
+import type { BookPage } from '@data/book/BookPage';
+import type { Project } from '@data/projects/Project';
+import type { TimelineEvent } from '@data/projects/TimelineEvent';
+import { pages } from '@data/book/pages';
+import { findProject, projects } from '@data/projects/projects';
+import { timeline } from '@data/projects/timeline';
+import { TUTORIAL_IDS } from '@data/book/tutorials';
+import { isDiscovered } from '@domain/save/discovery';
 
 export type BookMode = 'game' | 'classic';
 

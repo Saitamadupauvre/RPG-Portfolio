@@ -1,13 +1,13 @@
-import { stateMachine } from '../../core/StateMachine';
-import { events } from '../../core/events';
-import { LOCALE_NAMES, LOCALES, type Locale } from '../../data/locale';
-import { currentLocale, t } from '../../domain/i18n';
-import { setLanguage } from '../../domain/settings';
-import { getIris } from '../components/iris';
-import { isTouchOnly } from '../../core/device';
+import { stateMachine } from '@core/state/StateMachine';
+import { events } from '@core/events/events';
+import { LOCALE_NAMES, LOCALES, type Locale } from '@data/i18n/locale';
+import { currentLocale, t } from '@domain/preferences/i18n';
+import { setLanguage } from '@domain/preferences/settings';
+import { getIris } from '@ui/components/iris';
+import { isTouchOnly } from '@core/input/device';
 import { enterGameFullscreen } from './TouchControlsView';
-import { renderSprite } from '../components/pixelSprite';
-import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '../sprites';
+import { renderSprite } from '@ui/components/sprites/pixelSprite';
+import { ARROW_POINT_LEFT, ARROW_POINT_RIGHT } from '@ui/components/sprites/sprites';
 
 /** The fade to black before the world loads behind it. */
 const ENTER_COVER_MS = 500;

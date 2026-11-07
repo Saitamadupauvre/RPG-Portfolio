@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getWindUniforms, WIND_GLSL } from '../world/wind';
+import { getWindUniforms, WIND_GLSL } from '@game/world/environment/wind';
 
 /** One clock shared by every tree, so the material program and its uniforms are shared too. */
 const treeTime = { value: 0 };

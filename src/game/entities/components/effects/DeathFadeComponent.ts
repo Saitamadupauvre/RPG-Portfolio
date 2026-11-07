@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import type { XraySilhouette } from '../../render/xraySilhouette';
+import type { Component } from '@domain/components/Component';
+import type { XraySilhouette } from '@game/render/xraySilhouette';
 
 /** Seconds to turn fully white, to hold the white, then to fade out. */
 const WHITEN = 0.08;

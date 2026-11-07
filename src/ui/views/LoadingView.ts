@@ -1,8 +1,8 @@
-import { events } from '../../core/events';
-import { loadingTips } from '../../data/loadingTips';
-import { localize } from '../../domain/i18n';
-import { renderSprite } from '../components/pixelSprite';
-import { CAMPFIRE } from '../sprites';
+import { events } from '@core/events/events';
+import { loadingTips } from '@data/book/loadingTips';
+import { localize } from '@domain/preferences/i18n';
+import { renderSprite } from '@ui/components/sprites/pixelSprite';
+import { CAMPFIRE } from '@ui/components/sprites/sprites';
 
 const TIP_MS = 4200;
 const EMBERS = 14;

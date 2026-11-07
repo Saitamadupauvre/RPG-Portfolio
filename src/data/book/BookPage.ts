@@ -1,5 +1,5 @@
-import type { LocalizedText } from './locale';
-import type { InputAction } from './settings';
+import type { LocalizedText } from '@data/i18n/locale';
+import type { InputAction } from '@data/settings';
 
 /**
  * One input on a tutorial page, drawn as keycaps. A key is its printed label

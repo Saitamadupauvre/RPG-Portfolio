@@ -1,5 +1,5 @@
-import { entryKey, type BookSection, type Lock, type SectionId } from '../../domain/book';
-import { localize, t } from '../../domain/i18n';
+import { entryKey, type BookSection, type Lock, type SectionId } from '@domain/book/book';
+import { localize, t } from '@domain/preferences/i18n';
 import { monthName } from './formatDate';
 
 export type TocContext = {

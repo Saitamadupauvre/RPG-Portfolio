@@ -1,8 +1,8 @@
-import type { Message } from '../data/locale';
-import type { ChestLoot } from '../data/MapEntity';
-import { events } from '../core/events';
-import { discover } from './discovery';
-import { addCoins, grantStatLevel } from './playerProgress';
+import type { Message } from '@data/i18n/locale';
+import type { ChestLoot } from '@data/map/MapEntity';
+import { events } from '@core/events/events';
+import { discover } from '@domain/save/discovery';
+import { addCoins, grantStatLevel } from '@domain/save/playerProgress';
 
 /**
  * One handler per loot kind. The mapped type over `ChestLoot['kind']` makes TS

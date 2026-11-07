@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BLADE_HEIGHT } from './bladeGeometry';
 import { createGrassColorUniforms, GRASS_COLOR_GLSL, type GrassColorUniforms } from './groundPalette';
-import { getWindUniforms, WIND_GLSL, type WindUniforms } from '../wind';
+import { getWindUniforms, WIND_GLSL, type WindUniforms } from '@game/world/environment/wind';
 
 export const MAX_COLLIDERS = 16;
 

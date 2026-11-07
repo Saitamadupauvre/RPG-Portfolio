@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { slideMove } from '../movement';
-import type { MoveAction } from '../../../data/settings';
-import { ARROW_KEYS } from '../../../domain/input';
-import { keyFor } from '../../../domain/settings';
-import { stickActive, touchInput } from '../../../core/touchInput';
+import type { Component } from '@domain/components/Component';
+import { slideMove } from '@game/entities/movement';
+import type { MoveAction } from '@data/settings';
+import { ARROW_KEYS } from '@domain/preferences/input';
+import { keyFor } from '@domain/preferences/settings';
+import { stickActive, touchInput } from '@core/input/touchInput';
 
 export class MovementComponent implements Component {
     public readonly name = 'movement';

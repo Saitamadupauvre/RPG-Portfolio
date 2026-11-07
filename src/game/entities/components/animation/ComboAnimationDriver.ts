@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
-import type { AnimatorComponent } from '../../animation/AnimatorComponent';
-import type { AttackComponent } from './AttackComponent';
-import type { ComboComponent } from './ComboComponent';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import type { AttackComponent } from '@game/entities/components/combat/AttackComponent';
+import type { ComboComponent } from '@game/entities/components/combat/ComboComponent';
 import { GroundSpeed, type AnimationDriver } from './AnimationDriver';
 import { ComboPlayback } from './ComboPlayback';
 

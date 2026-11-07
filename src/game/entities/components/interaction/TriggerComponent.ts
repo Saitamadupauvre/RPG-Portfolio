@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import type { TriggerAction } from '../../../data/MapEntity';
-import { runTriggerAction } from '../../../domain/triggerActions';
+import type { Component } from '@domain/components/Component';
+import type { TriggerAction } from '@data/map/MapEntity';
+import { runTriggerAction } from '@domain/map/triggerActions';
 
 const local = new THREE.Vector3();
 const toLocal = new THREE.Matrix4();

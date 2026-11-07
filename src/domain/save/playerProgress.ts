@@ -1,5 +1,5 @@
-import { events } from '../core/events';
-import type { PlayerStats, StatId } from '../data/stats';
+import { events } from '@core/events/events';
+import type { PlayerStats, StatId } from '@data/stats';
 import { loadJson, saveJson } from './persistence';
 
 export type { PlayerStats, StatId };

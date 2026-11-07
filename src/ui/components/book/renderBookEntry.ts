@@ -1,17 +1,17 @@
-import type { BookImage, BookPage, ControlHint, TouchHint, TouchIcon } from '../../data/BookPage';
-import { isTouchOnly } from '../../core/device';
-import { renderSprite, type Sprite } from './pixelSprite';
-import { BOOK, DASH, SWORD } from '../sprites';
-import type { SectionId } from '../../domain/book';
-import type { Project } from '../../data/Project';
-import { findProject } from '../../data/projects';
-import type { BookEntry, Lock } from '../../domain/book';
-import { projectToUICardStyle } from '../../domain/CardStyle';
-import { localize, t } from '../../domain/i18n';
-import { bindingFor } from '../../domain/settings';
+import type { BookImage, BookPage, ControlHint, TouchHint, TouchIcon } from '@data/book/BookPage';
+import { isTouchOnly } from '@core/input/device';
+import { renderSprite, type Sprite } from '@ui/components/sprites/pixelSprite';
+import { BOOK, DASH, SWORD } from '@ui/components/sprites/sprites';
+import type { SectionId } from '@domain/book/book';
+import type { Project } from '@data/projects/Project';
+import { findProject } from '@data/projects/projects';
+import type { BookEntry, Lock } from '@domain/book/book';
+import { projectToUICardStyle } from '@domain/book/CardStyle';
+import { localize, t } from '@domain/preferences/i18n';
+import { bindingFor } from '@domain/preferences/settings';
 import { formatDate } from './formatDate';
-import { keyName } from './printedKeys';
-import { renderKey } from './renderKey';
+import { keyName } from '@ui/components/keys/printedKeys';
+import { renderKey } from '@ui/components/keys/renderKey';
 import { renderLockIcon, sectionLabel } from './renderBookToc';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {

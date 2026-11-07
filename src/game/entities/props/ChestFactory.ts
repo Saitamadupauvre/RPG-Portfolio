@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import type { ChestEntity } from '../../data/MapEntity';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
-import { events } from '../../core/events';
-import { applyChestLoot } from '../../domain/chestLoot';
-import { isChestOpened, openChest } from '../../domain/openedChests';
-import { GlowComponent } from './components/GlowComponent';
-import { InteractableComponent } from './components/InteractableComponent';
-import { findMaterial, loadModel } from './loadModel';
-import { disposeObject3D } from './disposeObject3D';
-import { createLitMaterial } from '../render/materials';
-import { PALETTE } from '../render/palette';
-import { CHEST_COLLISION_RADIUS, CHEST_HEIGHT } from './collisionSizes';
+import type { ChestEntity } from '@data/map/MapEntity';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
+import { events } from '@core/events/events';
+import { applyChestLoot } from '@domain/map/chestLoot';
+import { isChestOpened, openChest } from '@domain/save/openedChests';
+import { GlowComponent } from '@game/entities/components/effects/GlowComponent';
+import { InteractableComponent } from '@game/entities/components/interaction/InteractableComponent';
+import { findMaterial, loadModel } from '@game/entities/loadModel';
+import { disposeObject3D } from '@game/entities/disposeObject3D';
+import { createLitMaterial } from '@game/render/materials/materials';
+import { PALETTE } from '@game/render/materials/palette';
+import { CHEST_COLLISION_RADIUS, CHEST_HEIGHT } from '@game/entities/collisionSizes';
 
 const chestColor: Record<ChestEntity['chestTier'], number> = {
     wood: PALETTE.bark,

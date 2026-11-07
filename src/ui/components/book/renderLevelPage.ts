@@ -1,11 +1,11 @@
-import { formatNumber, t } from '../../domain/i18n';
+import { formatNumber, t } from '@domain/preferences/i18n';
 import {
     getCoins,
     getStatViews,
     type StatDefinition,
     type StatId,
     type StatView,
-} from '../../domain/playerProgress';
+} from '@domain/save/playerProgress';
 
 export type LevelPageContext = {
     /** True at a bonfire: the only place stats can be bought. */

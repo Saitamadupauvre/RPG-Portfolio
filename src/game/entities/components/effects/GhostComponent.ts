@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { ghostMaterial } from '../../render/ghostMaterial';
-import type { PropInstance } from '../../render/PropInstancer';
+import type { Component } from '@domain/components/Component';
+import { ghostMaterial } from '@game/render/materials/ghostMaterial';
+import type { PropInstance } from '@game/render/PropInstancer';
 
 /**
  * Turns a prop see-through while the camera sits inside it, so a tree canopy

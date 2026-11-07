@@ -1,4 +1,4 @@
-import type { MapEntity } from '../data/MapEntity';
+import type { MapEntity } from '@data/map/MapEntity';
 
 /** A rectangle in client pixels, as the box-select overlay draws it. */
 export type ScreenRect = { left: number; top: number; width: number; height: number };

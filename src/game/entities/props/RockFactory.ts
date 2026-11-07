@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import type { PropEntity, RockMaterial } from '../../data/MapEntity';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
-import { loadModel } from './loadModel';
-import type { PropModelDef } from '../../data/propModels';
-import { PALETTE } from '../render/palette';
-import { createGroundMaterial } from '../world/grass/groundMaterial';
-import { createRandom, hashString } from '../world/grass/random';
-import { GhostComponent } from './components/GhostComponent';
-import { SHORE_LAYER } from '../render/layers';
+import type { PropEntity, RockMaterial } from '@data/map/MapEntity';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
+import { loadModel } from '@game/entities/loadModel';
+import type { PropModelDef } from '@data/map/propModels';
+import { PALETTE } from '@game/render/materials/palette';
+import { createGroundMaterial } from '@game/world/terrain/grass/groundMaterial';
+import { createRandom, hashString } from '@game/world/terrain/grass/random';
+import { GhostComponent } from '@game/entities/components/effects/GhostComponent';
+import { SHORE_LAYER } from '@game/render/layers';
 
 /**
  * A rock is shaded by the terrain's own shader: grass where its surface faces

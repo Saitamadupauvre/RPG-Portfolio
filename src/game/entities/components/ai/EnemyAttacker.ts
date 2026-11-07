@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import type { ComboComponent } from './ComboComponent';
+import type { Component } from '@domain/components/Component';
+import type { ComboComponent } from '@game/entities/components/combat/ComboComponent';
 
 /**
  * How an enemy attacks once it has caught up with the player. The AI only

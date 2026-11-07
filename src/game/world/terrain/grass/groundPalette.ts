@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PALETTE } from '../../render/palette';
+import { PALETTE } from '@game/render/materials/palette';
 
 export const GRASS_BASE_COLOR = PALETTE.meadow;
 export const GRASS_PATCH_COLOR = PALETTE.meadowPatch;

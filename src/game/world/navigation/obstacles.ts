@@ -1,8 +1,8 @@
-import { mapLayout } from '../../data/mapLayout';
-import type { MapEntity } from '../../data/MapEntity';
-import { BONFIRE_MODELS, DEFAULT_BONFIRE_MODEL, isBonfireModel } from '../../data/bonfireModels';
-import { isPropModel, PROP_MODELS } from '../../data/propModels';
-import { BONFIRE_COLLISION_RADIUS, STATUE_COLLISION_RADIUS, STATUE_HEIGHT } from '../entities/collisionSizes';
+import { mapLayout } from '@data/map/mapLayout';
+import type { MapEntity } from '@data/map/MapEntity';
+import { BONFIRE_MODELS, DEFAULT_BONFIRE_MODEL, isBonfireModel } from '@data/map/bonfireModels';
+import { isPropModel, PROP_MODELS } from '@data/map/propModels';
+import { BONFIRE_COLLISION_RADIUS, STATUE_COLLISION_RADIUS, STATUE_HEIGHT } from '@game/entities/collisionSizes';
 
 /**
  * A solid body of the static world as an upright cylinder: the same circle the entity's

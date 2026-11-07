@@ -1,12 +1,12 @@
-import type { MapEntity } from '../../data/MapEntity';
+import type { MapEntity } from '@data/map/MapEntity';
 import type { Entity } from './Entity';
-import { createEnemy } from './EnemyFactory';
-import { createChest } from './ChestFactory';
-import { createItem } from './ItemFactory';
-import { createProp } from './PropFactory';
-import { createStatue } from './StatueFactory';
-import { createBonfire } from './BonfireFactory';
-import { createTrigger } from './TriggerFactory';
+import { createEnemy } from './enemies/EnemyFactory';
+import { createChest } from './props/ChestFactory';
+import { createItem } from './props/ItemFactory';
+import { createProp } from './props/PropFactory';
+import { createStatue } from './props/StatueFactory';
+import { createBonfire } from './props/BonfireFactory';
+import { createTrigger } from './props/TriggerFactory';
 
 const entityFactories: { [K in MapEntity['kind']]: (entity: Extract<MapEntity, { kind: K }>) => Entity } = {
     enemy: createEnemy,

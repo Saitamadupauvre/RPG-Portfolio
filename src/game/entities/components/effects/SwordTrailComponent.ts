@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { BladeTrail } from '../../effects/BladeTrail';
-import { LIGHT, PALETTE } from '../../render/palette';
-import { getSwordBladeBaseWorldPosition, getSwordTipWorldPosition } from '../SwordFactory';
-import type { AttackComponent } from './AttackComponent';
+import type { Component } from '@domain/components/Component';
+import { BladeTrail } from '@game/effects/BladeTrail';
+import { LIGHT, PALETTE } from '@game/render/materials/palette';
+import { getSwordBladeBaseWorldPosition, getSwordTipWorldPosition } from '@game/entities/player/SwordFactory';
+import type { AttackComponent } from '@game/entities/components/combat/AttackComponent';
 
 /**
  * Sweeps a fading ribbon through the blade's path while the swing hitbox is live, so the trail

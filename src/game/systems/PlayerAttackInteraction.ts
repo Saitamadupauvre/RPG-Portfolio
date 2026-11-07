@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { Experience } from './Experience';
-import { isGameplayActive } from '../core/pause';
-import { events } from '../core/events';
-import { isTouchOnly } from '../core/device';
-import type { StickAxis } from '../core/touchInput';
+import type { Experience } from '@game/Experience';
+import { isGameplayActive } from '@core/state/pause';
+import { events } from '@core/events/events';
+import { isTouchOnly } from '@core/input/device';
+import type { StickAxis } from '@core/input/touchInput';
 
 /** How far a tap on the attack stick looks for an enemy to strike. */
 const AUTO_AIM_RANGE = 6;

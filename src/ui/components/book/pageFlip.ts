@@ -1,4 +1,4 @@
-import { playSound } from '../../audio/audio';
+import { playSound } from '@audio/audio';
 
 export type FlipDirection = 'forward' | 'backward';
 

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { events } from '../core/events';
-import { isGameplayActive } from '../core/pause';
-import { keyFor } from '../domain/settings';
-import type { Entity } from './entities/Entity';
-import type { InteractAction } from './entities/components/InteractableComponent';
+import { events } from '@core/events/events';
+import { isGameplayActive } from '@core/state/pause';
+import { keyFor } from '@domain/preferences/settings';
+import type { Entity } from '@game/entities/Entity';
+import type { InteractAction } from '@game/entities/components/interaction/InteractableComponent';
 
 export class InteractionSystem {
     private currentActions: readonly InteractAction[] | null = null;

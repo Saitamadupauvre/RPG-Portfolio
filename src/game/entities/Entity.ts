@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Component } from '../../domain/components/Component';
+import type { Component } from '@domain/components/Component';
 import type { ComponentKey, ComponentMap } from './componentTypes';
 import { disposeObject3D } from './disposeObject3D';
 

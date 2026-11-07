@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import type { PropEntity } from '../../data/MapEntity';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
+import type { PropEntity } from '@data/map/MapEntity';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
 import { createTree } from './TreeFactory';
 import { createRock } from './RockFactory';
-import { isPropModel, PROP_MODELS } from '../../data/propModels';
+import { isPropModel, PROP_MODELS } from '@data/map/propModels';
 
 export function createProp(entity: PropEntity): Entity {
     if (!isPropModel(entity.propType)) {

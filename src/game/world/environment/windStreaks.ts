@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { PALETTE } from '../render/palette';
-import { WIND_LAYER } from '../render/layers';
+import { PALETTE } from '@game/render/materials/palette';
+import { WIND_LAYER } from '@game/render/layers';
 import { getWindUniforms, WIND_GLSL } from './wind';
 
 /** Quads along one ribbon. Enough for a loop to read round, not faceted. */

@@ -1,4 +1,4 @@
-import type { AnimatorControllerDefinition } from '../../domain/animation/AnimatorController';
+import type { AnimatorControllerDefinition } from '@domain/animation/AnimatorController';
 
 /**
  * The fox dragon's animation graph. The clips come from `public/models/enemy-dragon.glb`,

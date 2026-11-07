@@ -1,6 +1,6 @@
-import { stateMachine } from './core/StateMachine';
-import { events } from './core/events';
-import { validateBook } from './domain/book';
+import { stateMachine } from './core/state/StateMachine';
+import { events } from './core/events/events';
+import { validateBook } from './domain/book/book';
 import type { Experience } from './game/Experience';
 import { initUIStateView } from './ui/UIStateView';
 import { initStaticText } from './ui/staticText';
@@ -10,14 +10,14 @@ import { initBookView } from './ui/views/BookView';
 import { initHudView } from './ui/views/HudView';
 import { initTransitionView } from './ui/views/TransitionView';
 import { initLoadingView } from './ui/views/LoadingView';
-import { initEditorView } from './ui/views/EditorView';
+import { initEditorView } from './ui/views/editor/EditorView';
 import { initRotateView } from './ui/views/RotateView';
 import { initTouchControlsView } from './ui/views/TouchControlsView';
-import { isTouchOnly } from './core/device';
+import { isTouchOnly } from './core/input/device';
 import { initAudio, playTrack, setVolume, stopTrack } from './audio/audio';
-import { getSettings } from './domain/settings';
+import { getSettings } from './domain/preferences/settings';
 import { VOLUME_CHANNELS, type VolumeChannel } from './data/settings';
-import type { AppState } from './core/StateMachine';
+import type { AppState } from './core/state/StateMachine';
 import type { AudioBus, TrackId } from './data/sounds';
 
 validateBook();

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Random } from '../world/grass/random';
+import type { Random } from '@game/world/terrain/grass/random';
 
 /** How far a colour may stray from its base, in HSL units. */
 export type TintSpread = { hue: number; saturation: number; lightness: number };

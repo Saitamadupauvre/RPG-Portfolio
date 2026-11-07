@@ -1,4 +1,4 @@
-import { events } from './events';
+import { events } from '@core/events/events';
 import { stateMachine } from './StateMachine';
 
 /**

@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import type { TriggerEntity } from '../../data/MapEntity';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
-import { TriggerComponent } from './components/TriggerComponent';
-import { EDITOR_LAYER } from '../render/layers';
-import { PALETTE } from '../render/palette';
+import type { TriggerEntity } from '@data/map/MapEntity';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
+import { TriggerComponent } from '@game/entities/components/interaction/TriggerComponent';
+import { EDITOR_LAYER } from '@game/render/layers';
+import { PALETTE } from '@game/render/materials/palette';
 
 const FILL_OPACITY = 0.18;
 

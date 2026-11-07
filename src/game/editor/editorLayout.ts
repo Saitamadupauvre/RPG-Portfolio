@@ -1,6 +1,6 @@
-import type { MapEntity } from '../../data/MapEntity';
-import { mapLayout } from '../../data/mapLayout';
-import { tileMap, type TileMap } from '../../data/tileMap';
+import type { MapEntity } from '@data/map/MapEntity';
+import { mapLayout } from '@data/map/mapLayout';
+import { tileMap, type TileMap } from '@data/map/tileMap';
 
 const STORAGE_KEY = 'rpg-portfolio:editor-layout';
 const TILES_KEY = 'rpg-portfolio:editor-tiles';
@@ -45,12 +45,12 @@ export function sourceLayout(): MapEntity[] {
     return structuredClone(mapLayout);
 }
 
-/** Saves as `src/data/mapLayout.json`: drop the file over that one to commit the map. */
+/** Saves as `src/data/map/mapLayout.json`: drop the file over that one to commit the map. */
 export function downloadLayout(layout: MapEntity[]) {
     downloadJson('mapLayout.json', serialize(layout));
 }
 
-/** Saves as `src/data/tileMap.json`, the terrain half of the map. */
+/** Saves as `src/data/map/tileMap.json`, the terrain half of the map. */
 export function downloadTiles(map: TileMap) {
     downloadJson('tileMap.json', JSON.stringify(map));
 }

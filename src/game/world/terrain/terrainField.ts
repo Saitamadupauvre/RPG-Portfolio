@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
-import { tileMap, type TileMap } from '../../data/tileMap';
-import { createTileGrid, type TileGrid } from '../../domain/terrain/TileGrid';
+import { tileMap, type TileMap } from '@data/map/tileMap';
+import { createTileGrid, type TileGrid } from '@domain/terrain/TileGrid';
 
 /**
  * Shared tile-grid accessor, mirroring `navigation.ts`: one lazily built

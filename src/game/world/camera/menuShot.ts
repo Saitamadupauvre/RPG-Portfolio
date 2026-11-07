@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { findFreePoint } from './navigation';
-import { isNearObstacle } from './obstacles';
-import { groundHeight } from './terrainField';
-import { isTouchOnly } from '../../core/device';
+import { findFreePoint } from '@game/world/navigation/navigation';
+import { isNearObstacle } from '@game/world/navigation/obstacles';
+import { groundHeight } from '@game/world/terrain/terrainField';
+import { isTouchOnly } from '@core/input/device';
 
 /** The gameplay lens, narrower on a phone (the knight was tiny on a small screen, and the near crowns huge). The menu shot uses a longer one, so the blend between them also zooms. */
 export const GAME_FOV = isTouchOnly() ? 62 : 75;

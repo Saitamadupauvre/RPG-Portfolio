@@ -1,5 +1,5 @@
-import type { CalendarDate } from '../../data/CalendarDate';
-import { currentLocale } from '../../domain/i18n';
+import type { CalendarDate } from '@data/projects/CalendarDate';
+import { currentLocale } from '@domain/preferences/i18n';
 
 // UTC on both ends: a local midnight could fall on the previous month west of Greenwich.
 const toDate = (year: number, month: number) => new Date(Date.UTC(year, month - 1, 1));

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { ItemEntity } from '../../data/MapEntity';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
-import { createLitMaterial } from '../render/materials';
-import { PALETTE } from '../render/palette';
+import type { ItemEntity } from '@data/map/MapEntity';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
+import { createLitMaterial } from '@game/render/materials/materials';
+import { PALETTE } from '@game/render/materials/palette';
 
 const ITEM_RADIUS = 0.3;
 

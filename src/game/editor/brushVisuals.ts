@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { MapEntity } from '../../data/MapEntity';
-import { groundHeight } from '../world/terrainField';
+import type { MapEntity } from '@data/map/MapEntity';
+import { groundHeight } from '@game/world/terrain/terrainField';
 
 const PAINT_COLOR = 0x3ae6c9;
 const ERASE_COLOR = 0xe6503a;

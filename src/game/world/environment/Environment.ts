@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Experience } from '../Experience';
-import { LIGHT } from '../render/palette';
+import type { Experience } from '@game/Experience';
+import { LIGHT } from '@game/render/materials/palette';
 
 /** Exported for the Level page portrait, lit like the world so the knight keeps its colours. */
 export const HEMISPHERE_INTENSITY = 0.85;

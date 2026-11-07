@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PathfindingComponent } from './PathfindingComponent';
+import { PathfindingComponent } from '@game/entities/components/movement/PathfindingComponent';
 import { DetectionComponent } from './DetectionComponent';
 import type { EnemyAttacker } from './EnemyAttacker';
 import type { EnemyBrain } from './EnemyBrain';

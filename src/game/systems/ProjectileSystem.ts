@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { isInsideBounds } from '../domain/pathfinding/NavGrid';
-import { TrailRenderer, type TrailRendererOptions } from './effects/TrailRenderer';
-import { loadModel } from './entities/loadModel';
-import { createLitMaterial } from './render/materials';
-import { PALETTE } from './render/palette';
-import { getNavGrid } from './world/navigation';
-import { isInsideObstacle } from './world/obstacles';
-import { getTileGrid, groundHeight } from './world/terrainField';
+import { isInsideBounds } from '@domain/pathfinding/NavGrid';
+import { TrailRenderer, type TrailRendererOptions } from '@game/effects/TrailRenderer';
+import { loadModel } from '@game/entities/loadModel';
+import { createLitMaterial } from '@game/render/materials/materials';
+import { PALETTE } from '@game/render/materials/palette';
+import { getNavGrid } from '@game/world/navigation/navigation';
+import { isInsideObstacle } from '@game/world/navigation/obstacles';
+import { getTileGrid, groundHeight } from '@game/world/terrain/terrainField';
 
 const ARROW_URL = 'models/enemy-arrow.glb';
 /**

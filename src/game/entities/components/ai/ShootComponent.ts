@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { HealthComponent } from '../../../domain/components/HealthComponent';
-import type { AttackComponent } from './AttackComponent';
+import type { HealthComponent } from '@domain/components/HealthComponent';
+import type { AttackComponent } from '@game/entities/components/combat/AttackComponent';
 import type { EnemyAttacker } from './EnemyAttacker';
-import { hasClearLine, slideMove } from '../movement';
-import { hasLineOfFire, type ProjectileSystem } from '../../ProjectileSystem';
+import { hasClearLine, slideMove } from '@game/entities/movement';
+import { hasLineOfFire, type ProjectileSystem } from '@game/systems/ProjectileSystem';
 
 export interface ShootOptions {
     /** Stops to shoot once the player is this close, if nothing stands in the line of fire. */

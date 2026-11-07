@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import { ParticleSystem } from '../../effects/ParticleSystem';
-import type { MovementComponent } from './MovementComponent';
-import { PALETTE } from '../../render/palette';
+import type { Component } from '@domain/components/Component';
+import { ParticleSystem } from '@game/effects/ParticleSystem';
+import type { MovementComponent } from '@game/entities/components/movement/MovementComponent';
+import { PALETTE } from '@game/render/materials/palette';
 
 const SPAWN_INTERVAL = 0.15;
 const BURST_COUNT = 3;

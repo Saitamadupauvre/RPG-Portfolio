@@ -1,4 +1,4 @@
-import type { MapEntity } from '../data/MapEntity';
+import type { MapEntity } from '@data/map/MapEntity';
 
 /** World units per chunk side. */
 export const CHUNK_SIZE = 16;

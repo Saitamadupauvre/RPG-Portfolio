@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import type { BonfireEntity } from '../../data/MapEntity';
-import { BONFIRE_MODELS, DEFAULT_BONFIRE_MODEL, isBonfireModel } from '../../data/bonfireModels';
-import { Entity } from './Entity';
-import { applyTransform } from './applyTransform';
-import { events } from '../../core/events';
-import { setCheckpoint } from '../../domain/checkpoint';
-import { FireComponent } from './components/FireComponent';
-import { InteractableComponent } from './components/InteractableComponent';
-import { BONFIRE_COLLISION_RADIUS } from './collisionSizes';
-import { loadModel } from './loadModel';
+import type { BonfireEntity } from '@data/map/MapEntity';
+import { BONFIRE_MODELS, DEFAULT_BONFIRE_MODEL, isBonfireModel } from '@data/map/bonfireModels';
+import { Entity } from '@game/entities/Entity';
+import { applyTransform } from '@game/entities/applyTransform';
+import { events } from '@core/events/events';
+import { setCheckpoint } from '@domain/save/checkpoint';
+import { FireComponent } from '@game/entities/components/effects/FireComponent';
+import { InteractableComponent } from '@game/entities/components/interaction/InteractableComponent';
+import { BONFIRE_COLLISION_RADIUS } from '@game/entities/collisionSizes';
+import { loadModel } from '@game/entities/loadModel';
 
 const INTERACT_RADIUS = 2.2;
 /** Multiplies the campfire textures' colours; above 1 brightens them. */

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
-import type { TintableMaterial } from '../../render/materials';
+import type { Component } from '@domain/components/Component';
+import type { TintableMaterial } from '@game/render/materials/materials';
 
 const FLASH_COLOR = new THREE.Color(0xffffff);
 

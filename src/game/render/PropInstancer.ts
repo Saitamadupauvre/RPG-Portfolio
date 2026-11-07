@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { loadModel, type ModelFitOptions } from '../entities/loadModel';
-import type { TintableMaterial } from './materials';
+import { loadModel, type ModelFitOptions } from '@game/entities/loadModel';
+import type { TintableMaterial } from './materials/materials';
 
 /** How one model is drawn: every copy of it shares these. */
 export type BatchOptions = {

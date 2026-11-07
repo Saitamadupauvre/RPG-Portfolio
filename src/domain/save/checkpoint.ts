@@ -1,4 +1,4 @@
-import type { Vec3 } from '../data/MapEntity';
+import type { Vec3 } from '@data/map/MapEntity';
 import { loadJson, saveJson } from './persistence';
 
 const CHECKPOINT_KEY = 'rpg-portfolio:checkpoint';

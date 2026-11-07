@@ -1,5 +1,5 @@
-import type { KeyBinding } from '../../data/settings';
-import { keyLabel } from '../../domain/input';
+import type { KeyBinding } from '@data/settings';
+import { keyLabel } from '@domain/preferences/input';
 
 /** What the browser says is printed on each key, by `event.code`. Chromium only. */
 let layoutMap: ReadonlyMap<string, string> | null = null;

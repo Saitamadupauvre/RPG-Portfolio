@@ -1,10 +1,10 @@
-import type { MapEntity } from '../../../data/MapEntity';
+import type { MapEntity } from '@data/map/MapEntity';
 import {
     BONFIRE_COLLISION_RADIUS,
     CHEST_COLLISION_RADIUS,
     STATUE_COLLISION_RADIUS,
-} from '../../entities/collisionSizes';
-import { isPropModel, PROP_MODELS } from '../../../data/propModels';
+} from '@game/entities/collisionSizes';
+import { isPropModel, PROP_MODELS } from '@data/map/propModels';
 import type { GrassBounds } from './GrassSurface';
 
 const MARGIN = 0.3;

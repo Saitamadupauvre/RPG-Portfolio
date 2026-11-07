@@ -1,5 +1,5 @@
-import type { MapEntity } from '../../data/MapEntity';
-import type { TileMap } from '../../data/tileMap';
+import type { MapEntity } from '@data/map/MapEntity';
+import type { TileMap } from '@data/map/tileMap';
 
 export type EditorSnapshot = { layout: MapEntity[]; tiles: TileMap };
 

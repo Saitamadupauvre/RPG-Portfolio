@@ -1,5 +1,5 @@
-import type { Project } from '../data/Project';
-import { findProject } from '../data/projects';
+import type { Project } from '@data/projects/Project';
+import { findProject } from '@data/projects/projects';
 import { createPersistentSet } from './persistence';
 
 const discovered = createPersistentSet('rpg-portfolio:discovered');

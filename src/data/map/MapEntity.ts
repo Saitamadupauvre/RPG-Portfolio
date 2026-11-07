@@ -1,5 +1,5 @@
-import type { StatId } from './stats';
-import type { TutorialId } from './tutorials';
+import type { StatId } from '@data/stats';
+import type { TutorialId } from '@data/book/tutorials';
 
 export type Vec3 = [number, number, number];
 
@@ -20,7 +20,7 @@ export interface EnemyEntity extends MapEntityTransform {
 
 /**
  * What a chest hands out. Tagged union so new reward kinds are added by writing
- * one member plus one handler in `domain/chestLoot.ts` — nothing else changes.
+ * one member plus one handler in `domain/map/chestLoot.ts` — nothing else changes.
  */
 export type ChestLoot =
     | { kind: 'coins'; amount: number }
@@ -51,7 +51,7 @@ export type RockMaterial = 'stone' | 'cliff';
 export interface PropEntity extends MapEntityTransform {
     kind: 'prop';
     id: string;
-    /** A model id from `data/propModels.ts`. */
+    /** A model id from `data/map/propModels.ts`. */
     propType: string;
     /** Only rocks read it; defaults to 'stone'. */
     material?: RockMaterial;
@@ -66,13 +66,13 @@ export interface StatueEntity extends MapEntityTransform {
 export interface BonfireEntity extends MapEntityTransform {
     kind: 'bonfire';
     id: string;
-    /** A campfire model id from `data/bonfireModels.ts`; absent = the default one. */
+    /** A campfire model id from `data/map/bonfireModels.ts`; absent = the default one. */
     model?: string;
 }
 
 /**
  * What a trigger does when the player walks in. Tagged union like `ChestLoot`:
- * a new custom event is one member here plus one handler in `domain/triggerActions.ts`.
+ * a new custom event is one member here plus one handler in `domain/map/triggerActions.ts`.
  */
 export type TriggerAction = { kind: 'tutorial'; tutorialId: TutorialId };
 

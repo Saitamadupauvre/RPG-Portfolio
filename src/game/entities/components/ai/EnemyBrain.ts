@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { Component } from '../../../domain/components/Component';
+import type { Component } from '@domain/components/Component';
 
 /**
  * What the rest of the game asks of an enemy's AI, however it behaves: a hunter chasing the

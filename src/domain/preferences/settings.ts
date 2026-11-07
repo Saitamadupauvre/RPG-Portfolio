@@ -1,4 +1,4 @@
-import { events } from '../core/events';
+import { events } from '@core/events/events';
 import {
     INPUT_ACTIONS,
     QUALITY_LEVELS,
@@ -8,10 +8,10 @@ import {
     type Quality,
     type Settings,
     type VolumeChannel,
-} from '../data/settings';
-import { LOCALES, type Locale } from '../data/locale';
+} from '@data/settings';
+import { LOCALES, type Locale } from '@data/i18n/locale';
 import { isReservedKey } from './input';
-import { loadJson, saveJson } from './persistence';
+import { loadJson, saveJson } from '@domain/save/persistence';
 
 export type { InputAction, KeyBinding, Quality, Settings, VolumeChannel };
 

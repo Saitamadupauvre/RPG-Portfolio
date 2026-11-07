@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { AttackComponent } from './AttackComponent';
+import type { AttackComponent } from '@game/entities/components/combat/AttackComponent';
 import type { RoamingAttacker } from './EnemyAttacker';
-import { turnToward } from '../movement';
-import { hasLineOfFire } from '../../ProjectileSystem';
-import type { FireSystem, FlameOptions } from '../../FireSystem';
+import { turnToward } from '@game/entities/movement';
+import { hasLineOfFire } from '@game/systems/ProjectileSystem';
+import type { FireSystem, FlameOptions } from '@game/systems/FireSystem';
 
 export interface BreathOptions {
     /** Starts breathing once the player is this close, if nothing stands in the line of fire. */

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { TileMap } from '../../data/tileMap';
-import { createTileGrid, type TileGrid } from '../../domain/terrain/TileGrid';
+import type { TileMap } from '@data/map/tileMap';
+import { createTileGrid, type TileGrid } from '@domain/terrain/TileGrid';
 import { createGroundMaterial } from './grass/groundMaterial';
 import type { GrassBounds, GrassSurface } from './grass/GrassSurface';
 import { footprintsInBounds, isUnderFootprint, type GrassFootprint } from './grass/grassFootprints';
 import { rebuildTileGrid } from './terrainField';
-import { SHORE_LAYER } from '../render/layers';
+import { SHORE_LAYER } from '@game/render/layers';
 
 /**
  * Side of one grass draw bucket (one InstancedMesh, one draw call). The patch

@@ -1,9 +1,9 @@
-import { events } from '../../core/events';
-import { isTouchOnly } from '../../core/device';
-import { isGameplayActive } from '../../core/pause';
-import { STICK_DEADZONE, touchInput, type StickAxis } from '../../core/touchInput';
-import { renderSprite } from '../components/pixelSprite';
-import { BOOK, DASH, SWORD } from '../sprites';
+import { events } from '@core/events/events';
+import { isTouchOnly } from '@core/input/device';
+import { isGameplayActive } from '@core/state/pause';
+import { STICK_DEADZONE, touchInput, type StickAxis } from '@core/input/touchInput';
+import { renderSprite } from '@ui/components/sprites/pixelSprite';
+import { BOOK, DASH, SWORD } from '@ui/components/sprites/sprites';
 
 /**
  * The phone's gamepad, drawn over the game (only on a touch-only device):
@@ -14,7 +14,7 @@ import { BOOK, DASH, SWORD } from '../sprites';
  *
  * Pointer Events with `setPointerCapture`: each finger stays with the control
  * it pressed, wherever it slides, so both thumbs work at once. The view only
- * writes `core/touchInput` and emits events; the game reads them.
+ * writes `core/input/touchInput` and emits events; the game reads them.
  */
 export function initTouchControlsView() {
     if (!isTouchOnly()) return;

@@ -1,13 +1,13 @@
-import type { AppState } from './StateMachine';
-import type { Locale, Message } from '../data/locale';
-import type { MapEntity } from '../data/MapEntity';
-import type { Project } from '../data/Project';
-import type { InputAction, Settings, VolumeChannel } from '../data/settings';
-import type { PlayerStats } from '../data/stats';
-import type { TutorialId } from '../data/tutorials';
+import type { AppState } from '@core/state/StateMachine';
+import type { Locale, Message } from '@data/i18n/locale';
+import type { MapEntity } from '@data/map/MapEntity';
+import type { Project } from '@data/projects/Project';
+import type { InputAction, Settings, VolumeChannel } from '@data/settings';
+import type { PlayerStats } from '@data/stats';
+import type { TutorialId } from '@data/book/tutorials';
 import { EventEmitter } from './EventEmitter';
-import type { ScatterSettings, ScreenRect } from './editorTools';
-import type { StickAxis } from './touchInput';
+import type { ScatterSettings, ScreenRect } from '@core/input/editorTools';
+import type { StickAxis } from '@core/input/touchInput';
 
 /** What the interact prompt shows: an input (drawn with whatever key is bound to it) and what it does. */
 export type PromptAction = { input: InputAction; label: Message };
@@ -64,7 +64,7 @@ export type AppEvents = {
     tutorialShown: [tutorialId: TutorialId];
 
     /**
-     * The touch attack stick. `aim` = where the stick points (screen axes, see `core/touchInput`),
+     * The touch attack stick. `aim` = where the stick points (screen axes, see `core/input/touchInput`),
      * null for a tap: strike the nearest enemy. Sent every frame while the stick is held aside,
      * so holding it chains the combo.
      */

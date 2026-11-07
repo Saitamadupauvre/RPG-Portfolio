@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { createLitMaterial } from '../render/materials';
-import { PALETTE } from '../render/palette';
-import { disposeObject3D } from './disposeObject3D';
-import { loadModel } from './loadModel';
+import { createLitMaterial } from '@game/render/materials/materials';
+import { PALETTE } from '@game/render/materials/palette';
+import { disposeObject3D } from '@game/entities/disposeObject3D';
+import { loadModel } from '@game/entities/loadModel';
 
 /**
  * Laid out along the sword's own +Z with the origin at the grip — the point the hand closes

@@ -1,6 +1,6 @@
-import { en } from '../data/i18n/en';
-import { fr } from '../data/i18n/fr';
-import type { Locale, LocalizedText, Message, MessageKey, MessageParam, MessageText } from '../data/locale';
+import { en } from '@data/i18n/en';
+import { fr } from '@data/i18n/fr';
+import type { Locale, LocalizedText, Message, MessageKey, MessageParam, MessageText } from '@data/i18n/locale';
 import { getSettings } from './settings';
 
 export type { Locale, LocalizedText, Message, MessageKey };

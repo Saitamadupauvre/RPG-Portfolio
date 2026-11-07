@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { AnimatorComponent } from '../../animation/AnimatorComponent';
-import type { MovementComponent } from './MovementComponent';
-import type { DashComponent } from './DashComponent';
-import type { AttackComponent } from './AttackComponent';
-import type { ComboComponent } from './ComboComponent';
+import type { AnimatorComponent } from '@game/animation/AnimatorComponent';
+import type { MovementComponent } from '@game/entities/components/movement/MovementComponent';
+import type { DashComponent } from '@game/entities/components/movement/DashComponent';
+import type { AttackComponent } from '@game/entities/components/combat/AttackComponent';
+import type { ComboComponent } from '@game/entities/components/combat/ComboComponent';
 import type { AnimationDriver } from './AnimationDriver';
 import { ComboPlayback } from './ComboPlayback';
 

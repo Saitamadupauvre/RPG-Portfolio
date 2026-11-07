@@ -1,4 +1,4 @@
-import type { AnimatorControllerDefinition } from '../../domain/animation/AnimatorController';
+import type { AnimatorControllerDefinition } from '@domain/animation/AnimatorController';
 
 /**
  * The player's animation graph. Clips are the Actions `tools/blender/make_player.py` bakes into

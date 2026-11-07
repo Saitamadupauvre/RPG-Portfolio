@@ -1,4 +1,4 @@
-import { mirror, type Sprite, type SpriteFrame } from './components/pixelSprite';
+import { mirror, type Sprite, type SpriteFrame } from './pixelSprite';
 
 /*
  * Interface pixel art, drawn by `renderSprite`. One character per pixel, '.'

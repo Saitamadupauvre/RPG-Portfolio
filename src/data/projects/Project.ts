@@ -1,6 +1,6 @@
-import type { BookImage } from './BookPage';
+import type { BookImage } from '@data/book/BookPage';
 import type { CalendarDate } from './CalendarDate';
-import type { LocalizedText } from './locale';
+import type { LocalizedText } from '@data/i18n/locale';
 
 export type ProjectRarity = 'common' | 'rare' | 'epic' | 'legendary';
 

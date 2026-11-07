@@ -103,6 +103,23 @@ export const pages: BookPage[] = [
                 fr: 'Augmentez l’Agilité au feu de camp pour marcher plus vite.',
             },
         ],
+        touch: {
+            controls: [{ icon: 'move', label: { en: 'Left thumb', fr: 'Pouce gauche' } }],
+            tips: [
+                {
+                    en: 'Put your thumb anywhere on the left half of the screen: the stick appears under it.',
+                    fr: 'Posez le pouce n’importe où sur la moitié gauche de l’écran : le joystick apparaît dessous.',
+                },
+                {
+                    en: 'Tap the book at the top right to open this book and the settings.',
+                    fr: 'Touchez le livre en haut à droite pour ouvrir ce livre et les réglages.',
+                },
+                {
+                    en: 'Raise Agility at a bonfire to walk faster.',
+                    fr: 'Augmentez l’Agilité au feu de camp pour marcher plus vite.',
+                },
+            ],
+        },
     },
     {
         id: 'dash',
@@ -131,6 +148,23 @@ export const pages: BookPage[] = [
                 fr: 'Il faut reprendre son souffle entre deux esquives.',
             },
         ],
+        touch: {
+            controls: [{ icon: 'dash', label: { en: 'Dash', fr: 'Esquive' } }],
+            tips: [
+                {
+                    en: 'Keep the left stick pushed while you tap it: standing still, you go nowhere.',
+                    fr: 'Gardez le joystick gauche poussé en le touchant : à l’arrêt, vous n’allez nulle part.',
+                },
+                {
+                    en: 'Dashing toward a narrow gap leaps across it.',
+                    fr: 'Une esquive vers un fossé étroit le franchit d’un bond.',
+                },
+                {
+                    en: 'It needs a short breath between two dashes.',
+                    fr: 'Il faut reprendre son souffle entre deux esquives.',
+                },
+            ],
+        },
     },
     {
         id: 'attack',
@@ -155,6 +189,23 @@ export const pages: BookPage[] = [
                 fr: 'Augmentez la Force au feu de camp pour frapper plus fort.',
             },
         ],
+        touch: {
+            body: {
+                en: 'Tap the sword to strike the nearest enemy, or drag it to aim. Keep it held to chain your blows. Time them well, enemies hit back.',
+                fr: 'Touchez l’épée pour frapper l’ennemi le plus proche, ou faites-la glisser pour viser. Gardez-la enfoncée pour enchaîner les coups. Choisissez bien le moment, les ennemis ripostent.',
+            },
+            controls: [{ icon: 'attack', label: { en: 'Tap: nearest · Drag: aim', fr: 'Toucher : le plus proche · Glisser : viser' } }],
+            tips: [
+                {
+                    en: 'You stand still while you swing: strike, then step away.',
+                    fr: 'Vous restez immobile pendant le coup : frappez, puis reculez.',
+                },
+                {
+                    en: 'Raise Strength at a bonfire to hit harder.',
+                    fr: 'Augmentez la Force au feu de camp pour frapper plus fort.',
+                },
+            ],
+        },
     },
     {
         id: 'statue',
@@ -175,5 +226,22 @@ export const pages: BookPage[] = [
                 fr: 'Chaque projet trouvé vous attend dans ce livre : appuyez sur B pour le relire.',
             },
         ],
+        touch: {
+            body: {
+                en: 'Each statue keeps one of my projects. A glowing statue has not been found yet: walk up to it and tap the button that appears to read its project in this book.',
+                fr: 'Chaque statue garde un de mes projets. Une statue lumineuse n’a pas encore été trouvée : approchez-vous et touchez le bouton qui apparaît pour lire son projet dans ce livre.',
+            },
+            controls: [{ icon: 'interact', label: { en: 'Read the statue', fr: 'Lire la statue' } }],
+            tips: [
+                {
+                    en: 'Once found, the statue stops glowing but stays where it stands.',
+                    fr: 'Une fois trouvée, la statue cesse de briller mais reste à sa place.',
+                },
+                {
+                    en: 'Every project you find waits in this book: tap the book at the top right to read it again.',
+                    fr: 'Chaque projet trouvé vous attend dans ce livre : touchez le livre en haut à droite pour le relire.',
+                },
+            ],
+        },
     },
 ];

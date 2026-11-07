@@ -14,6 +14,21 @@ export interface ControlHint {
     shape?: 'cross';
 }
 
+/** An on-screen touch control, drawn like the button the player sees in the game. */
+export type TouchIcon = 'move' | 'attack' | 'dash' | 'book' | 'interact';
+
+export interface TouchHint {
+    icon: TouchIcon;
+    label: LocalizedText;
+}
+
+/** What a tutorial page says on a touch-only device instead: no keys there, only the on-screen controls. */
+export interface TouchVariant {
+    body?: LocalizedText;
+    controls: TouchHint[];
+    tips?: LocalizedText[];
+}
+
 /** A screenshot or drawing, path relative to `public/`. */
 export interface BookImage {
     src: string;
@@ -40,4 +55,6 @@ export interface BookPage {
     /** Short extra pointers, one line each. */
     tips?: LocalizedText[];
     links?: BookLink[];
+    /** Replaces `body`, `controls` and `tips` on a touch-only device. */
+    touch?: TouchVariant;
 }

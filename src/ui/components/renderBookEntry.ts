@@ -1,4 +1,7 @@
-import type { BookImage, BookPage, ControlHint } from '../../data/BookPage';
+import type { BookImage, BookPage, ControlHint, TouchHint, TouchIcon } from '../../data/BookPage';
+import { isTouchOnly } from '../../core/device';
+import { renderSprite, type Sprite } from './pixelSprite';
+import { BOOK, DASH, SWORD } from '../sprites';
 import type { SectionId } from '../../domain/book';
 import type { Project } from '../../data/Project';
 import { findProject } from '../../data/projects';
@@ -132,23 +135,47 @@ function renderControl(hint: ControlHint): HTMLElement {
     return control;
 }
 
+const TOUCH_SPRITES: Partial<Record<TouchIcon, Sprite>> = { attack: SWORD, dash: DASH, book: BOOK };
+
+/** The on-screen control as the player sees it in the game: a stick, a round button, the gold prompt. */
+function renderTouchControl(hint: TouchHint): HTMLElement {
+    const control = el('div', 'book-control');
+    const label = localize(hint.label);
+
+    if (hint.icon === 'interact') {
+        // The prompt button itself, its action written on it.
+        control.appendChild(el('span', 'book-touch-tap', label));
+        return control;
+    }
+
+    const icon = el('span', `book-touch book-touch-${hint.icon}`);
+    const sprite = TOUCH_SPRITES[hint.icon];
+    icon.appendChild(sprite ? renderSprite(sprite) : el('span', 'book-touch-knob'));
+    control.append(icon, el('span', 'book-control-label', label));
+    return control;
+}
+
 function renderPage(page: BookPage, sectionId: SectionId): HTMLElement[] {
     const parts = [header(sectionLabel(sectionId), localize(page.title))];
+    // The page says what this device has: on a phone, the on-screen controls instead of keys.
+    const touch = isTouchOnly() ? page.touch : undefined;
 
     if (page.image) parts.push(figure(page.image));
 
-    parts.push(paragraphs(localize(page.body)));
+    parts.push(paragraphs(localize(touch?.body ?? page.body)));
 
-    if (page.controls?.length) {
-        const controls = el('div', 'book-controls');
-        controls.append(...page.controls.map(renderControl));
-        parts.push(controls);
+    const controls = touch ? touch.controls.map(renderTouchControl) : (page.controls ?? []).map(renderControl);
+    if (controls.length) {
+        const row = el('div', 'book-controls');
+        row.append(...controls);
+        parts.push(row);
     }
 
-    if (page.tips?.length) {
-        const tips = el('ul', 'book-tips');
-        for (const tip of page.tips) tips.appendChild(el('li', 'book-tip', localize(tip)));
-        parts.push(tips);
+    const tips = touch?.tips ?? page.tips;
+    if (tips?.length) {
+        const list = el('ul', 'book-tips');
+        for (const tip of tips) list.appendChild(el('li', 'book-tip', localize(tip)));
+        parts.push(list);
     }
 
     if (page.links?.length) {

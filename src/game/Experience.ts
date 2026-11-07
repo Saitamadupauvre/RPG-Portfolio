@@ -57,7 +57,12 @@ export class Experience {
 
         this.scene = new THREE.Scene();
 
-        this.camera = new THREE.PerspectiveCamera(GAME_FOV, window.innerWidth / window.innerHeight, 0.1, 150);
+        // Near plane 0.5, not the usual 0.1: depth precision is spent mostly
+        // right in front of the near plane, and the camera never comes closer
+        // than ~8 units to anything it looks at. Where the water meets the shore
+        // both surfaces are within a hair of each other, so a phone's coarser
+        // (often 16-bit) depth buffer z-fought there with 0.1 and chopped the foam.
+        this.camera = new THREE.PerspectiveCamera(GAME_FOV, window.innerWidth / window.innerHeight, 0.5, 150);
         this.camera.position.z = 5;
         // Cameras only see layer 0 by default; grass sits on its own layer so
         // the water depth prepass can skip it.

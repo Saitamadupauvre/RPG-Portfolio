@@ -132,13 +132,20 @@ export function initBookView(portrait: HTMLCanvasElement) {
         book.classList.toggle('has-entry', hasEntry);
     };
 
-    /** Phone layout: the new page slides in from the side it lies on, cover and page edges with it. */
+    /**
+     * Phone layout. Within a section the other page is already drawn beside this one: the
+     * CSS pans the book over to it, nothing else moves. Another section's text slides in
+     * from the side it lies on; the paper and the cover stay, since fading them out
+     * flashed the dark backdrop through the whole book.
+     */
     const slidePages = (direction: FlipDirection, apply: () => void) => {
+        const before = activeSection;
         apply();
         render();
         playSound('pageTurn');
+        if (before === activeSection) return;
         const offset = direction === 'forward' ? SLIDE_PX : -SLIDE_PX;
-        for (const part of book.querySelectorAll('.book-cover, .book-stack, .book-page')) {
+        for (const part of book.querySelectorAll('.book-page > *')) {
             part.animate(
                 [{ transform: `translateX(${offset}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
                 { duration: SLIDE_MS, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
@@ -236,9 +243,25 @@ export function initBookView(portrait: HTMLCanvasElement) {
         const dx = event.clientX - swipeStart.x;
         const dy = event.clientY - swipeStart.y;
         swipeStart = null;
-        if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-        showSide(dx < 0 ? 'right' : 'left');
+        if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) >= Math.abs(dy) * 1.5) {
+            showSide(dx < 0 ? 'right' : 'left');
+        }
     });
+
+    // A tap on the edge of the other page, peeking in beside this one, brings it in.
+    // Captured, so a link on that half-hidden page is not followed blind.
+    book.addEventListener(
+        'click',
+        (event) => {
+            if (!mobileQuery.matches) return;
+            const hidden = side === 'left' ? rightPage : leftPage;
+            if (!hidden.contains(event.target as Node)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            showSide(side === 'left' ? 'right' : 'left');
+        },
+        true,
+    );
     book.addEventListener('pointercancel', () => {
         swipeStart = null;
     });

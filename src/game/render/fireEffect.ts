@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { PALETTE } from './palette';
-import { createRandom } from '../world/grass/random';
+import { PALETTE } from './materials/palette';
+import { createRandom } from '@game/world/terrain/grass/random';
 
 const PARTICLE_COUNT = 72;
 

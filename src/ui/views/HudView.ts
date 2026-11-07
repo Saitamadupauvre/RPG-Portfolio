@@ -1,9 +1,9 @@
-import { events } from '../../core/events';
-import { translate, type Message } from '../../domain/i18n';
-import { getCoins } from '../../domain/playerProgress';
-import { renderSprite } from '../components/pixelSprite';
-import { COIN, HEART } from '../sprites';
-import { playSound } from '../../audio/audio';
+import { events } from '@core/events/events';
+import { translate, type Message } from '@domain/preferences/i18n';
+import { getCoins } from '@domain/save/playerProgress';
+import { renderSprite } from '@ui/components/sprites/pixelSprite';
+import { COIN, HEART } from '@ui/components/sprites/sprites';
+import { playSound } from '@audio/audio';
 
 const TOAST_MS = 2600;
 /** How long the chunk of bar just lost stays lit before it drains: what makes a hit readable. */

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { fromGltfMaterial, type TintableMaterial } from '../render/materials';
+import { fromGltfMaterial, type TintableMaterial } from '@game/render/materials/materials';
 
 const loader = new GLTFLoader();
 

@@ -1,4 +1,4 @@
-import type { MessageKey, MessageText } from '../locale';
+import type { MessageKey, MessageText } from './locale';
 
 /** Every key of `en.ts`, in French. A missing or misspelt key fails the build. */
 export const fr: Record<MessageKey, MessageText> = {
@@ -8,13 +8,17 @@ export const fr: Record<MessageKey, MessageText> = {
     'menu.nav': 'Choisir comment parcourir',
     'menu.play': 'Jouer',
     'menu.play.hint': 'Explorer, combattre, découvrir les projets',
-    'menu.play.touchHint': 'Clavier et souris requis : à ouvrir sur un ordinateur',
+    'menu.play.touchHint': 'Tenez votre téléphone à l’horizontale pour jouer',
     'menu.fast': 'Portfolio rapide',
     'menu.fast.hint': 'Tous les projets en une liste, sans jeu',
     'menu.callout': 'Recruteur pressé ?',
     'menu.callout.cta': 'Par ici',
     'menu.footer': 'Clavier et souris · idéal sur ordinateur',
     'menu.language': 'Langue',
+
+    // ---------- rotate (touch, held upright) ----------
+    'rotate.title': 'Tournez votre téléphone',
+    'rotate.body': 'Le jeu se joue à l’horizontale. Il attend en pause que vous le tourniez.',
 
     // ---------- loading ----------
     'loading.label': 'Chargement',
@@ -23,6 +27,11 @@ export const fr: Record<MessageKey, MessageText> = {
     'book.prev': 'Page précédente',
     'book.next': 'Page suivante',
     'book.close': 'Fermer le livre',
+
+    'touch.move': 'Se déplacer',
+    'touch.attack': 'Attaquer (toucher : ennemi le plus proche, glisser : viser)',
+    'touch.dash': 'Esquive',
+    'touch.book': 'Ouvrir le livre',
     'book.cover': 'Portfolio',
     'book.blank': 'Cette page est vierge.',
     'book.empty': 'Rien d’écrit ici pour l’instant.',

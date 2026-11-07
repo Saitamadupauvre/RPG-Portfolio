@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getTileGrid } from '../terrainField';
+import { getTileGrid } from '@game/world/terrain/terrainField';
 
 /**
  * The terrain heightfield, as a texture the water shader can sample.

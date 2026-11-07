@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
-import type { MapEntityTransform } from '../../data/MapEntity';
-import { groundHeight } from '../world/terrainField';
+import type { MapEntityTransform } from '@data/map/MapEntity';
+import { groundHeight } from '@game/world/terrain/terrainField';
 
 /** Offsets smaller than this are noise from float maths, not an authored sink or lift. */
 const HEIGHT_OFFSET_EPSILON = 0.005;

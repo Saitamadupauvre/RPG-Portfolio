@@ -1,8 +1,8 @@
-import type { Locale } from './locale';
+import type { Locale } from './i18n/locale';
 
 /**
  * Player preferences, types only. Here rather than in `domain/` so
- * `core/events.ts` and book content (`ControlHint.action`) can name them
+ * `core/events/events.ts` and book content (`ControlHint.action`) can name them
  * without importing upward, like `stats.ts`.
  */
 

@@ -1,0 +1,371 @@
+/* Phone play: the touch gamepad (ui/views/TouchControlsView.ts), the tappable
+   interact prompt, and the compact sizes of a phone held sideways. */
+
+:root {
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --touch-ring: rgba(255, 244, 220, 0.55);
+  --touch-fill: rgba(18, 12, 22, 0.38);
+  --touch-knob: rgba(255, 244, 220, 0.85);
+  --touch-press: rgba(242, 193, 78, 0.9);
+}
+
+/* ---------- gamepad ---------- */
+
+#touch-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  pointer-events: none;
+  /* The browser must not scroll, zoom or select under a thumb. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-only.state-game #touch-controls {
+  display: block;
+}
+
+.rotate-needed #touch-controls {
+  display: none;
+}
+
+/* While the game is in play, the whole page refuses pinch-zoom and pull-to-refresh. */
+.touch-only.state-game {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* The left half catches the thumb wherever it lands. */
+.touch-move-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  pointer-events: auto;
+}
+
+.touch-stick {
+  --stick: 116px;
+  position: absolute;
+  width: var(--stick);
+  height: var(--stick);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--touch-ring);
+  border-radius: 50%;
+  background: var(--touch-fill);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%);
+}
+
+/* Resting spot: shows a first-time player where the thumb goes. */
+#touch-move-stick {
+  left: calc(var(--safe-left) + 92px);
+  top: calc(100% - var(--safe-bottom) - 90px);
+  opacity: 0.45;
+  transition: opacity 120ms linear;
+}
+
+#touch-move-stick.held {
+  opacity: 1;
+}
+
+.touch-knob {
+  width: 46%;
+  height: 46%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(27, 14, 20, 0.6);
+  border-radius: 50%;
+  background: var(--touch-knob);
+  pointer-events: none;
+}
+
+/* ---------- attack, dash, book ---------- */
+
+.touch-actions {
+  position: absolute;
+  right: calc(var(--safe-right) + 22px);
+  bottom: calc(var(--safe-bottom) + 18px);
+  width: 176px;
+  height: 196px;
+}
+
+.touch-stick-attack {
+  --stick: 112px;
+  right: 0;
+  bottom: 0;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* The attack knob is the button: bigger, darker, the sword on it. */
+.touch-stick-attack .touch-knob {
+  width: 58%;
+  height: 58%;
+  background: rgba(18, 12, 22, 0.72);
+  border-color: var(--touch-ring);
+}
+
+.touch-stick-attack.held .touch-knob {
+  border-color: var(--touch-press);
+  background: rgba(60, 38, 18, 0.85);
+}
+
+.touch-stick-attack .sprite {
+  --px: 3px;
+}
+
+.touch-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 3px solid var(--touch-ring);
+  background: rgba(18, 12, 22, 0.6);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.touch-btn:active {
+  border-color: var(--touch-press);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Above and left of the attack stick: the thumb rolls up to it. */
+.touch-dash {
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.touch-dash .sprite {
+  --px: 3px;
+}
+
+.touch-book {
+  top: 12px;
+  right: calc(var(--safe-right) + 16px);
+  width: 52px;
+  height: 52px;
+  clip-path: var(--notched);
+}
+
+.touch-book .sprite {
+  --px: 3px;
+}
+
+/* ---------- interact prompt ---------- */
+
+.touch-only #interact-prompt {
+  /* Above the move zone, which spans under it. */
+  z-index: 3;
+  bottom: calc(var(--safe-bottom) + 14px);
+  gap: 8px;
+  padding: 6px;
+  pointer-events: none;
+}
+
+.touch-only.state-game #interact-prompt.visible {
+  pointer-events: auto;
+}
+
+.prompt-tap {
+  min-height: 44px;
+  padding: 0 16px;
+  font-family: var(--pixel-font, inherit);
+  font-size: 15px;
+  color: #1d1408;
+  background: var(--hud-gold);
+  border: 3px solid #fff1c4;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.prompt-tap:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- a phone held sideways: short screen ---------- */
+
+@media (max-height: 500px) {
+  /* Everything sized in rem (menu, book) shrinks with it; the HUD below is in px. */
+  html {
+    font-size: 13px;
+  }
+
+  #hud {
+    top: 8px;
+    left: calc(var(--safe-left) + 12px);
+    gap: 4px;
+  }
+
+  .hud-bar {
+    width: 150px;
+    height: 18px;
+    border-width: 2px;
+  }
+
+  .hud-heart .sprite {
+    --px: 3px;
+  }
+
+  .hud-coins {
+    padding: 3px 10px 3px 4px;
+  }
+
+  .hud-coin .sprite {
+    --px: 2px;
+  }
+
+  .hud-coin-count {
+    font-size: 11px;
+  }
+
+  .hud-toast {
+    font-size: 12px;
+    padding: 5px 10px 5px 8px;
+  }
+
+  #interact-prompt {
+    font-size: 13px;
+  }
+
+  /* Menu: the column must fit 390px of height. */
+  #menu-screen .title {
+    font-size: 1.7rem;
+  }
+
+  .menu-tagline {
+    margin-top: 0.6rem;
+    font-size: 1rem;
+  }
+
+  .menu-actions {
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .menu-btn {
+    padding: 0.55rem 1rem;
+  }
+
+  .menu-btn-label {
+    font-size: 1.15rem;
+  }
+
+  .menu-btn-hint {
+    font-size: 0.85rem;
+  }
+
+  /* Book: room for the side tabs, which hang off the right edge. */
+  /* The cover sticks out by --book-margin on every side, and the close button above it. */
+  .book {
+    width: min(calc(100vw - var(--safe-left) - var(--safe-right) - 2 * var(--book-margin) - 130px), 980px);
+    height: calc(100dvh - 2 * var(--book-margin) - 28px);
+  }
+
+  /* Six vertical labels need ~500px of height: written across instead, they stack in ~170px. */
+  .book-tabs {
+    top: 10px;
+    right: auto;
+    left: calc(100% + var(--book-margin));
+    gap: 3px;
+    align-items: flex-start;
+  }
+
+  .book-tab {
+    writing-mode: horizontal-tb;
+    white-space: nowrap;
+    padding: calc(2 * var(--book-px)) calc(3 * var(--book-px)) calc(2 * var(--book-px)) calc(4 * var(--book-px));
+    font-size: 0.75rem;
+  }
+}
+
+/* A short screen that is also narrow (very small phone sideways): smaller gamepad. */
+@media (max-height: 360px) {
+  .touch-stick {
+    --stick: 100px;
+  }
+
+  .touch-stick-attack {
+    --stick: 96px;
+  }
+
+  .touch-actions {
+    width: 150px;
+    height: 168px;
+  }
+
+  .touch-dash {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* ---------- book: the touch tutorials draw the on-screen controls ---------- */
+
+.book-touch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.6rem;
+  height: 3.6rem;
+  border: 3px solid var(--book-ink-soft);
+  border-radius: 50%;
+  background: rgba(18, 12, 22, 0.78);
+}
+
+.book-touch .sprite {
+  --px: 2px;
+}
+
+/* The move stick: a ring and its knob. */
+.book-touch-move {
+  width: 4.4rem;
+  height: 4.4rem;
+  background: rgba(18, 12, 22, 0.25);
+}
+
+.book-touch-knob {
+  width: 44%;
+  height: 44%;
+  border: 3px solid rgba(27, 14, 20, 0.6);
+  border-radius: 50%;
+  background: #fff4dc;
+}
+
+.book-touch-book {
+  border-radius: 0;
+  clip-path: var(--notched);
+}
+
+/* The interact prompt's gold button, with its action on it. */
+.book-touch-tap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0 1rem;
+  font-size: 0.95rem;
+  color: #1d1408;
+  background: #f2c14e;
+  border: 3px solid #fff1c4;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+}

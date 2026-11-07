@@ -1,11 +1,12 @@
+import { propInstancer } from '@game/render/PropInstancer';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-import { events } from '../../core/events';
-import { stateMachine } from '../../core/StateMachine';
-import type { MapEntity } from '../../data/MapEntity';
-import { readTransform, seatedHeight } from '../entities/applyTransform';
-import type { Experience } from '../Experience';
+import { events } from '@core/events/events';
+import { stateMachine } from '@core/state/StateMachine';
+import type { MapEntity } from '@data/map/MapEntity';
+import { readTransform, seatedHeight } from '@game/entities/applyTransform';
+import type { Experience } from '@game/Experience';
 import {
     clearWorkingLayout,
     clearWorkingTiles,
@@ -20,15 +21,15 @@ import {
     sourceLayout,
     sourceTiles,
 } from './editorLayout';
-import { getTileGrid, groundHeight, rebuildTileGrid } from '../world/terrainField';
-import { resizeTileMap, type TileMap } from '../../data/tileMap';
+import { getTileGrid, groundHeight, rebuildTileGrid } from '@game/world/terrain/terrainField';
+import { resizeTileMap, type TileMap } from '@data/map/tileMap';
 import { TileSelection } from './TileSelection';
 import { createDefaultEntity, uniqueId } from './entityDefaults';
-import { DEFAULT_SCATTER, DEFAULT_TILE_BRUSH_RADIUS, type ScatterSettings, type ScreenRect } from '../../core/editorTools';
+import { DEFAULT_SCATTER, DEFAULT_TILE_BRUSH_RADIUS, type ScatterSettings, type ScreenRect } from '@core/input/editorTools';
 import { UndoHistory, type EditorSnapshot } from './UndoHistory';
 import { BrushCursor, ScatterGhosts } from './brushVisuals';
 import { eraseStamp, scatterStamp } from './scatter';
-import { EDITOR_LAYER } from '../render/layers';
+import { EDITOR_LAYER } from '@game/render/layers';
 
 const GRID_SNAP = 1;
 const ROTATION_SNAP = Math.PI / 12;
@@ -593,10 +594,13 @@ export class EditorSystem {
 
     private pickEntityId(): string | null {
         const roots = this.experience.world.getEntities();
-        const hits = this.raycaster.intersectObjects(roots.map((entity) => entity.mesh), true);
+        // Trees and bushes are drawn by the instancer, not under their entity's group:
+        // a hit on one of its batches names the copy, whose owner is that group.
+        const targets = [...roots.map((entity) => entity.mesh), propInstancer.root];
+        const hits = this.raycaster.intersectObjects(targets, true);
         if (hits.length === 0) return null;
 
-        for (let object: THREE.Object3D | null = hits[0].object; object; object = object.parent) {
+        for (let object: THREE.Object3D | null = propInstancer.ownerOf(hits[0]) ?? hits[0].object; object; object = object.parent) {
             const match = roots.find((entity) => entity.mesh === object);
             if (match) return match.id;
         }
@@ -762,6 +766,8 @@ export class EditorSystem {
                 const { x, z } = entity.mesh.position;
                 entity.mesh.position.y = seatedHeight(x, z, source.heightOffset, entity.groundOffset);
             }
+            // Static roots do not rebuild their matrix on their own (World.spawnEntity).
+            entity.mesh.updateMatrix();
             const transform = readTransform(entity.mesh, entity.groundOffset);
             Object.assign(source, transform);
             // Object.assign copies an undefined key as a key; drop it so the export stays clean.

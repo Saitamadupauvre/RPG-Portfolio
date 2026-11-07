@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { TileMap } from '../../data/tileMap';
-import type { TileGrid } from '../../domain/terrain/TileGrid';
+import type { TileMap } from '@data/map/tileMap';
+import type { TileGrid } from '@domain/terrain/TileGrid';
 
 const HIGHLIGHT_COLOR = 0x3ae6c9;
 /** Lifts the highlight off the tile it marks, so the two never z-fight. */

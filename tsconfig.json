@@ -14,6 +14,16 @@
     "moduleDetection": "force",
     "noEmit": true,
 
+    /* Layer aliases (Vite reads them through resolve.tsconfigPaths) */
+    "paths": {
+      "@core/*": ["./src/core/*"],
+      "@data/*": ["./src/data/*"],
+      "@domain/*": ["./src/domain/*"],
+      "@game/*": ["./src/game/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@audio/*": ["./src/audio/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

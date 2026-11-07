@@ -1,5 +1,5 @@
-import { events } from '../../core/events';
-import { getIris } from '../components/iris';
+import { events } from '@core/events/events';
+import { getIris } from '@ui/components/iris';
 
 /** Dying: once the body has faded, the circle shuts slowly onto where it lay. */
 const DEATH_CLOSE_MS = 1100;

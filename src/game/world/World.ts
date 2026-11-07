@@ -1,37 +1,38 @@
+import { propInstancer } from '@game/render/PropInstancer';
 import * as THREE from "three";
-import type { Experience } from "../Experience";
-import { Environment } from "./Environment";
-import { events } from "../../core/events";
-import { stateMachine, type AppState } from "../../core/StateMachine";
-import { setPaused } from "../../core/pause";
-import { mapLayout } from "../../data/mapLayout";
-import type { MapEntity } from "../../data/MapEntity";
-import { getCheckpoint } from "../../domain/checkpoint";
-import { loseAllCoins } from "../../domain/playerProgress";
-import type { Entity } from "../entities/Entity";
-import { createMapEntity } from "../entities/entityFactories";
-import { createPlayer } from "../entities/PlayerFactory";
-import { bindPlayerStats } from "../playerStats";
-import { enemyPool } from "../entities/EnemyPool";
-import { CombatSystem } from "../CombatSystem";
-import { ProjectileSystem } from "../ProjectileSystem";
-import { FireSystem } from "../FireSystem";
-import { EntityCollisionSystem } from "../EntityCollisionSystem";
-import { InteractionSystem } from "../InteractionSystem";
-import { rebuildNavGrid } from "./navigation";
-import { rebuildObstacles } from "./obstacles";
+import type { Experience } from "@game/Experience";
+import { Environment } from "./environment/Environment";
+import { events } from "@core/events/events";
+import { stateMachine, type AppState } from "@core/state/StateMachine";
+import { setPaused } from "@core/state/pause";
+import { mapLayout } from "@data/map/mapLayout";
+import type { MapEntity } from "@data/map/MapEntity";
+import { getCheckpoint } from "@domain/save/checkpoint";
+import { loseAllCoins } from "@domain/save/playerProgress";
+import type { Entity } from "@game/entities/Entity";
+import { createMapEntity } from "@game/entities/entityFactories";
+import { createPlayer } from "@game/entities/player/PlayerFactory";
+import { bindPlayerStats } from "@game/playerStats";
+import { enemyPool } from "@game/entities/enemies/EnemyPool";
+import { CombatSystem } from "@game/systems/CombatSystem";
+import { ProjectileSystem } from "@game/systems/ProjectileSystem";
+import { FireSystem } from "@game/systems/FireSystem";
+import { EntityCollisionSystem } from "@game/systems/EntityCollisionSystem";
+import { InteractionSystem } from "@game/systems/InteractionSystem";
+import { rebuildNavGrid } from "./navigation/navigation";
+import { rebuildObstacles } from "./navigation/obstacles";
 import { ChunkStreamer } from "./ChunkStreamer";
-import { chunkKeyAt, type ChunkKey } from "../../domain/chunks";
-import { isBossDefeated } from "../../domain/defeatedBosses";
-import { isEnemySlain } from '../../domain/slainEnemies';
-import { GrassSurface, type GrassCollider } from "./grass/GrassSurface";
-import { Terrain } from "./Terrain";
-import { buildGrassFootprints } from "./grass/grassFootprints";
-import { WindStreaks } from "./windStreaks";
+import { chunkKeyAt, type ChunkKey } from "@domain/map/chunks";
+import { isBossDefeated } from "@domain/save/defeatedBosses";
+import { isEnemySlain } from '@domain/save/slainEnemies';
+import { GrassSurface, type GrassCollider } from "./terrain/grass/GrassSurface";
+import { Terrain } from "./terrain/Terrain";
+import { buildGrassFootprints } from "./terrain/grass/grassFootprints";
+import { WindStreaks } from "./environment/windStreaks";
 import { Water } from "./water/Water";
-import { tileMap, type TileMap } from "../../data/tileMap";
-import { groundHeight, snapToGround } from "./terrainField";
-import { aimMenuShot, CameraBlend, GAME_FOV, pickMenuYaw, planSpawn, setFov } from "./menuShot";
+import { tileMap, type TileMap } from "@data/map/tileMap";
+import { groundHeight, snapToGround } from "./terrain/terrainField";
+import { aimMenuShot, CameraBlend, GAME_FOV, pickMenuYaw, planSpawn, setFov } from "./camera/menuShot";
 import { EnemyFadeIn } from "./EnemyFadeIn";
 
 const CAMERA_OFFSET = new THREE.Vector3(6, 6, 6);
@@ -118,6 +119,9 @@ export class World {
         this.entityGroup.add(this.water.mesh);
 
         // Read at spawn time, not now: the editor can move the sea level.
+        // Trees and bushes are drawn here, one batch per model; each entity's own group only places its copy.
+        this.entityGroup.add(propInstancer.root);
+
         this.windStreaks = new WindStreaks((x, z) => Math.max(groundHeight(x, z), this.water.getLevel()));
         this.entityGroup.add(this.windStreaks.mesh);
 
@@ -233,6 +237,13 @@ export class World {
         }
 
         const entity = createMapEntity(mapEntity);
+        if (entity.isStatic) {
+            // Placed once by its factory and never moved but by the editor (which
+            // updates it itself): three would otherwise rebuild the matrix of
+            // every prop, every frame. Its children (a chest's lid) still animate.
+            entity.mesh.updateMatrix();
+            entity.mesh.matrixAutoUpdate = false;
+        }
         this.trackEntity(entity, key);
         this.entityGroup.add(entity.mesh);
 
@@ -283,6 +294,10 @@ export class World {
         this.water.onTerrainChanged();
     }
 
+    public nearestEnemy(position: THREE.Vector3, range: number): Entity | null {
+        return this.combat.nearestEnemy(position, range);
+    }
+
     public getEntities(): Entity[] {
         return this.entities;
     }
@@ -304,6 +319,9 @@ export class World {
         this.water.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.windStreaks.update(this.experience.timer.getElapsed(), this.player.mesh.position);
         this.environment.followShadows(this.player.mesh.position);
+        // Every state: the editor moves and erases props too. Reads last frame's
+        // world matrices, so an editor drag shows one frame late on the copy.
+        propInstancer.sync();
 
         if (state === 'DEAD') this.updateDeath(dt);
         if (state === 'MENU') {

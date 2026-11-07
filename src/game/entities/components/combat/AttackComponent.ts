@@ -1,0 +1,141 @@
+import * as THREE from 'three';
+import type { Component } from '@domain/components/Component';
+
+export interface AttackHitboxOptions {
+    size?: THREE.Vector3;
+    color?: number;
+    opacity?: number;
+    distance?: number;
+    duration?: number;
+    damage?: number;
+    /** Hitbox moves with the attacker instead of staying where the swing started (lunges). */
+    follow?: boolean;
+}
+
+export interface AttackHooks {
+    onAttackStart?: () => void;
+    onAttackEnd?: () => void;
+}
+
+const DEFAULTS: Required<AttackHitboxOptions> = {
+    size: new THREE.Vector3(0.6, 0.6, 0.6),
+    color: 0xff0000,
+    opacity: 0.5,
+    distance: 1,
+    duration: 0.25,
+    damage: 10,
+    follow: false,
+};
+
+export class AttackComponent implements Component {
+    public readonly name = 'attack';
+
+    private mesh: THREE.Object3D;
+    private options: Required<AttackHitboxOptions>;
+    private hooks: AttackHooks;
+
+    private isAttackingState = false;
+    private cachedHitbox = new THREE.Box3();
+    private center = new THREE.Vector3();
+    private faceDirection = new THREE.Vector3();
+    private elapsed = 0;
+    private hitIds = new Set<string>();
+    private activeOptions: Required<AttackHitboxOptions>;
+
+    constructor(mesh: THREE.Object3D, options: AttackHitboxOptions = {}, hooks: AttackHooks = {}) {
+        this.mesh = mesh;
+        this.options = { ...DEFAULTS, ...options };
+        this.activeOptions = this.options;
+        this.hooks = hooks;
+    }
+
+    public get isAttacking(): boolean {
+        return this.isAttackingState;
+    }
+
+    /** 0..1 progress through the active swing, or null when idle. Drives the arm animation. */
+    public get swingProgress(): number | null {
+        if (!this.isAttackingState) return null;
+        return Math.min(1, this.elapsed / this.activeOptions.duration);
+    }
+
+    /** Seconds the current (or last) swing keeps its hitbox live. */
+    public get swingDuration(): number {
+        return this.activeOptions.duration;
+    }
+
+    public get damage(): number {
+        return this.activeOptions.damage;
+    }
+
+    /** Damage a swing deals when its move does not set its own. */
+    public get baseDamage(): number {
+        return this.options.damage;
+    }
+
+    /** Base damage of every future swing; the live swing keeps its own value. */
+    public setBaseDamage(damage: number) {
+        this.options = { ...this.options, damage };
+    }
+
+    public face(aimPoint: THREE.Vector3): THREE.Vector3 | null {
+        this.faceDirection.subVectors(aimPoint, this.mesh.position).setY(0);
+        if (this.faceDirection.lengthSq() === 0) return null;
+        this.faceDirection.normalize();
+        this.mesh.rotation.y = Math.atan2(this.faceDirection.x, this.faceDirection.z);
+        return this.faceDirection;
+    }
+
+    public trigger(aimPoint: THREE.Vector3, overrides: AttackHitboxOptions = {}) {
+        if (this.isAttackingState) return;
+
+        const direction = this.face(aimPoint);
+        if (!direction) return;
+
+        this.activeOptions = { ...this.options, ...overrides };
+        this.hooks.onAttackStart?.();
+
+        this.placeHitbox(direction);
+
+        this.isAttackingState = true;
+        this.elapsed = 0;
+        this.hitIds.clear();
+    }
+
+    private placeHitbox(direction: THREE.Vector3) {
+        this.center.copy(this.mesh.position).addScaledVector(direction, this.activeOptions.distance);
+        this.cachedHitbox.setFromCenterAndSize(this.center, this.activeOptions.size);
+    }
+
+    public getHitbox(): THREE.Box3 | null {
+        if (!this.isAttackingState) return null;
+        return this.cachedHitbox;
+    }
+
+    /** Drops any swing in progress — a pooled enemy must not come back mid-attack. */
+    public reset() {
+        this.isAttackingState = false;
+        this.elapsed = 0;
+        this.hitIds.clear();
+        this.activeOptions = this.options;
+    }
+
+    public registerHit(id: string): boolean {
+        if (this.hitIds.has(id)) return false;
+        this.hitIds.add(id);
+        return true;
+    }
+
+    public update(dt: number) {
+        if (!this.isAttackingState) return;
+
+        this.elapsed += dt;
+        if (this.elapsed < this.activeOptions.duration) {
+            if (this.activeOptions.follow) this.placeHitbox(this.faceDirection);
+            return;
+        }
+
+        this.isAttackingState = false;
+        this.hooks.onAttackEnd?.();
+    }
+}

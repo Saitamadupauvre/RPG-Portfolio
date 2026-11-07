@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 import { World } from './world/World';
-import { PlayerAttackInteraction } from './PlayerAttackInteraction';
+import { PlayerAttackInteraction } from './systems/PlayerAttackInteraction';
 import { EditorSystem } from './editor/EditorSystem';
-import { stateMachine } from '../core/StateMachine';
-import { events } from '../core/events';
-import { getSettings, type Quality } from '../domain/settings';
+import { stateMachine } from '@core/state/StateMachine';
+import { events } from '@core/events/events';
+import { getSettings, type Quality } from '@domain/preferences/settings';
 import { WaterDepthPrepass } from './world/water/depthPrepass';
 import { PerfOverlay } from './debug/PerfOverlay';
 import { GRASS_LAYER, WIND_LAYER } from './render/layers';
-import { applyColorGrading } from './render/grading';
+import { applyColorGrading } from './render/materials/grading';
 import { PlayerPortrait } from './portrait/PlayerPortrait';
-import { MAX_STREAKS } from './world/windStreaks';
-import { GAME_FOV } from './world/menuShot';
+import { MAX_STREAKS } from './world/environment/windStreaks';
+import { GAME_FOV } from './world/camera/menuShot';
 
 /** Longest step the simulation takes in one frame, in seconds. */
 const MAX_FRAME_DELTA = 0.1;
@@ -57,7 +57,12 @@ export class Experience {
 
         this.scene = new THREE.Scene();
 
-        this.camera = new THREE.PerspectiveCamera(GAME_FOV, window.innerWidth / window.innerHeight, 0.1, 150);
+        // Near plane 0.5, not the usual 0.1: depth precision is spent mostly
+        // right in front of the near plane, and the camera never comes closer
+        // than ~8 units to anything it looks at. Where the water meets the shore
+        // both surfaces are within a hair of each other, so a phone's coarser
+        // (often 16-bit) depth buffer z-fought there with 0.1 and chopped the foam.
+        this.camera = new THREE.PerspectiveCamera(GAME_FOV, window.innerWidth / window.innerHeight, 0.5, 150);
         this.camera.position.z = 5;
         // Cameras only see layer 0 by default; grass sits on its own layer so
         // the water depth prepass can skip it.
@@ -203,7 +208,7 @@ export class Experience {
         // the real render, with the water itself hidden, or it would read its
         // own depth back.
         if (this.perf?.toggles.depthPrepass !== false) {
-            this.waterDepthPrepass.render(this.renderer, this.scene, this.camera, this.world.water.mesh);
+            this.waterDepthPrepass.render(this.renderer, this.scene, this.camera);
         }
         this.world.water.setSceneDepth(this.waterDepthPrepass.depthTexture, this.camera, this.drawingSize.x, this.drawingSize.y);
 
